@@ -31,12 +31,14 @@ export async function middleware(request: NextRequest) {
 
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
   const isOnboardingRoute = pathname.startsWith('/org') || pathname.startsWith('/setup')
+  // Invite acceptance and auth callback must bypass all org/onboarding guards
+  const isInviteRoute = pathname.startsWith('/invite') || pathname.startsWith('/auth')
   const isAppRoute =
     !isAuthRoute &&
     !isOnboardingRoute &&
+    !isInviteRoute &&
     pathname !== '/' &&
-    !pathname.startsWith('/_next') &&
-    !pathname.startsWith('/auth')
+    !pathname.startsWith('/_next')
 
   if (!user) {
     if (isAppRoute || isOnboardingRoute) {
@@ -44,6 +46,7 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
+    // Invite/callback routes are accessible without auth (callback establishes session)
     return supabaseResponse
   }
 
@@ -61,6 +64,11 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
+  }
+
+  // Invite routes: always let through regardless of org status
+  if (isInviteRoute) {
+    return supabaseResponse
   }
 
   // Has org → don't show org creation page

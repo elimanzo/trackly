@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { createCategory, deleteCategory, updateCategory } from '@/app/actions/categories'
 import { createDepartment, deleteDepartment, updateDepartment } from '@/app/actions/departments'
+import { sendInviteAction } from '@/app/actions/invites'
 import { createLocation, deleteLocation, updateLocation } from '@/app/actions/locations'
 import { createVendor, deleteVendor, updateVendor } from '@/app/actions/vendors'
 import { createClient } from '@/lib/supabase/client'
@@ -41,7 +42,7 @@ type OrgDataContextValue = {
   deleteVendor: (id: string) => Promise<void>
   users: ProfileWithDepartments[]
   pendingInvites: Invite[]
-  sendInvite: (email: string, role: Invite['role']) => void
+  sendInvite: (email: string, role: Invite['role']) => Promise<void>
   revokeInvite: (id: string) => void
   removeUser: (id: string) => void
   isLoading: boolean
@@ -375,11 +376,21 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
   )
 
   // -------------------------------------------------------------------------
-  // Users / Invites — stubbed for now (Phase 2 invite system is a later step)
   // -------------------------------------------------------------------------
-  const sendInvite = useCallback((_email: string, _role: Invite['role']) => {
-    toast.info('Invite system coming soon')
-  }, [])
+  // Users / Invites
+  // -------------------------------------------------------------------------
+  const sendInvite = useCallback(
+    async (email: string, role: Invite['role']) => {
+      const result = await sendInviteAction(email, role)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(`Invite sent to ${email}`)
+      await refetch()
+    },
+    [refetch]
+  )
 
   const revokeInvite = useCallback(
     async (id: string) => {
