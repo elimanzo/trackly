@@ -56,35 +56,35 @@ begin
   delete from public.vendors      where org_id = v_org_id;
 
   -- ── DEPARTMENTS ────────────────────────────────────────────
-  insert into public.departments (id, org_id, name) values
-    (d_it,      v_org_id, 'IT'),
-    (d_finance, v_org_id, 'Finance'),
-    (d_hr,      v_org_id, 'Human Resources'),
-    (d_ops,     v_org_id, 'Operations'),
-    (d_mktg,    v_org_id, 'Marketing');
+  insert into public.departments (id, org_id, name, description) values
+    (d_it,      v_org_id, 'IT',                'Infrastructure, hardware, software, and internal tooling'),
+    (d_finance, v_org_id, 'Finance',           'Accounting, budgeting, and financial reporting'),
+    (d_hr,      v_org_id, 'Human Resources',   'Recruiting, onboarding, employee relations, and benefits'),
+    (d_ops,     v_org_id, 'Operations',        'Facilities, logistics, and day-to-day business operations'),
+    (d_mktg,    v_org_id, 'Marketing',         'Brand, campaigns, content, and growth');
 
   -- ── CATEGORIES ─────────────────────────────────────────────
-  insert into public.categories (id, org_id, name) values
-    (c_laptops,  v_org_id, 'Laptops'),
-    (c_monitors, v_org_id, 'Monitors'),
-    (c_desks,    v_org_id, 'Desks & Furniture'),
-    (c_phones,   v_org_id, 'Mobile Phones'),
-    (c_network,  v_org_id, 'Networking Equipment'),
-    (c_software, v_org_id, 'Software Licenses');
+  insert into public.categories (id, org_id, name, description) values
+    (c_laptops,  v_org_id, 'Laptops',               'Portable computers including MacBooks and Windows laptops'),
+    (c_monitors, v_org_id, 'Monitors',               'Desktop displays and external screens'),
+    (c_desks,    v_org_id, 'Desks & Furniture',      'Standing desks, chairs, and other office furniture'),
+    (c_phones,   v_org_id, 'Mobile Phones',          'Smartphones and tablets assigned to employees'),
+    (c_network,  v_org_id, 'Networking Equipment',   'Switches, firewalls, access points, and cabling'),
+    (c_software, v_org_id, 'Software Licenses',      'SaaS subscriptions and perpetual software licenses');
 
   -- ── LOCATIONS ──────────────────────────────────────────────
-  insert into public.locations (id, org_id, name) values
-    (l_hq,        v_org_id, 'HQ — Floor 2'),
-    (l_remote,    v_org_id, 'Remote'),
-    (l_warehouse, v_org_id, 'Warehouse');
+  insert into public.locations (id, org_id, name, description) values
+    (l_hq,        v_org_id, 'HQ — Floor 2',  'Main office, second floor — open plan and private offices'),
+    (l_remote,    v_org_id, 'Remote',         'Assets assigned to fully remote employees'),
+    (l_warehouse, v_org_id, 'Warehouse',      'Storage facility for spare, retired, and in-transit assets');
 
   -- ── VENDORS ────────────────────────────────────────────────
-  insert into public.vendors (id, org_id, name, contact_email) values
-    (v_apple, v_org_id, 'Apple',         'business@apple.com'),
-    (v_dell,  v_org_id, 'Dell',          'sales@dell.com'),
-    (v_herman,v_org_id, 'Herman Miller', 'orders@hermanmiller.com'),
-    (v_cisco, v_org_id, 'Cisco',         'enterprise@cisco.com'),
-    (v_msft,  v_org_id, 'Microsoft',     'volume@microsoft.com');
+  insert into public.vendors (id, org_id, name, contact_email, contact_phone, website) values
+    (v_apple, v_org_id, 'Apple',         'business@apple.com',         '+1 800-854-3680', 'apple.com/business'),
+    (v_dell,  v_org_id, 'Dell',          'sales@dell.com',             '+1 800-999-3355', 'dell.com/business'),
+    (v_herman,v_org_id, 'Herman Miller', 'orders@hermanmiller.com',    '+1 888-443-4357', 'hermanmiller.com'),
+    (v_cisco, v_org_id, 'Cisco',         'enterprise@cisco.com',       '+1 800-553-6387', 'cisco.com'),
+    (v_msft,  v_org_id, 'Microsoft',     'volume@microsoft.com',       '+1 800-642-7676', 'microsoft.com/licensing');
 
   -- ── ASSETS ─────────────────────────────────────────────────
   insert into public.assets (
