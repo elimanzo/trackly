@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session — must call getUser() not getSession() for security
+  // Refresh session — getUser() validates the token server-side
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -33,19 +33,36 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
   const isOnboardingRoute = pathname.startsWith('/org') || pathname.startsWith('/setup')
   const isAppRoute =
-    !isAuthRoute && !isOnboardingRoute && pathname !== '/' && !pathname.startsWith('/_next')
+    !isAuthRoute &&
+    !isOnboardingRoute &&
+    pathname !== '/' &&
+    !pathname.startsWith('/_next') &&
+    !pathname.startsWith('/auth')
 
-  // Unauthenticated user trying to access app → send to login
-  if (!user && isAppRoute) {
+  if (!user) {
+    // Unauthenticated: only allow auth routes
+    if (isAppRoute || isOnboardingRoute) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
+  // Authenticated from here on
+  const hasOrg = !!user.user_metadata?.org_id
+
+  // Already logged in → don't show auth pages
+  if (isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // Authenticated user hitting auth pages → send to dashboard
-  if (user && isAuthRoute) {
+  // No org yet → must complete onboarding first
+  if (!hasOrg && isAppRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = '/org/new'
     return NextResponse.redirect(url)
   }
 

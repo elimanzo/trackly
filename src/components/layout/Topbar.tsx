@@ -3,7 +3,6 @@
 import { LogOut, Menu, Moon, Settings, Sun, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { toast } from 'sonner'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -27,9 +26,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
 
-  function handleSignOut() {
-    signOut()
-    toast.success('Signed out')
+  async function handleSignOut() {
+    await signOut()
     router.push('/login')
   }
 

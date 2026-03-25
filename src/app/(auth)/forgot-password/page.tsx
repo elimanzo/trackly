@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { createClient } from '@/lib/supabase/client'
 
 const ForgotSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -32,8 +34,15 @@ export default function ForgotPasswordPage() {
     defaultValues: { email: '' },
   })
 
-  function onSubmit(_data: ForgotInput) {
-    // Phase 2: will call Supabase resetPasswordForEmail
+  async function onSubmit(data: ForgotInput) {
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+    if (error) {
+      toast.error(error.message)
+      return
+    }
     setSent(true)
   }
 
@@ -71,14 +80,14 @@ export default function ForgotPasswordPage() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="you@acme.com" {...field} />
+                    <Input type="email" placeholder="you@company.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
-              Send Reset Link
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? 'Sending…' : 'Send Reset Link'}
             </Button>
           </form>
         </Form>

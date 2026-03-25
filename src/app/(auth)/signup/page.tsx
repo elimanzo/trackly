@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/providers/AuthProvider'
-import { useOrg } from '@/providers/OrgProvider'
 
 const SignupSchema = z
   .object({
@@ -36,8 +35,7 @@ const SignupSchema = z
 type SignupInput = z.infer<typeof SignupSchema>
 
 export default function SignupPage() {
-  const { signIn } = useAuth()
-  const { resetOnboarding } = useOrg()
+  const { signUp } = useAuth()
   const router = useRouter()
 
   const form = useForm<SignupInput>({
@@ -45,10 +43,12 @@ export default function SignupPage() {
     defaultValues: { fullName: '', email: '', password: '', confirmPassword: '' },
   })
 
-  function onSubmit(data: SignupInput) {
-    // Phase 1: sign in as matching mock user (or owner), then go through onboarding
-    signIn(data.email)
-    resetOnboarding()
+  async function onSubmit(data: SignupInput) {
+    const { error } = await signUp(data.email, data.password, data.fullName)
+    if (error) {
+      toast.error(error)
+      return
+    }
     toast.success("Account created! Let's set up your organization.")
     router.push('/org/new')
   }
@@ -115,7 +115,7 @@ export default function SignupPage() {
               )}
             />
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              Create Account
+              {form.formState.isSubmitting ? 'Creating account…' : 'Create Account'}
             </Button>
           </form>
         </Form>

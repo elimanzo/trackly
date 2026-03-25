@@ -1,10 +1,11 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 
+import { createOrganization } from '@/app/actions/org'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -18,12 +19,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { CreateOrganizationSchema, type CreateOrganizationInput } from '@/lib/types'
 import { slugify } from '@/lib/utils/formatters'
-import { useAuth } from '@/providers/AuthProvider'
 
 export default function CreateOrgPage() {
-  const { user } = useAuth()
-  const router = useRouter()
-
   const form = useForm<CreateOrganizationInput>({
     resolver: zodResolver(CreateOrganizationSchema),
     defaultValues: { name: '', slug: '' },
@@ -36,14 +33,12 @@ export default function CreateOrgPage() {
     }
   }, [watchedName, form])
 
-  // If not logged in, redirect to signup
-  useEffect(() => {
-    if (!user) router.replace('/signup')
-  }, [user, router])
-
-  function onSubmit(_data: CreateOrganizationInput) {
-    // Phase 2: will create org in Supabase
-    router.push('/setup/departments')
+  async function onSubmit(data: CreateOrganizationInput) {
+    const result = await createOrganization(data)
+    if (result?.error) {
+      toast.error(result.error)
+    }
+    // On success the server action redirects to /setup/departments
   }
 
   return (
@@ -87,8 +82,8 @@ export default function CreateOrgPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
-              Create Organization
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? 'Creating…' : 'Create Organization'}
             </Button>
           </form>
         </Form>

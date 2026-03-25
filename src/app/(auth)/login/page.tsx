@@ -36,9 +36,12 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   })
 
-  function onSubmit(data: LoginInput) {
-    signIn(data.email)
-    toast.success('Signed in successfully')
+  async function onSubmit(data: LoginInput) {
+    const { error } = await signIn(data.email, data.password)
+    if (error) {
+      toast.error(error)
+      return
+    }
     router.push('/dashboard')
   }
 
@@ -58,7 +61,7 @@ export default function LoginPage() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="you@acme.com" {...field} />
+                    <Input type="email" placeholder="you@company.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -86,7 +89,7 @@ export default function LoginPage() {
               )}
             />
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              Sign In
+              {form.formState.isSubmitting ? 'Signing in…' : 'Sign In'}
             </Button>
           </form>
         </Form>
@@ -97,15 +100,6 @@ export default function LoginPage() {
             Sign up
           </Link>
         </p>
-
-        {/* Demo hint */}
-        <div className="bg-muted/60 text-muted-foreground mt-4 rounded-lg p-3 text-xs">
-          <p className="text-foreground font-medium">Demo accounts</p>
-          <p className="mt-1">alex@acme.com — Owner</p>
-          <p>jamie@acme.com — Admin</p>
-          <p>sam@acme.com — Editor (IT dept)</p>
-          <p>taylor@acme.com — Viewer</p>
-        </div>
       </CardContent>
     </Card>
   )
