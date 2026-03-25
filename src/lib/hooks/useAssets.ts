@@ -126,7 +126,10 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
         .order('created_at', { ascending: false })
 
       if (filters.search) {
-        query = query.or(`name.ilike.%${filters.search}%,asset_tag.ilike.%${filters.search}%`)
+        // Escape characters that have special meaning in PostgREST filter strings
+        // to prevent filter injection via the .or() string parameter.
+        const safe = filters.search.replace(/[,()\\]/g, '\\$&')
+        query = query.or(`name.ilike.%${safe}%,asset_tag.ilike.%${safe}%`)
       }
       if (filters.status) {
         query = query.eq('status', filters.status)

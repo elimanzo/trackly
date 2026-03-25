@@ -1,6 +1,7 @@
 'use client'
 
 import { Search, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +29,22 @@ export function AssetFiltersBar({
   showDepartmentFilter = true,
 }: AssetFiltersBarProps) {
   const { data: departments } = useDepartments()
+  const [searchInput, setSearchInput] = useState(filters.search ?? '')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Keep local input in sync if parent clears filters
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearchInput(filters.search ?? '')
+  }, [filters.search])
+
+  function handleSearchChange(value: string) {
+    setSearchInput(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      onFiltersChange({ ...filters, search: value })
+    }, 300)
+  }
 
   const hasActiveFilters = !!(filters.search || filters.status || filters.departmentId)
 
@@ -41,8 +58,8 @@ export function AssetFiltersBar({
         <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
           placeholder="Search by name, tag, category…"
-          value={filters.search ?? ''}
-          onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
+          value={searchInput}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="pl-9"
         />
       </div>
