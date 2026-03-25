@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -25,7 +26,9 @@ import { DepartmentFormSchema, type Department, type DepartmentFormInput } from 
 import { useOrgData } from '@/providers/OrgDataProvider'
 
 export default function DepartmentsPage() {
-  const { departments, createDepartment, updateDepartment, deleteDepartment } = useOrgData()
+  const { departments, isLoading, createDepartment, updateDepartment, deleteDepartment } =
+    useOrgData()
+
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Department | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -34,6 +37,8 @@ export default function DepartmentsPage() {
     resolver: zodResolver(DepartmentFormSchema),
     defaultValues: { name: '', description: '' },
   })
+
+  if (isLoading) return <PageLoader />
 
   function openCreate() {
     setEditing(null)

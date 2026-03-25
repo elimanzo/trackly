@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -34,9 +35,11 @@ import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 
 export default function ReportsPage() {
   const [filters, setFilters] = useState<AssetFilters>({})
-  const { data: assets } = useAssets(filters)
+  const { data: assets, isLoading } = useAssets(filters)
   const { data: departments } = useDepartments()
   const { data: categories } = useCategories()
+
+  if (isLoading) return <PageLoader />
 
   function handleExport() {
     exportAssetsToCsv(assets, 'asset-report.csv')

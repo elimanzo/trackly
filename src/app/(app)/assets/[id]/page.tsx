@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, LogIn, LogOut, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, LogIn, LogOut, Loader2, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { notFound, useRouter } from 'next/navigation'
 import { use, useState } from 'react'
@@ -24,12 +24,18 @@ interface AssetDetailPageProps {
 
 export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id } = use(params)
-  const { data: asset, refresh } = useAsset(id)
+  const { data: asset, isLoading, refresh } = useAsset(id)
   const { user } = useAuth()
   const router = useRouter()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  if (isLoading)
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+      </div>
+    )
   if (!asset) return notFound()
 
   const canEditAssets = user ? canEdit(user.role) : false

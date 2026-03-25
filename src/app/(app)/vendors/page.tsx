@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -25,7 +26,8 @@ import { VendorFormSchema, type Vendor, type VendorFormInput } from '@/lib/types
 import { useOrgData } from '@/providers/OrgDataProvider'
 
 export default function VendorsPage() {
-  const { vendors, createVendor, updateVendor, deleteVendor } = useOrgData()
+  const { vendors, isLoading, createVendor, updateVendor, deleteVendor } = useOrgData()
+
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Vendor | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -34,6 +36,8 @@ export default function VendorsPage() {
     resolver: zodResolver(VendorFormSchema),
     defaultValues: { name: '', contactEmail: '', contactPhone: '', website: '', notes: '' },
   })
+
+  if (isLoading) return <PageLoader />
 
   function openCreate() {
     setEditing(null)

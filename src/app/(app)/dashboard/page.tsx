@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts'
+import { PageLoader } from '@/components/shared/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecentActivity } from '@/lib/hooks/useAuditLogs'
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats'
@@ -32,8 +33,10 @@ function greeting(name: string): string {
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const { data: stats } = useDashboardStats()
+  const { data: stats, isLoading } = useDashboardStats()
   const { data: logs } = useRecentActivity(8)
+
+  if (isLoading) return <PageLoader />
 
   const activeCount = stats.byStatus.find((s) => s.status === 'active')?.count ?? 0
   const maintenanceCount = stats.byStatus.find((s) => s.status === 'under_maintenance')?.count ?? 0

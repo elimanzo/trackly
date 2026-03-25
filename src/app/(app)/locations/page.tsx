@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -25,7 +26,8 @@ import { LocationFormSchema, type Location, type LocationFormInput } from '@/lib
 import { useOrgData } from '@/providers/OrgDataProvider'
 
 export default function LocationsPage() {
-  const { locations, createLocation, updateLocation, deleteLocation } = useOrgData()
+  const { locations, isLoading, createLocation, updateLocation, deleteLocation } = useOrgData()
+
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Location | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -34,6 +36,8 @@ export default function LocationsPage() {
     resolver: zodResolver(LocationFormSchema),
     defaultValues: { name: '', description: '' },
   })
+
+  if (isLoading) return <PageLoader />
 
   function openCreate() {
     setEditing(null)

@@ -114,6 +114,13 @@ export function AssetTable({ assets }: AssetTableProps) {
       cell: ({ row }) => <AssetStatusBadge status={row.original.status} />,
     },
     {
+      accessorKey: 'locationName',
+      header: 'Location',
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm">{row.getValue('locationName') ?? '—'}</span>
+      ),
+    },
+    {
       accessorKey: 'purchaseCost',
       header: ({ column }) => (
         <Button
