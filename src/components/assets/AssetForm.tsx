@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 
+import { createAsset, updateAsset } from '@/app/actions/assets'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -29,8 +30,6 @@ import { useLocations } from '@/lib/hooks/useLocations'
 import { useVendors } from '@/lib/hooks/useVendors'
 import { ASSET_STATUSES, AssetFormSchema, type AssetFormInput } from '@/lib/types'
 import type { AssetWithRelations } from '@/lib/types'
-import { useAssetsStore } from '@/providers/AssetsProvider'
-import { useAuth } from '@/providers/AuthProvider'
 
 interface AssetFormProps {
   asset?: AssetWithRelations
@@ -39,8 +38,6 @@ interface AssetFormProps {
 
 export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
   const router = useRouter()
-  const { createAsset, updateAsset } = useAssetsStore()
-  const { user } = useAuth()
   const { data: departments } = useDepartments()
   const { data: categories } = useCategories()
   const { data: locations } = useLocations()
@@ -66,14 +63,21 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
     },
   })
 
-  function onSubmit(data: AssetFormInput) {
-    if (!user) return
+  async function onSubmit(data: AssetFormInput) {
     if (isEdit && asset) {
-      updateAsset(asset.id, data, user.id)
+      const result = await updateAsset(asset.id, data)
+      if (result?.error) {
+        form.setError('assetTag', { message: result.error })
+        return
+      }
       router.push(`/assets/${asset.id}`)
     } else {
-      const newAsset = createAsset(data, user.id)
-      router.push(`/assets/${newAsset.id}`)
+      const result = await createAsset(data)
+      if ('error' in result) {
+        form.setError('assetTag', { message: result.error })
+        return
+      }
+      router.push(`/assets/${result.id}`)
     }
   }
 

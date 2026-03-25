@@ -84,12 +84,13 @@ create trigger profiles_updated_at
 
 -- departments
 create table public.departments (
-  id         uuid primary key default gen_random_uuid(),
-  org_id     uuid not null references public.organizations (id) on delete cascade,
-  name       text not null,
-  deleted_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  org_id      uuid not null references public.organizations (id) on delete cascade,
+  name        text not null,
+  description text,
+  deleted_at  timestamptz,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
 );
 
 create trigger departments_updated_at
@@ -106,13 +107,14 @@ create table public.user_departments (
 
 -- categories
 create table public.categories (
-  id         uuid primary key default gen_random_uuid(),
-  org_id     uuid not null references public.organizations (id) on delete cascade,
-  name       text not null,
-  icon       text,
-  deleted_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  org_id      uuid not null references public.organizations (id) on delete cascade,
+  name        text not null,
+  description text,
+  icon        text,
+  deleted_at  timestamptz,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
 );
 
 create trigger categories_updated_at
@@ -121,12 +123,13 @@ create trigger categories_updated_at
 
 -- locations
 create table public.locations (
-  id         uuid primary key default gen_random_uuid(),
-  org_id     uuid not null references public.organizations (id) on delete cascade,
-  name       text not null,
-  deleted_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id          uuid primary key default gen_random_uuid(),
+  org_id      uuid not null references public.organizations (id) on delete cascade,
+  name        text not null,
+  description text,
+  deleted_at  timestamptz,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
 );
 
 create trigger locations_updated_at
@@ -139,6 +142,9 @@ create table public.vendors (
   org_id        uuid not null references public.organizations (id) on delete cascade,
   name          text not null,
   contact_email text,
+  contact_phone text,
+  website       text,
+  notes         text,
   deleted_at    timestamptz,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()

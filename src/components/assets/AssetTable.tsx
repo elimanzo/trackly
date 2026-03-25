@@ -12,6 +12,7 @@ import { ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { deleteAsset } from '@/app/actions/assets'
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,6 @@ import {
 import type { AssetWithRelations } from '@/lib/types'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
-import { useAssetsStore } from '@/providers/AssetsProvider'
 import { useAuth } from '@/providers/AuthProvider'
 
 interface AssetTableProps {
@@ -43,7 +43,6 @@ interface AssetTableProps {
 export function AssetTable({ assets }: AssetTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const { deleteAsset } = useAssetsStore()
   const { user } = useAuth()
 
   const canEditAssets = user ? canEdit(user.role) : false
@@ -193,7 +192,7 @@ export function AssetTable({ assets }: AssetTableProps) {
 
   return (
     <>
-      <div className="rounded-xl border shadow-sm">
+      <div className="rounded-md border shadow-sm">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

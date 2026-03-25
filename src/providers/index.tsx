@@ -4,7 +4,6 @@ import { ThemeProvider } from 'next-themes'
 
 import { Toaster } from '@/components/ui/sonner'
 
-import { AssetsProvider } from './AssetsProvider'
 import { AuthProvider } from './AuthProvider'
 import { OrgDataProvider } from './OrgDataProvider'
 import { OrgProvider } from './OrgProvider'
@@ -17,10 +16,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           <OrgProvider>
             <OrgDataProvider>
-              <AssetsProvider>
-                {children}
-                <Toaster richColors position="top-right" />
-              </AssetsProvider>
+              {children}
+              <Toaster richColors position="top-right" />
             </OrgDataProvider>
           </OrgProvider>
         </AuthProvider>

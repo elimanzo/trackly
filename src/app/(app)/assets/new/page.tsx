@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation'
 
 import { AssetForm } from '@/components/assets/AssetForm'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { useNextAssetTag } from '@/lib/hooks/useAssets'
 import { canEdit } from '@/lib/utils/permissions'
-import { useNextAssetTag } from '@/providers/AssetsProvider'
 import { useAuth } from '@/providers/AuthProvider'
 
 export default function NewAssetPage() {

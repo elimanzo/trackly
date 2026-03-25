@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { notFound, useRouter } from 'next/navigation'
 import { use, useState } from 'react'
 
+import { deleteAsset, returnAsset } from '@/app/actions/assets'
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
 import { CheckoutModal } from '@/components/assets/CheckoutModal'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -13,10 +14,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsset } from '@/lib/hooks/useAssets'
-import { getAssetAuditLogs } from '@/lib/mock-data'
-import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/formatters'
+import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
-import { useAssetsStore } from '@/providers/AssetsProvider'
 import { useAuth } from '@/providers/AuthProvider'
 
 interface AssetDetailPageProps {
@@ -25,8 +24,7 @@ interface AssetDetailPageProps {
 
 export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id } = use(params)
-  const { data: asset } = useAsset(id)
-  const { deleteAsset, returnAsset } = useAssetsStore()
+  const { data: asset, refresh } = useAsset(id)
   const { user } = useAuth()
   const router = useRouter()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
@@ -35,15 +33,14 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   if (!asset) return notFound()
 
   const canEditAssets = user ? canEdit(user.role) : false
-  const auditLogs = getAssetAuditLogs(asset.id)
 
-  function handleReturn() {
-    // asset is non-null: guarded by `return notFound()` above
-    returnAsset(asset!.id)
+  async function handleReturn() {
+    await returnAsset(asset!.id)
+    refresh()
   }
 
-  function handleDelete() {
-    deleteAsset(asset!.id)
+  async function handleDelete() {
+    await deleteAsset(asset!.id)
     router.push('/assets')
   }
 
@@ -198,46 +195,22 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
             )}
           </TabsContent>
 
-          {/* History tab */}
+          {/* History tab — audit log wiring coming in a later step */}
           <TabsContent value="history" className="mt-4">
-            {auditLogs.length === 0 ? (
-              <div className="text-muted-foreground rounded-xl border py-12 text-center text-sm">
-                No activity recorded for this asset.
-              </div>
-            ) : (
-              <Card className="shadow-sm">
-                <CardContent className="p-0">
-                  <ul className="divide-border divide-y">
-                    {auditLogs.map((log) => (
-                      <li key={log.id} className="flex items-start gap-3 px-5 py-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-foreground text-sm">
-                            <span className="font-medium">{log.actorName}</span>{' '}
-                            {ACTION_LABELS[log.action] ?? log.action}
-                          </p>
-                          {log.changes && (
-                            <p className="text-muted-foreground text-xs">
-                              {Object.entries(log.changes)
-                                .map(([k, v]) => `${k}: ${String(v.old)} → ${String(v.new)}`)
-                                .join(', ')}
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-muted-foreground shrink-0 text-xs">
-                          {formatRelativeTime(log.createdAt)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
+            <div className="text-muted-foreground rounded-xl border py-12 text-center text-sm">
+              Activity history coming soon.
+            </div>
           </TabsContent>
         </Tabs>
       </div>
 
       {checkoutOpen && (
-        <CheckoutModal asset={asset} open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+        <CheckoutModal
+          asset={asset}
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          onSuccess={refresh}
+        />
       )}
 
       <ConfirmDialog
@@ -260,13 +233,4 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="text-foreground text-right">{value}</span>
     </div>
   )
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  created: 'created this asset',
-  updated: 'updated this asset',
-  deleted: 'deleted this asset',
-  checked_out: 'checked out this asset',
-  returned: 'returned this asset',
-  status_changed: 'changed the status',
 }

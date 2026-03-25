@@ -1,16 +1,13 @@
 'use client'
 
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-import {
-  MOCK_CATEGORIES,
-  MOCK_DEPARTMENTS,
-  MOCK_LOCATIONS,
-  MOCK_PENDING_INVITES,
-  MOCK_USERS,
-  MOCK_VENDORS,
-} from '@/lib/mock-data'
+import { createCategory, deleteCategory, updateCategory } from '@/app/actions/categories'
+import { createDepartment, deleteDepartment, updateDepartment } from '@/app/actions/departments'
+import { createLocation, deleteLocation, updateLocation } from '@/app/actions/locations'
+import { createVendor, deleteVendor, updateVendor } from '@/app/actions/vendors'
+import { createClient } from '@/lib/supabase/client'
 import type {
   Category,
   CategoryFormInput,
@@ -23,247 +20,406 @@ import type {
   Vendor,
   VendorFormInput,
 } from '@/lib/types'
+import { useAuth } from '@/providers/AuthProvider'
 
 type OrgDataContextValue = {
-  // Departments
   departments: Department[]
-  createDepartment: (input: DepartmentFormInput) => void
-  updateDepartment: (id: string, input: DepartmentFormInput) => void
-  deleteDepartment: (id: string) => void
-  // Categories
+  createDepartment: (input: DepartmentFormInput) => Promise<void>
+  updateDepartment: (id: string, input: DepartmentFormInput) => Promise<void>
+  deleteDepartment: (id: string) => Promise<void>
   categories: Category[]
-  createCategory: (input: CategoryFormInput) => void
-  updateCategory: (id: string, input: CategoryFormInput) => void
-  deleteCategory: (id: string) => void
-  // Locations
+  createCategory: (input: CategoryFormInput) => Promise<void>
+  updateCategory: (id: string, input: CategoryFormInput) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
   locations: Location[]
-  createLocation: (input: LocationFormInput) => void
-  updateLocation: (id: string, input: LocationFormInput) => void
-  deleteLocation: (id: string) => void
-  // Vendors
+  createLocation: (input: LocationFormInput) => Promise<void>
+  updateLocation: (id: string, input: LocationFormInput) => Promise<void>
+  deleteLocation: (id: string) => Promise<void>
   vendors: Vendor[]
-  createVendor: (input: VendorFormInput) => void
-  updateVendor: (id: string, input: VendorFormInput) => void
-  deleteVendor: (id: string) => void
-  // Users
+  createVendor: (input: VendorFormInput) => Promise<void>
+  updateVendor: (id: string, input: VendorFormInput) => Promise<void>
+  deleteVendor: (id: string) => Promise<void>
   users: ProfileWithDepartments[]
   pendingInvites: Invite[]
   sendInvite: (email: string, role: Invite['role']) => void
   revokeInvite: (id: string) => void
   removeUser: (id: string) => void
+  isLoading: boolean
 }
 
 const OrgDataContext = createContext<OrgDataContextValue | null>(null)
 
-const now = () => new Date().toISOString()
-
 export function OrgDataProvider({ children }: { children: React.ReactNode }) {
-  const [departments, setDepartments] = useState<Department[]>(MOCK_DEPARTMENTS)
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES)
-  const [locations, setLocations] = useState<Location[]>(MOCK_LOCATIONS)
-  const [vendors, setVendors] = useState<Vendor[]>(MOCK_VENDORS)
-  const [users, setUsers] = useState<ProfileWithDepartments[]>(MOCK_USERS)
-  const [pendingInvites, setPendingInvites] = useState<Invite[]>(MOCK_PENDING_INVITES)
+  const { user } = useAuth()
+  const orgId = user?.orgId ?? null
+
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
+  const [vendors, setVendors] = useState<Vendor[]>([])
+  const [users, setUsers] = useState<ProfileWithDepartments[]>([])
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const refetch = useCallback(async () => {
+    if (!orgId) return
+    const supabase = createClient()
+
+    type UDRow = { department_id: string; departments: { id: string; name: string } | null }
+
+    const [depts, cats, locs, vens, profs, invs] = await Promise.all([
+      supabase
+        .from('departments')
+        .select('*')
+        .eq('org_id', orgId)
+        .is('deleted_at', null)
+        .order('name'),
+      supabase
+        .from('categories')
+        .select('*')
+        .eq('org_id', orgId)
+        .is('deleted_at', null)
+        .order('name'),
+      supabase
+        .from('locations')
+        .select('*')
+        .eq('org_id', orgId)
+        .is('deleted_at', null)
+        .order('name'),
+      supabase.from('vendors').select('*').eq('org_id', orgId).is('deleted_at', null).order('name'),
+      supabase
+        .from('profiles')
+        .select('*, user_departments(department_id, departments(id, name))')
+        .eq('org_id', orgId)
+        .order('full_name'),
+      supabase
+        .from('invites')
+        .select('*')
+        .eq('org_id', orgId)
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString()),
+    ])
+
+    type Row = Record<string, unknown>
+
+    setDepartments(
+      ((depts.data ?? []) as Row[]).map((r) => ({
+        id: r.id as string,
+        orgId: r.org_id as string,
+        name: r.name as string,
+        description: (r.description as string | null) ?? null,
+        deletedAt: (r.deleted_at as string | null) ?? null,
+        createdAt: r.created_at as string,
+        updatedAt: r.updated_at as string,
+      }))
+    )
+
+    setCategories(
+      ((cats.data ?? []) as Row[]).map((r) => ({
+        id: r.id as string,
+        orgId: r.org_id as string,
+        name: r.name as string,
+        description: (r.description as string | null) ?? null,
+        icon: (r.icon as string | null) ?? null,
+        deletedAt: (r.deleted_at as string | null) ?? null,
+        createdAt: r.created_at as string,
+        updatedAt: r.updated_at as string,
+      }))
+    )
+
+    setLocations(
+      ((locs.data ?? []) as Row[]).map((r) => ({
+        id: r.id as string,
+        orgId: r.org_id as string,
+        name: r.name as string,
+        description: (r.description as string | null) ?? null,
+        deletedAt: (r.deleted_at as string | null) ?? null,
+        createdAt: r.created_at as string,
+      }))
+    )
+
+    setVendors(
+      ((vens.data ?? []) as Row[]).map((r) => ({
+        id: r.id as string,
+        orgId: r.org_id as string,
+        name: r.name as string,
+        contactEmail: (r.contact_email as string | null) ?? null,
+        contactPhone: (r.contact_phone as string | null) ?? null,
+        website: (r.website as string | null) ?? null,
+        notes: (r.notes as string | null) ?? null,
+        deletedAt: (r.deleted_at as string | null) ?? null,
+        createdAt: r.created_at as string,
+      }))
+    )
+
+    setUsers(
+      ((profs.data ?? []) as Row[]).map((r) => ({
+        id: r.id as string,
+        orgId: (r.org_id as string | null) ?? null,
+        fullName: r.full_name as string,
+        email: r.email as string,
+        avatarUrl: (r.avatar_url as string | null) ?? null,
+        role: r.role as ProfileWithDepartments['role'],
+        inviteStatus: r.invite_status as ProfileWithDepartments['inviteStatus'],
+        createdAt: r.created_at as string,
+        updatedAt: r.updated_at as string,
+        departmentIds: ((r.user_departments as UDRow[]) ?? []).map((ud) => ud.department_id),
+        departmentNames: ((r.user_departments as UDRow[]) ?? []).map(
+          (ud) => ud.departments?.name ?? ''
+        ),
+      }))
+    )
+
+    setPendingInvites(
+      ((invs.data ?? []) as Row[]).map((r) => ({
+        id: r.id as string,
+        orgId: r.org_id as string,
+        email: r.email as string,
+        role: r.role as Invite['role'],
+        token: r.token as string,
+        invitedBy: (r.invited_by as string) ?? '',
+        invitedByName: r.invited_by_name as string,
+        acceptedAt: null,
+        expiresAt: r.expires_at as string,
+        createdAt: r.created_at as string,
+      }))
+    )
+
+    setIsLoading(false)
+  }, [orgId])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!orgId) {
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    void refetch()
+  }, [orgId, refetch])
 
   // -------------------------------------------------------------------------
   // Departments
   // -------------------------------------------------------------------------
-  const createDepartment = useCallback((input: DepartmentFormInput) => {
-    const dept: Department = {
-      id: `dept-${Date.now()}`,
-      orgId: 'org-acme-0001',
-      name: input.name,
-      description: input.description ?? null,
-      deletedAt: null,
-      createdAt: now(),
-      updatedAt: now(),
-    }
-    setDepartments((prev) => [...prev, dept])
-    toast.success('Department created')
-  }, [])
+  const handleCreateDepartment = useCallback(
+    async (input: DepartmentFormInput) => {
+      const result = await createDepartment(input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Department created')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const updateDepartment = useCallback((id: string, input: DepartmentFormInput) => {
-    setDepartments((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? { ...d, name: input.name, description: input.description ?? null, updatedAt: now() }
-          : d
-      )
-    )
-    toast.success('Department updated')
-  }, [])
+  const handleUpdateDepartment = useCallback(
+    async (id: string, input: DepartmentFormInput) => {
+      const result = await updateDepartment(id, input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Department updated')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const deleteDepartment = useCallback((id: string) => {
-    setDepartments((prev) => prev.filter((d) => d.id !== id))
-    toast.success('Department deleted')
-  }, [])
+  const handleDeleteDepartment = useCallback(
+    async (id: string) => {
+      const result = await deleteDepartment(id)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Department deleted')
+      await refetch()
+    },
+    [refetch]
+  )
 
   // -------------------------------------------------------------------------
   // Categories
   // -------------------------------------------------------------------------
-  const createCategory = useCallback((input: CategoryFormInput) => {
-    const cat: Category = {
-      id: `cat-${Date.now()}`,
-      orgId: 'org-acme-0001',
-      name: input.name,
-      description: input.description ?? null,
-      icon: input.icon ?? null,
-      deletedAt: null,
-      createdAt: now(),
-      updatedAt: now(),
-    }
-    setCategories((prev) => [...prev, cat])
-    toast.success('Category created')
-  }, [])
+  const handleCreateCategory = useCallback(
+    async (input: CategoryFormInput) => {
+      const result = await createCategory(input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Category created')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const updateCategory = useCallback((id: string, input: CategoryFormInput) => {
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              name: input.name,
-              description: input.description ?? null,
-              icon: input.icon ?? null,
-              updatedAt: now(),
-            }
-          : c
-      )
-    )
-    toast.success('Category updated')
-  }, [])
+  const handleUpdateCategory = useCallback(
+    async (id: string, input: CategoryFormInput) => {
+      const result = await updateCategory(id, input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Category updated')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const deleteCategory = useCallback((id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id))
-    toast.success('Category deleted')
-  }, [])
+  const handleDeleteCategory = useCallback(
+    async (id: string) => {
+      const result = await deleteCategory(id)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Category deleted')
+      await refetch()
+    },
+    [refetch]
+  )
 
   // -------------------------------------------------------------------------
   // Locations
   // -------------------------------------------------------------------------
-  const createLocation = useCallback((input: LocationFormInput) => {
-    const loc: Location = {
-      id: `loc-${Date.now()}`,
-      orgId: 'org-acme-0001',
-      name: input.name,
-      description: input.description ?? null,
-      deletedAt: null,
-      createdAt: now(),
-    }
-    setLocations((prev) => [...prev, loc])
-    toast.success('Location created')
-  }, [])
+  const handleCreateLocation = useCallback(
+    async (input: LocationFormInput) => {
+      const result = await createLocation(input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Location created')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const updateLocation = useCallback((id: string, input: LocationFormInput) => {
-    setLocations((prev) =>
-      prev.map((l) =>
-        l.id === id ? { ...l, name: input.name, description: input.description ?? null } : l
-      )
-    )
-    toast.success('Location updated')
-  }, [])
+  const handleUpdateLocation = useCallback(
+    async (id: string, input: LocationFormInput) => {
+      const result = await updateLocation(id, input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Location updated')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const deleteLocation = useCallback((id: string) => {
-    setLocations((prev) => prev.filter((l) => l.id !== id))
-    toast.success('Location deleted')
-  }, [])
+  const handleDeleteLocation = useCallback(
+    async (id: string) => {
+      const result = await deleteLocation(id)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Location deleted')
+      await refetch()
+    },
+    [refetch]
+  )
 
   // -------------------------------------------------------------------------
   // Vendors
   // -------------------------------------------------------------------------
-  const createVendor = useCallback((input: VendorFormInput) => {
-    const vendor: Vendor = {
-      id: `ven-${Date.now()}`,
-      orgId: 'org-acme-0001',
-      name: input.name,
-      contactEmail: input.contactEmail || null,
-      contactPhone: input.contactPhone || null,
-      website: input.website || null,
-      notes: input.notes || null,
-      deletedAt: null,
-      createdAt: now(),
-    }
-    setVendors((prev) => [...prev, vendor])
-    toast.success('Vendor created')
-  }, [])
+  const handleCreateVendor = useCallback(
+    async (input: VendorFormInput) => {
+      const result = await createVendor(input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Vendor created')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const updateVendor = useCallback((id: string, input: VendorFormInput) => {
-    setVendors((prev) =>
-      prev.map((v) =>
-        v.id === id
-          ? {
-              ...v,
-              name: input.name,
-              contactEmail: input.contactEmail || null,
-              contactPhone: input.contactPhone || null,
-              website: input.website || null,
-              notes: input.notes || null,
-            }
-          : v
-      )
-    )
-    toast.success('Vendor updated')
-  }, [])
+  const handleUpdateVendor = useCallback(
+    async (id: string, input: VendorFormInput) => {
+      const result = await updateVendor(id, input)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Vendor updated')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const deleteVendor = useCallback((id: string) => {
-    setVendors((prev) => prev.filter((v) => v.id !== id))
-    toast.success('Vendor deleted')
-  }, [])
+  const handleDeleteVendor = useCallback(
+    async (id: string) => {
+      const result = await deleteVendor(id)
+      if (result?.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Vendor deleted')
+      await refetch()
+    },
+    [refetch]
+  )
 
   // -------------------------------------------------------------------------
-  // Users / Invites
+  // Users / Invites — stubbed for now (Phase 2 invite system is a later step)
   // -------------------------------------------------------------------------
-  const sendInvite = useCallback((email: string, role: Invite['role']) => {
-    const invite: Invite = {
-      id: `inv-${Date.now()}`,
-      orgId: 'org-acme-0001',
-      email,
-      role,
-      token: `mock-token-${Date.now()}`,
-      invitedBy: 'user-0001',
-      invitedByName: 'Alex Rivera',
-      acceptedAt: null,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: now(),
-    }
-    setPendingInvites((prev) => [...prev, invite])
-    toast.success(`Invite sent to ${email}`)
+  const sendInvite = useCallback((_email: string, _role: Invite['role']) => {
+    toast.info('Invite system coming soon')
   }, [])
 
-  const revokeInvite = useCallback((id: string) => {
-    setPendingInvites((prev) => prev.filter((i) => i.id !== id))
-    toast.success('Invite revoked')
-  }, [])
+  const revokeInvite = useCallback(
+    async (id: string) => {
+      const supabase = createClient()
+      await supabase.from('invites').delete().eq('id', id)
+      toast.success('Invite revoked')
+      await refetch()
+    },
+    [refetch]
+  )
 
-  const removeUser = useCallback((id: string) => {
-    setUsers((prev) => prev.filter((u) => u.id !== id))
-    toast.success('User removed')
-  }, [])
+  const removeUser = useCallback(
+    async (id: string) => {
+      // Soft-remove: set invite_status to deactivated
+      const supabase = createClient()
+      await supabase.from('profiles').update({ invite_status: 'deactivated' }).eq('id', id)
+      toast.success('User removed')
+      await refetch()
+    },
+    [refetch]
+  )
 
   return (
     <OrgDataContext.Provider
       value={{
         departments,
-        createDepartment,
-        updateDepartment,
-        deleteDepartment,
+        createDepartment: handleCreateDepartment,
+        updateDepartment: handleUpdateDepartment,
+        deleteDepartment: handleDeleteDepartment,
         categories,
-        createCategory,
-        updateCategory,
-        deleteCategory,
+        createCategory: handleCreateCategory,
+        updateCategory: handleUpdateCategory,
+        deleteCategory: handleDeleteCategory,
         locations,
-        createLocation,
-        updateLocation,
-        deleteLocation,
+        createLocation: handleCreateLocation,
+        updateLocation: handleUpdateLocation,
+        deleteLocation: handleDeleteLocation,
         vendors,
-        createVendor,
-        updateVendor,
-        deleteVendor,
+        createVendor: handleCreateVendor,
+        updateVendor: handleUpdateVendor,
+        deleteVendor: handleDeleteVendor,
         users,
         pendingInvites,
         sendInvite,
         revokeInvite,
         removeUser,
+        isLoading,
       }}
     >
       {children}

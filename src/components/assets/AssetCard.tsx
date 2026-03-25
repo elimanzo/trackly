@@ -4,6 +4,7 @@ import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { deleteAsset } from '@/app/actions/assets'
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,6 @@ import {
 import type { AssetWithRelations } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
-import { useAssetsStore } from '@/providers/AssetsProvider'
 import { useAuth } from '@/providers/AuthProvider'
 
 interface AssetCardProps {
@@ -27,7 +27,6 @@ interface AssetCardProps {
 
 export function AssetCard({ asset }: AssetCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const { deleteAsset } = useAssetsStore()
   const { user } = useAuth()
   const canEditAssets = user ? canEdit(user.role) : false
 

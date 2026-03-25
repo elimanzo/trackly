@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 
+import { checkoutAsset } from '@/app/actions/assets'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,17 +24,16 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { CheckoutFormSchema, type CheckoutFormInput } from '@/lib/types'
 import type { AssetWithRelations } from '@/lib/types'
-import { useAssetsStore } from '@/providers/AssetsProvider'
 import { useAuth } from '@/providers/AuthProvider'
 
 interface CheckoutModalProps {
   asset: AssetWithRelations
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
-export function CheckoutModal({ asset, open, onOpenChange }: CheckoutModalProps) {
-  const { checkoutAsset } = useAssetsStore()
+export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: CheckoutModalProps) {
   const { user } = useAuth()
 
   const form = useForm<CheckoutFormInput>({
@@ -46,11 +46,16 @@ export function CheckoutModal({ asset, open, onOpenChange }: CheckoutModalProps)
     },
   })
 
-  function onSubmit(data: CheckoutFormInput) {
+  async function onSubmit(data: CheckoutFormInput) {
     if (!user) return
-    checkoutAsset(asset.id, data, user.id, user.fullName)
+    const result = await checkoutAsset(asset.id, data, user.fullName)
+    if (result?.error) {
+      form.setError('assignedToName', { message: result.error })
+      return
+    }
     form.reset()
     onOpenChange(false)
+    onSuccess?.()
   }
 
   return (
