@@ -63,6 +63,7 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
 
   const refetch = useCallback(async () => {
     if (!orgId) return
+    setIsLoading(true)
     const supabase = createClient()
 
     type UDRow = { department_id: string; departments: { id: string; name: string } | null }
@@ -99,6 +100,14 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
         .is('accepted_at', null)
         .gt('expires_at', new Date().toISOString()),
     ])
+
+    const firstError = [depts, cats, locs, vens, profs, invs].find((r) => r.error)?.error
+    if (firstError) {
+      console.error('[OrgDataProvider] fetch error:', firstError)
+      toast.error(`Failed to load org data: ${firstError.message}`)
+      setIsLoading(false)
+      return
+    }
 
     type Row = Record<string, unknown>
 
@@ -189,13 +198,11 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
   }, [orgId])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!orgId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false)
       return
     }
-
-    setIsLoading(true)
     void refetch()
   }, [orgId, refetch])
 
