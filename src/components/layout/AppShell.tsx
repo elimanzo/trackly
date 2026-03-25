@@ -1,10 +1,11 @@
 'use client'
 
+import { VisuallyHidden } from 'radix-ui'
 import { useState } from 'react'
 
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useAuth } from '@/providers/AuthProvider'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile sidebar drawer */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-60 p-0">
+          <VisuallyHidden.Root>
+            <SheetTitle>Navigation</SheetTitle>
+          </VisuallyHidden.Root>
           <Sidebar onNavClick={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>
