@@ -8,6 +8,7 @@ import { z } from 'zod'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageLoader } from '@/components/shared/PageLoader'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -62,7 +63,8 @@ const InviteFormSchema = z.object({
 type InviteFormInput = z.infer<typeof InviteFormSchema>
 
 export default function UsersPage() {
-  const { users, pendingInvites, sendInvite, revokeInvite, removeUser } = useOrgData()
+  const { users, isLoading, pendingInvites, sendInvite, revokeInvite, removeUser } = useOrgData()
+
   const { user: currentUser } = useAuth()
   const [inviteOpen, setInviteOpen] = useState(false)
   const [removeId, setRemoveId] = useState<string | null>(null)
@@ -72,6 +74,8 @@ export default function UsersPage() {
     resolver: zodResolver(InviteFormSchema),
     defaultValues: { email: '', role: 'viewer' },
   })
+
+  if (isLoading) return <PageLoader />
 
   function onInvite(data: InviteFormInput) {
     sendInvite(data.email, data.role)
