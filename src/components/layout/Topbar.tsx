@@ -1,7 +1,8 @@
 'use client'
 
-import { LogOut, Menu, Settings, User } from 'lucide-react'
+import { LogOut, Menu, Moon, Settings, Sun, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -24,6 +25,7 @@ interface TopbarProps {
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const { resolvedTheme, setTheme } = useTheme()
 
   function handleSignOut() {
     signOut()
@@ -46,6 +48,17 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Dark mode toggle */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="mr-1"
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+        aria-label="Toggle theme"
+      >
+        {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </Button>
 
       {/* User menu */}
       {user && (
