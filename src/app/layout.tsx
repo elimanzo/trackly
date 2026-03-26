@@ -18,8 +18,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} h-full`} suppressHydrationWarning>
-      <body className="h-full font-sans antialiased">
+    <html
+      lang="en"
+      className={`${plusJakartaSans.variable} h-full overflow-hidden`}
+      suppressHydrationWarning
+    >
+      <body className="h-full overflow-hidden font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -38,9 +38,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-hidden">
+          <div className="h-full overflow-y-auto p-6">{children}</div>
+        </main>
       </div>
     </div>
   )
