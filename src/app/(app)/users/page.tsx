@@ -303,10 +303,13 @@ export default function UsersPage() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
                   {(['admin', 'editor', 'viewer'] as const).map((r) => (
                     <SelectItem key={r} value={r}>
-                      {USER_ROLE_CONFIG[r].label} — {USER_ROLE_CONFIG[r].description}
+                      <span className="font-medium">{USER_ROLE_CONFIG[r].label}</span>
+                      <span className="text-muted-foreground block text-xs">
+                        {USER_ROLE_CONFIG[r].description}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -379,10 +382,16 @@ export default function UsersPage() {
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent
+                        position="popper"
+                        className="w-[var(--radix-select-trigger-width)]"
+                      >
                         {(['admin', 'editor', 'viewer'] as const).map((r) => (
                           <SelectItem key={r} value={r}>
-                            {USER_ROLE_CONFIG[r].label} — {USER_ROLE_CONFIG[r].description}
+                            <span className="font-medium">{USER_ROLE_CONFIG[r].label}</span>
+                            <span className="text-muted-foreground block text-xs">
+                              {USER_ROLE_CONFIG[r].description}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
