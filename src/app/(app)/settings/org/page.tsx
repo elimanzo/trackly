@@ -30,14 +30,64 @@ const OrgFormSchema = z.object({
     .max(60)
     .regex(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers, and hyphens'),
   departmentLabel: z.string().min(1, 'Label is required').max(50),
+  // Dashboard stat cards
+  showCardTotal: z.boolean(),
+  showCardActive: z.boolean(),
+  showCardMaintenance: z.boolean(),
+  showCardRetired: z.boolean(),
+  showCardValue: z.boolean(),
+  // Dashboard sections
   showCharts: z.boolean(),
   showWarranty: z.boolean(),
   showActivity: z.boolean(),
+  // Asset table columns
+  showColAssignedTo: z.boolean(),
+  showColDepartment: z.boolean(),
+  showColCategory: z.boolean(),
+  showColLocation: z.boolean(),
+  showColStatus: z.boolean(),
+  showColPurchaseDate: z.boolean(),
+  showColPurchaseCost: z.boolean(),
+  showColWarrantyExpiry: z.boolean(),
+  showColVendor: z.boolean(),
 })
 type OrgFormInput = z.infer<typeof OrgFormSchema>
 
+function ToggleRow({
+  name,
+  label,
+  description,
+  control,
+}: {
+  name: keyof OrgFormInput
+  label: string
+  description?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  control: any
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem className="flex items-center justify-between gap-4">
+          <div>
+            <FormLabel className="font-normal">{label}</FormLabel>
+            {description && <FormDescription className="text-xs">{description}</FormDescription>}
+          </div>
+          <FormControl>
+            <Switch checked={field.value as boolean} onCheckedChange={field.onChange} />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  )
+}
+
 export default function OrgSettingsPage() {
   const { org, setOrg } = useOrg()
+  const dc = org?.dashboardConfig ?? {}
+  const tc = org?.assetTableConfig ?? {}
 
   const form = useForm<OrgFormInput>({
     resolver: zodResolver(OrgFormSchema),
@@ -45,9 +95,23 @@ export default function OrgSettingsPage() {
       name: '',
       slug: '',
       departmentLabel: 'Department',
+      showCardTotal: true,
+      showCardActive: true,
+      showCardMaintenance: true,
+      showCardRetired: true,
+      showCardValue: true,
       showCharts: true,
       showWarranty: true,
       showActivity: true,
+      showColAssignedTo: true,
+      showColDepartment: true,
+      showColCategory: true,
+      showColLocation: true,
+      showColStatus: true,
+      showColPurchaseDate: false,
+      showColPurchaseCost: false,
+      showColWarrantyExpiry: false,
+      showColVendor: false,
     },
   })
 
@@ -57,43 +121,74 @@ export default function OrgSettingsPage() {
         name: org.name,
         slug: org.slug,
         departmentLabel: org.departmentLabel,
-        showCharts: org.dashboardConfig.showCharts ?? true,
-        showWarranty: org.dashboardConfig.showWarranty ?? true,
-        showActivity: org.dashboardConfig.showActivity ?? true,
+        showCardTotal: dc.showCardTotal ?? true,
+        showCardActive: dc.showCardActive ?? true,
+        showCardMaintenance: dc.showCardMaintenance ?? true,
+        showCardRetired: dc.showCardRetired ?? true,
+        showCardValue: dc.showCardValue ?? true,
+        showCharts: dc.showCharts ?? true,
+        showWarranty: dc.showWarranty ?? true,
+        showActivity: dc.showActivity ?? true,
+        showColAssignedTo: tc.showAssignedTo ?? true,
+        showColDepartment: tc.showDepartment ?? true,
+        showColCategory: tc.showCategory ?? true,
+        showColLocation: tc.showLocation ?? true,
+        showColStatus: tc.showStatus ?? true,
+        showColPurchaseDate: tc.showPurchaseDate ?? false,
+        showColPurchaseCost: tc.showPurchaseCost ?? false,
+        showColWarrantyExpiry: tc.showWarrantyExpiry ?? false,
+        showColVendor: tc.showVendor ?? false,
       })
     }
-  }, [org, form])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org])
 
   async function onSubmit(data: OrgFormInput) {
+    const dashboardConfig = {
+      showCardTotal: data.showCardTotal,
+      showCardActive: data.showCardActive,
+      showCardMaintenance: data.showCardMaintenance,
+      showCardRetired: data.showCardRetired,
+      showCardValue: data.showCardValue,
+      showCharts: data.showCharts,
+      showWarranty: data.showWarranty,
+      showActivity: data.showActivity,
+    }
+    const assetTableConfig = {
+      showAssignedTo: data.showColAssignedTo,
+      showDepartment: data.showColDepartment,
+      showCategory: data.showColCategory,
+      showLocation: data.showColLocation,
+      showStatus: data.showColStatus,
+      showPurchaseDate: data.showColPurchaseDate,
+      showPurchaseCost: data.showColPurchaseCost,
+      showWarrantyExpiry: data.showColWarrantyExpiry,
+      showVendor: data.showColVendor,
+    }
     const result = await updateOrganization({
       name: data.name,
       slug: data.slug,
       departmentLabel: data.departmentLabel,
-      dashboardConfig: {
-        showCharts: data.showCharts,
-        showWarranty: data.showWarranty,
-        showActivity: data.showActivity,
-      },
+      dashboardConfig,
+      assetTableConfig,
     })
     if (result.error) {
       toast.error(result.error)
       return
     }
-    if (org) {
+    if (org)
       setOrg({
         ...org,
         name: data.name,
         slug: data.slug,
         departmentLabel: data.departmentLabel,
-        dashboardConfig: {
-          showCharts: data.showCharts,
-          showWarranty: data.showWarranty,
-          showActivity: data.showActivity,
-        },
+        dashboardConfig,
+        assetTableConfig,
       })
-    }
     toast.success('Organisation settings saved')
   }
+
+  const deptLabel = form.watch('departmentLabel') || 'Department'
 
   return (
     <div className="space-y-6">
@@ -129,8 +224,7 @@ export default function OrgSettingsPage() {
                       <Input {...field} />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Used in your organisation&apos;s URL. Lowercase letters, numbers, and hyphens
-                      only.
+                      Lowercase letters, numbers, and hyphens only.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -158,8 +252,7 @@ export default function OrgSettingsPage() {
                       <Input placeholder="e.g. Department, Program, Team, Division" {...field} />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      This replaces &quot;Department&quot; everywhere in the app — nav, tables,
-                      filters, and forms.
+                      Replaces &quot;Department&quot; everywhere in the app.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -168,66 +261,65 @@ export default function OrgSettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Dashboard visibility */}
+          {/* Dashboard stat cards */}
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base">Dashboard widgets</CardTitle>
+              <CardTitle className="text-base">Dashboard — stat cards</CardTitle>
               <CardDescription>
-                Control which sections are visible to everyone in your organisation.
+                Choose which summary cards appear at the top of the dashboard.
               </CardDescription>
             </CardHeader>
-            <CardContent className="max-w-md space-y-5">
-              <FormField
+            <CardContent className="max-w-md space-y-4">
+              <ToggleRow control={form.control} name="showCardTotal" label="Total assets" />
+              <ToggleRow control={form.control} name="showCardActive" label="Active" />
+              <ToggleRow control={form.control} name="showCardMaintenance" label="In maintenance" />
+              <ToggleRow control={form.control} name="showCardRetired" label="Retired" />
+              <ToggleRow control={form.control} name="showCardValue" label="Total value" />
+            </CardContent>
+          </Card>
+
+          {/* Dashboard sections */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Dashboard — sections</CardTitle>
+              <CardDescription>
+                Show or hide the larger sections below the stat cards.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="max-w-md space-y-4">
+              <ToggleRow
                 control={form.control}
                 name="showCharts"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-4">
-                    <div>
-                      <FormLabel>Charts</FormLabel>
-                      <FormDescription className="text-xs">
-                        Assets by status and by {form.watch('departmentLabel').toLowerCase()}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
+                label="Charts"
+                description={`Assets by status and by ${deptLabel.toLowerCase()}`}
               />
-              <FormField
+              <ToggleRow control={form.control} name="showWarranty" label="Warranty alerts" />
+              <ToggleRow control={form.control} name="showActivity" label="Recent activity" />
+            </CardContent>
+          </Card>
+
+          {/* Asset table columns */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Asset table — columns</CardTitle>
+              <CardDescription>
+                Choose which columns are visible in the assets table.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="max-w-md space-y-4">
+              <ToggleRow control={form.control} name="showColAssignedTo" label="Assigned to" />
+              <ToggleRow control={form.control} name="showColDepartment" label={deptLabel} />
+              <ToggleRow control={form.control} name="showColCategory" label="Category" />
+              <ToggleRow control={form.control} name="showColLocation" label="Location" />
+              <ToggleRow control={form.control} name="showColStatus" label="Status" />
+              <ToggleRow control={form.control} name="showColPurchaseDate" label="Purchase date" />
+              <ToggleRow control={form.control} name="showColPurchaseCost" label="Purchase cost" />
+              <ToggleRow
                 control={form.control}
-                name="showWarranty"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-4">
-                    <div>
-                      <FormLabel>Warranty alerts</FormLabel>
-                      <FormDescription className="text-xs">
-                        Assets with upcoming or expired warranties
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
+                name="showColWarrantyExpiry"
+                label="Warranty expiry"
               />
-              <FormField
-                control={form.control}
-                name="showActivity"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-4">
-                    <div>
-                      <FormLabel>Recent activity</FormLabel>
-                      <FormDescription className="text-xs">
-                        Latest changes across the organisation
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <ToggleRow control={form.control} name="showColVendor" label="Vendor" />
             </CardContent>
           </Card>
 

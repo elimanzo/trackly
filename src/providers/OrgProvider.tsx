@@ -50,6 +50,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
           onboardingCompleted: data.onboarding_completed as boolean,
           departmentLabel: (data.department_label as string | null) ?? 'Department',
           dashboardConfig: (data.dashboard_config as Record<string, unknown> | null) ?? {},
+          assetTableConfig: (data.asset_table_config as Record<string, unknown> | null) ?? {},
           createdAt: data.created_at as string,
           updatedAt: data.updated_at as string,
         })

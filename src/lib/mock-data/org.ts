@@ -9,6 +9,7 @@ export const MOCK_ORG: Organization = {
   onboardingCompleted: true,
   departmentLabel: 'Department',
   dashboardConfig: {},
+  assetTableConfig: {},
   createdAt: '2024-01-15T09:00:00.000Z',
   updatedAt: '2024-01-15T09:00:00.000Z',
 }

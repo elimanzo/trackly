@@ -5,10 +5,31 @@ import { z } from 'zod'
 // ---------------------------------------------------------------------------
 
 export const DashboardConfigSchema = z.object({
+  // Stat cards
+  showCardTotal: z.boolean().optional(),
+  showCardActive: z.boolean().optional(),
+  showCardMaintenance: z.boolean().optional(),
+  showCardRetired: z.boolean().optional(),
+  showCardValue: z.boolean().optional(),
+  // Sections
   showCharts: z.boolean().optional(),
   showWarranty: z.boolean().optional(),
   showActivity: z.boolean().optional(),
 })
+
+export const AssetTableConfigSchema = z.object({
+  showAssignedTo: z.boolean().optional(),
+  showDepartment: z.boolean().optional(),
+  showCategory: z.boolean().optional(),
+  showLocation: z.boolean().optional(),
+  showStatus: z.boolean().optional(),
+  showPurchaseDate: z.boolean().optional(),
+  showPurchaseCost: z.boolean().optional(),
+  showWarrantyExpiry: z.boolean().optional(),
+  showVendor: z.boolean().optional(),
+})
+
+export type AssetTableConfig = z.infer<typeof AssetTableConfigSchema>
 
 export type DashboardConfig = z.infer<typeof DashboardConfigSchema>
 
@@ -25,6 +46,7 @@ export const OrganizationSchema = z.object({
   onboardingCompleted: z.boolean(),
   departmentLabel: z.string().min(1).max(50),
   dashboardConfig: DashboardConfigSchema,
+  assetTableConfig: AssetTableConfigSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 })
@@ -49,6 +71,7 @@ export type CreateOrganizationInput = z.infer<typeof CreateOrganizationSchema>
 export const UpdateOrganizationSchema = CreateOrganizationSchema.extend({
   departmentLabel: z.string().min(1, 'Label is required').max(50),
   dashboardConfig: DashboardConfigSchema,
+  assetTableConfig: AssetTableConfigSchema,
 }).partial()
 
 export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>

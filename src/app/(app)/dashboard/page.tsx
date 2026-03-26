@@ -41,6 +41,11 @@ export default function DashboardPage() {
   if (isLoading) return <PageLoader />
 
   const cfg = org?.dashboardConfig ?? {}
+  const showCardTotal = cfg.showCardTotal ?? true
+  const showCardActive = cfg.showCardActive ?? true
+  const showCardMaintenance = cfg.showCardMaintenance ?? true
+  const showCardRetired = cfg.showCardRetired ?? true
+  const showCardValue = cfg.showCardValue ?? true
   const showCharts = cfg.showCharts ?? true
   const showWarranty = cfg.showWarranty ?? true
   const showActivity = cfg.showActivity ?? true
@@ -63,42 +68,58 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Total Assets" value={stats.totalAssets} icon={Package} />
-        <StatCard
-          label="Active"
-          value={activeCount}
-          icon={CheckCircle}
-          description={
-            stats.totalAssets > 0
-              ? `${Math.round((activeCount / stats.totalAssets) * 100)}% of total`
-              : undefined
-          }
-          bgClass="bg-green-500 dark:bg-green-600"
-          iconClass="text-white"
-        />
-        <StatCard
-          label="In Maintenance"
-          value={maintenanceCount}
-          icon={Wrench}
-          bgClass="bg-amber-500 dark:bg-amber-600"
-          iconClass="text-white"
-        />
-        <StatCard
-          label="Retired"
-          value={retiredCount}
-          icon={AlertTriangle}
-          bgClass="bg-slate-400 dark:bg-slate-600"
-          iconClass="text-white"
-        />
-        <StatCard
-          label="Total Value"
-          value={formatCurrency(stats.totalValue)}
-          icon={DollarSign}
-          bgClass="bg-violet-500 dark:bg-violet-600"
-          iconClass="text-white"
-        />
-      </div>
+      {(showCardTotal ||
+        showCardActive ||
+        showCardMaintenance ||
+        showCardRetired ||
+        showCardValue) && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {showCardTotal && (
+            <StatCard label="Total Assets" value={stats.totalAssets} icon={Package} />
+          )}
+          {showCardActive && (
+            <StatCard
+              label="Active"
+              value={activeCount}
+              icon={CheckCircle}
+              description={
+                stats.totalAssets > 0
+                  ? `${Math.round((activeCount / stats.totalAssets) * 100)}% of total`
+                  : undefined
+              }
+              bgClass="bg-green-500 dark:bg-green-600"
+              iconClass="text-white"
+            />
+          )}
+          {showCardMaintenance && (
+            <StatCard
+              label="In Maintenance"
+              value={maintenanceCount}
+              icon={Wrench}
+              bgClass="bg-amber-500 dark:bg-amber-600"
+              iconClass="text-white"
+            />
+          )}
+          {showCardRetired && (
+            <StatCard
+              label="Retired"
+              value={retiredCount}
+              icon={AlertTriangle}
+              bgClass="bg-slate-400 dark:bg-slate-600"
+              iconClass="text-white"
+            />
+          )}
+          {showCardValue && (
+            <StatCard
+              label="Total Value"
+              value={formatCurrency(stats.totalValue)}
+              icon={DollarSign}
+              bgClass="bg-violet-500 dark:bg-violet-600"
+              iconClass="text-white"
+            />
+          )}
+        </div>
+      )}
 
       {/* Charts */}
       {showCharts && (

@@ -47,10 +47,19 @@ export function AssetTable({ assets }: AssetTableProps) {
   const { user } = useAuth()
   const { org } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
+  const tc = org?.assetTableConfig ?? {}
+
+  const showAssignedTo = tc.showAssignedTo ?? true
+  const showDepartment = tc.showDepartment ?? true
+  const showCategory = tc.showCategory ?? true
+  const showLocation = tc.showLocation ?? true
+  const showStatus = tc.showStatus ?? true
+  const showPurchaseCost = tc.showPurchaseCost ?? false
+  const showWarrantyExpiry = tc.showWarrantyExpiry ?? false
 
   const canEditAssets = user ? canEdit(user.role) : false
 
-  const columns: ColumnDef<AssetWithRelations>[] = [
+  const allColumns: (ColumnDef<AssetWithRelations> | false)[] = [
     {
       accessorKey: 'assetTag',
       header: ({ column }) => (
@@ -95,14 +104,23 @@ export function AssetTable({ assets }: AssetTableProps) {
         </Link>
       ),
     },
-    {
+    showAssignedTo && {
+      id: 'assignedTo',
+      header: 'Assigned to',
+      cell: ({ row }) => (
+        <span className="text-muted-foreground text-sm">
+          {row.original.currentAssignment?.assignedToName ?? '—'}
+        </span>
+      ),
+    },
+    showCategory && {
       accessorKey: 'categoryName',
       header: 'Category',
       cell: ({ row }) => (
         <span className="text-muted-foreground text-sm">{row.getValue('categoryName') ?? '—'}</span>
       ),
     },
-    {
+    showDepartment && {
       accessorKey: 'departmentName',
       header: deptLabel,
       cell: ({ row }) => (
@@ -111,19 +129,19 @@ export function AssetTable({ assets }: AssetTableProps) {
         </span>
       ),
     },
-    {
+    showStatus && {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => <AssetStatusBadge status={row.original.status} />,
     },
-    {
+    showLocation && {
       accessorKey: 'locationName',
       header: 'Location',
       cell: ({ row }) => (
         <span className="text-muted-foreground text-sm">{row.getValue('locationName') ?? '—'}</span>
       ),
     },
-    {
+    showPurchaseCost && {
       accessorKey: 'purchaseCost',
       header: ({ column }) => (
         <Button
@@ -145,7 +163,7 @@ export function AssetTable({ assets }: AssetTableProps) {
         )
       },
     },
-    {
+    showWarrantyExpiry && {
       accessorKey: 'warrantyExpiry',
       header: 'Warranty',
       cell: ({ row }) => {
@@ -190,6 +208,8 @@ export function AssetTable({ assets }: AssetTableProps) {
       },
     },
   ]
+
+  const columns = allColumns.filter(Boolean) as ColumnDef<AssetWithRelations>[]
 
   const table = useReactTable({
     data: assets,

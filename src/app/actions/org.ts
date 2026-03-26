@@ -58,6 +58,7 @@ export async function updateOrganization(
   if (input.slug !== undefined) patch.slug = input.slug
   if (input.departmentLabel !== undefined) patch.department_label = input.departmentLabel
   if (input.dashboardConfig !== undefined) patch.dashboard_config = input.dashboardConfig
+  if (input.assetTableConfig !== undefined) patch.asset_table_config = input.assetTableConfig
 
   const { error } = await admin.from('organizations').update(patch).eq('id', profile.org_id)
 
