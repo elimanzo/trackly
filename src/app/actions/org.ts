@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import type { CreateOrganizationInput } from '@/lib/types'
+import type { CreateOrganizationInput, UpdateOrganizationInput } from '@/lib/types'
 
 export async function createOrganization(
   input: CreateOrganizationInput
@@ -39,7 +39,7 @@ export async function createOrganization(
 }
 
 export async function updateOrganization(
-  input: CreateOrganizationInput
+  input: UpdateOrganizationInput
 ): Promise<{ error: string } | { error: null }> {
   const supabase = await createClient()
   const {
@@ -53,10 +53,13 @@ export async function updateOrganization(
 
   if (!profile?.org_id) return { error: 'No organisation found' }
 
-  const { error } = await admin
-    .from('organizations')
-    .update({ name: input.name, slug: input.slug })
-    .eq('id', profile.org_id)
+  const patch: Record<string, unknown> = {}
+  if (input.name !== undefined) patch.name = input.name
+  if (input.slug !== undefined) patch.slug = input.slug
+  if (input.departmentLabel !== undefined) patch.department_label = input.departmentLabel
+  if (input.dashboardConfig !== undefined) patch.dashboard_config = input.dashboardConfig
+
+  const { error } = await admin.from('organizations').update(patch).eq('id', profile.org_id)
 
   if (error) {
     if (error.code === '23505') return { error: 'That URL slug is already taken.' }

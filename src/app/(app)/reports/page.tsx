@@ -32,11 +32,14 @@ import { useDepartments } from '@/lib/hooks/useDepartments'
 import { ASSET_STATUSES } from '@/lib/types'
 import { exportAssetsToCsv } from '@/lib/utils/csv-export'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
+import { useOrg } from '@/providers/OrgProvider'
 
 export default function ReportsPage() {
   const [filters, setFilters] = useState<AssetFilters>({})
   const { data: assets, isLoading } = useAssets(filters)
   const { data: departments } = useDepartments()
+  const { org } = useOrg()
+  const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: categories } = useCategories()
 
   if (isLoading) return <PageLoader />
@@ -67,7 +70,7 @@ export default function ReportsPage() {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Department</Label>
+              <Label className="text-xs">{deptLabel}</Label>
               <Select
                 value={filters.departmentId ?? 'all'}
                 onValueChange={(v) =>
@@ -75,10 +78,10 @@ export default function ReportsPage() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All departments" />
+                  <SelectValue placeholder={`All ${deptLabel.toLowerCase()}s`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All departments</SelectItem>
+                  <SelectItem value="all">All {deptLabel.toLowerCase()}s</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.name}
@@ -145,7 +148,7 @@ export default function ReportsPage() {
             <TableRow>
               <TableHead>Tag</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Department</TableHead>
+              <TableHead>{deptLabel}</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Cost</TableHead>

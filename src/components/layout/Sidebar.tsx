@@ -36,13 +36,15 @@ const NAV_MAIN: NavItem[] = [
   { label: 'Reports', href: '/reports', icon: BarChart3 },
 ]
 
-const NAV_MANAGE: NavItem[] = [
-  { label: 'Departments', href: '/departments', icon: Building2, adminOnly: true },
-  { label: 'Categories', href: '/categories', icon: Tag, adminOnly: true },
-  { label: 'Locations', href: '/locations', icon: MapPin, adminOnly: true },
-  { label: 'Vendors', href: '/vendors', icon: Truck, adminOnly: true },
-  { label: 'Users', href: '/users', icon: Users, adminOnly: true },
-]
+function buildNavManage(deptLabel: string): NavItem[] {
+  return [
+    { label: `${deptLabel}s`, href: '/departments', icon: Building2, adminOnly: true },
+    { label: 'Categories', href: '/categories', icon: Tag, adminOnly: true },
+    { label: 'Locations', href: '/locations', icon: MapPin, adminOnly: true },
+    { label: 'Vendors', href: '/vendors', icon: Truck, adminOnly: true },
+    { label: 'Users', href: '/users', icon: Users, adminOnly: true },
+  ]
+}
 
 const NAV_SETTINGS: NavItem[] = [{ label: 'Settings', href: '/settings/org', icon: Settings }]
 
@@ -82,7 +84,7 @@ export function Sidebar({ onNavClick }: SidebarProps) {
   const { user } = useAuth()
   const { org } = useOrg()
   const isAdmin = user ? canManage(user.role) : false
-  const visibleManageItems = isAdmin ? NAV_MANAGE : []
+  const visibleManageItems = isAdmin ? buildNavManage(org?.departmentLabel ?? 'Department') : []
 
   return (
     <div className="bg-sidebar flex h-full flex-col">

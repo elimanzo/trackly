@@ -8,9 +8,13 @@ import { formatCurrency } from '@/lib/utils/formatters'
 
 interface AssetsByDepartmentChartProps {
   data: DepartmentBreakdown[]
+  departmentLabel?: string
 }
 
-export function AssetsByDepartmentChart({ data }: AssetsByDepartmentChartProps) {
+export function AssetsByDepartmentChart({
+  data,
+  departmentLabel = 'Department',
+}: AssetsByDepartmentChartProps) {
   const chartData = data.map((d) => ({
     name: d.departmentName,
     assets: d.count,
@@ -20,7 +24,7 @@ export function AssetsByDepartmentChart({ data }: AssetsByDepartmentChartProps) 
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">Assets by Department</CardTitle>
+        <CardTitle className="text-sm font-semibold">Assets by {departmentLabel}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={220}>

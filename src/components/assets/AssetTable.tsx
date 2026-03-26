@@ -35,6 +35,7 @@ import type { AssetWithRelations } from '@/lib/types'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface AssetTableProps {
   assets: AssetWithRelations[]
@@ -44,6 +45,8 @@ export function AssetTable({ assets }: AssetTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const { user } = useAuth()
+  const { org } = useOrg()
+  const deptLabel = org?.departmentLabel ?? 'Department'
 
   const canEditAssets = user ? canEdit(user.role) : false
 
@@ -101,7 +104,7 @@ export function AssetTable({ assets }: AssetTableProps) {
     },
     {
       accessorKey: 'departmentName',
-      header: 'Department',
+      header: deptLabel,
       cell: ({ row }) => (
         <span className="text-muted-foreground text-sm">
           {row.getValue('departmentName') ?? '—'}

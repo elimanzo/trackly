@@ -60,6 +60,7 @@ import { formatRelativeTime } from '@/lib/utils/formatters'
 import { getInitials } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrgData } from '@/providers/OrgDataProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 const InviteFormSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -81,6 +82,8 @@ export default function UsersPage() {
   } = useOrgData()
 
   const { user: currentUser } = useAuth()
+  const { org } = useOrg()
+  const deptLabel = org?.departmentLabel ?? 'Department'
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteDeptIds, setInviteDeptIds] = useState<string[]>([])
   const [removeId, setRemoveId] = useState<string | null>(null)
@@ -155,7 +158,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Departments</TableHead>
+                  <TableHead>{deptLabel}s</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead />
                 </TableRow>
@@ -202,7 +205,7 @@ export default function UsersPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit(u)}>
                               <Pencil className="mr-2 h-3.5 w-3.5" />
-                              Edit role & departments
+                              Edit role & {deptLabel.toLowerCase()}s
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -318,9 +321,11 @@ export default function UsersPage() {
 
             {/* Departments */}
             <div className="space-y-2">
-              <Label>Departments</Label>
+              <Label>{deptLabel}s</Label>
               {departments.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No departments created yet.</p>
+                <p className="text-muted-foreground text-sm">
+                  No {deptLabel.toLowerCase()}s created yet.
+                </p>
               ) : (
                 <div className="space-y-2">
                   {departments.map((dept) => (
@@ -402,7 +407,7 @@ export default function UsersPage() {
               />
               {departments.length > 0 && (
                 <div className="space-y-2">
-                  <Label>Departments (optional)</Label>
+                  <Label>{deptLabel}s (optional)</Label>
                   <div className="space-y-2">
                     {departments.map((dept) => (
                       <div key={dept.id} className="flex items-center gap-2">

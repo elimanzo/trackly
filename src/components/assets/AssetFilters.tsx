@@ -16,6 +16,7 @@ import { ASSET_STATUS_CONFIG } from '@/lib/constants'
 import type { AssetFilters } from '@/lib/hooks/useAssets'
 import { useDepartments } from '@/lib/hooks/useDepartments'
 import { ASSET_STATUSES } from '@/lib/types'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface AssetFiltersBarProps {
   filters: AssetFilters
@@ -29,6 +30,8 @@ export function AssetFiltersBar({
   showDepartmentFilter = true,
 }: AssetFiltersBarProps) {
   const { data: departments } = useDepartments()
+  const { org } = useOrg()
+  const deptLabel = org?.departmentLabel ?? 'Department'
   const [searchInput, setSearchInput] = useState(filters.search ?? '')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -94,10 +97,10 @@ export function AssetFiltersBar({
           }
         >
           <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="All departments" />
+            <SelectValue placeholder={`All ${deptLabel.toLowerCase()}s`} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All departments</SelectItem>
+            <SelectItem value="all">All {deptLabel.toLowerCase()}s</SelectItem>
             {departments.map((d) => (
               <SelectItem key={d.id} value={d.id}>
                 {d.name}

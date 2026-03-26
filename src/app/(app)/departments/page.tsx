@@ -24,10 +24,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Textarea } from '@/components/ui/textarea'
 import { DepartmentFormSchema, type Department, type DepartmentFormInput } from '@/lib/types'
 import { useOrgData } from '@/providers/OrgDataProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 export default function DepartmentsPage() {
   const { departments, isLoading, createDepartment, updateDepartment, deleteDepartment } =
     useOrgData()
+  const { org } = useOrg()
+  const deptLabel = org?.departmentLabel ?? 'Department'
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Department | null>(null)
@@ -65,12 +68,12 @@ export default function DepartmentsPage() {
     <>
       <div className="space-y-6">
         <PageHeader
-          title="Departments"
-          description={`${departments.length} department${departments.length !== 1 ? 's' : ''}`}
+          title={`${deptLabel}s`}
+          description={`${departments.length} ${deptLabel.toLowerCase()}${departments.length !== 1 ? 's' : ''}`}
           action={
             <Button onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Add department
+              Add {deptLabel.toLowerCase()}
             </Button>
           }
         />
@@ -78,11 +81,11 @@ export default function DepartmentsPage() {
         {departments.length === 0 ? (
           <EmptyState
             icon={Plus}
-            title="No departments yet"
-            description="Add departments to organise your assets."
+            title={`No ${deptLabel.toLowerCase()}s yet`}
+            description={`Add ${deptLabel.toLowerCase()}s to organise your assets.`}
             action={
               <Button size="sm" onClick={openCreate}>
-                Add department
+                Add {deptLabel.toLowerCase()}
               </Button>
             }
           />
@@ -127,7 +130,9 @@ export default function DepartmentsPage() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
           <SheetHeader className="px-4">
-            <SheetTitle>{editing ? 'Edit department' : 'New department'}</SheetTitle>
+            <SheetTitle>
+              {editing ? `Edit ${deptLabel.toLowerCase()}` : `New ${deptLabel.toLowerCase()}`}
+            </SheetTitle>
           </SheetHeader>
           <div className="overflow-y-auto px-4 pb-6">
             <Form {...form}>
@@ -153,7 +158,7 @@ export default function DepartmentsPage() {
                       <FormLabel>Description (optional)</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="What does this department manage?"
+                          placeholder={`What does this ${deptLabel.toLowerCase()} manage?`}
                           rows={3}
                           {...field}
                         />
@@ -179,8 +184,8 @@ export default function DepartmentsPage() {
         onOpenChange={(open) => {
           if (!open) setDeleteId(null)
         }}
-        title="Delete department?"
-        description="This will permanently remove the department."
+        title={`Delete ${deptLabel.toLowerCase()}?`}
+        description={`This will permanently remove the ${deptLabel.toLowerCase()}.`}
         confirmLabel="Delete"
         destructive
         onConfirm={() => {
