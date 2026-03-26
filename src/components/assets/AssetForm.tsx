@@ -51,7 +51,7 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
       name: asset?.name ?? '',
       assetTag: asset?.assetTag ?? defaultAssetTag ?? '',
       categoryId: asset?.categoryId ?? null,
-      departmentId: asset?.departmentId ?? '',
+      departmentId: asset?.departmentId ?? null,
       locationId: asset?.locationId ?? null,
       status: asset?.status ?? 'active',
       purchaseDate: asset?.purchaseDate ?? null,
@@ -146,13 +146,17 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Department</FormLabel>
-                <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                <Select
+                  value={field.value ?? '__none__'}
+                  onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
                     {departments.map((d) => (
                       <SelectItem key={d.id} value={d.id}>
                         {d.name}

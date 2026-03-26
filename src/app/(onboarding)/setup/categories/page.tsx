@@ -3,7 +3,9 @@
 import { Tag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
+import { createCategory } from '@/app/actions/categories'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -19,10 +21,9 @@ import { SUGGESTED_CATEGORIES } from '@/lib/constants'
 
 export default function SetupCategoriesPage() {
   const router = useRouter()
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(['Laptop', 'Monitor', 'Printer', 'Office Chair'])
-  )
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [custom, setCustom] = useState('')
+  const [saving, setSaving] = useState(false)
 
   function toggle(name: string) {
     setSelected((prev) => {
@@ -41,8 +42,16 @@ export default function SetupCategoriesPage() {
     }
   }
 
-  function onContinue() {
-    // Phase 2: will create categories in Supabase
+  async function onContinue() {
+    setSaving(true)
+    for (const name of selected) {
+      const result = await createCategory({ name })
+      if (result?.error) {
+        toast.error(`Failed to create "${name}": ${result.error}`)
+        setSaving(false)
+        return
+      }
+    }
     router.push('/setup/complete')
   }
 
@@ -104,8 +113,8 @@ export default function SetupCategoriesPage() {
         <Button variant="ghost" onClick={() => router.push('/setup/departments')}>
           Back
         </Button>
-        <Button onClick={onContinue} disabled={selected.size === 0}>
-          Continue ({selected.size} selected)
+        <Button onClick={onContinue} disabled={saving}>
+          {saving ? 'Saving…' : selected.size > 0 ? `Continue (${selected.size} selected)` : 'Skip'}
         </Button>
       </CardFooter>
     </Card>

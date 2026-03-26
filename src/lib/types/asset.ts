@@ -93,7 +93,7 @@ export const AssetFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(200),
   assetTag: z.string().min(1, 'Asset tag is required').max(50),
   categoryId: z.string().min(1).nullable(),
-  departmentId: z.string().min(1, 'Department is required'),
+  departmentId: z.string().uuid().nullable(),
   locationId: z.string().min(1).nullable(),
   status: AssetStatusSchema,
   purchaseDate: z.string().nullable(),

@@ -3,7 +3,9 @@
 import { Building2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
+import { createDepartment } from '@/app/actions/departments'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -19,8 +21,9 @@ import { SUGGESTED_DEPARTMENTS } from '@/lib/constants'
 
 export default function SetupDepartmentsPage() {
   const router = useRouter()
-  const [selected, setSelected] = useState<Set<string>>(new Set(['IT', 'Finance', 'Operations']))
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [custom, setCustom] = useState('')
+  const [saving, setSaving] = useState(false)
 
   function toggleDept(name: string) {
     setSelected((prev) => {
@@ -39,8 +42,16 @@ export default function SetupDepartmentsPage() {
     }
   }
 
-  function onContinue() {
-    // Phase 2: will create departments in Supabase
+  async function onContinue() {
+    setSaving(true)
+    for (const name of selected) {
+      const result = await createDepartment({ name })
+      if (result?.error) {
+        toast.error(`Failed to create "${name}": ${result.error}`)
+        setSaving(false)
+        return
+      }
+    }
     router.push('/setup/categories')
   }
 
@@ -103,8 +114,8 @@ export default function SetupDepartmentsPage() {
         <Button variant="ghost" onClick={() => router.push('/org/new')}>
           Back
         </Button>
-        <Button onClick={onContinue} disabled={selected.size === 0}>
-          Continue ({selected.size} selected)
+        <Button onClick={onContinue} disabled={saving}>
+          {saving ? 'Saving…' : selected.size > 0 ? `Continue (${selected.size} selected)` : 'Skip'}
         </Button>
       </CardFooter>
     </Card>
