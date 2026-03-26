@@ -84,12 +84,12 @@ export async function sendInviteAction(
 export async function acceptInviteAction(
   fullName: string,
   password: string
-): Promise<{ error: string } | { error: null }> {
+): Promise<{ error: string } | { error: null; email: string }> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) return { error: 'Session expired. Please use the invite link again.' }
 
   const admin = createAdminClient()
 
@@ -136,5 +136,5 @@ export async function acceptInviteAction(
     .update({ accepted_at: new Date().toISOString() })
     .eq('id', invite.id as string)
 
-  return { error: null }
+  return { error: null, email: user.email!.toLowerCase() }
 }

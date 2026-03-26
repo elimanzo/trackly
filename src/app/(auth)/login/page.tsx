@@ -2,7 +2,6 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -29,7 +28,6 @@ type LoginInput = z.infer<typeof LoginSchema>
 
 export default function LoginPage() {
   const { signIn } = useAuth()
-  const router = useRouter()
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(LoginSchema),
@@ -42,8 +40,7 @@ export default function LoginPage() {
       toast.error(error)
       return
     }
-    router.refresh()
-    router.push('/dashboard')
+    window.location.assign('/dashboard')
   }
 
   return (

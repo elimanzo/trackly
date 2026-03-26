@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { createClient } from '@/lib/supabase/client'
 
 const AcceptInviteSchema = z
   .object({
@@ -39,7 +40,6 @@ const AcceptInviteSchema = z
 type AcceptInviteInput = z.infer<typeof AcceptInviteSchema>
 
 export function AcceptInviteForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const orgName = searchParams.get('org') ?? ''
 
@@ -50,13 +50,22 @@ export function AcceptInviteForm() {
 
   async function onSubmit(data: AcceptInviteInput) {
     const result = await acceptInviteAction(data.fullName, data.password)
-    if (result?.error) {
+    if (result.error !== null) {
       toast.error(result.error)
       return
     }
+    // Sign in with the newly set password to establish a full auth session
+    const supabase = createClient()
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: result.email,
+      password: data.password,
+    })
+    if (signInError) {
+      toast.error(signInError.message)
+      return
+    }
     toast.success('Welcome! Your account is ready.')
-    router.refresh()
-    router.push('/dashboard')
+    window.location.assign('/dashboard')
   }
 
   return (

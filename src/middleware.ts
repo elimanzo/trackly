@@ -31,22 +31,25 @@ export async function middleware(request: NextRequest) {
 
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
   const isOnboardingRoute = pathname.startsWith('/org') || pathname.startsWith('/setup')
-  // Invite acceptance and auth callback must bypass all org/onboarding guards
-  const isInviteRoute = pathname.startsWith('/invite') || pathname.startsWith('/auth')
+  // Auth callback must be reachable without a session — it's what establishes one
+  const isAuthCallback = pathname.startsWith('/auth')
+  // Invite accept requires a session but must skip the "no org" redirect
+  const isInviteAccept = pathname.startsWith('/invite')
   const isAppRoute =
     !isAuthRoute &&
     !isOnboardingRoute &&
-    !isInviteRoute &&
+    !isAuthCallback &&
+    !isInviteAccept &&
     pathname !== '/' &&
     !pathname.startsWith('/_next')
 
   if (!user) {
-    if (isAppRoute || isOnboardingRoute) {
+    if (isAuthCallback) return supabaseResponse
+    if (isAppRoute || isOnboardingRoute || isInviteAccept) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
-    // Invite/callback routes are accessible without auth (callback establishes session)
     return supabaseResponse
   }
 
@@ -59,6 +62,9 @@ export async function middleware(request: NextRequest) {
 
   const hasOrg = !!profile?.org_id
 
+  // Auth callback must always run — it may replace the current session (invite flow)
+  if (isAuthCallback) return supabaseResponse
+
   // Already logged in → don't show auth pages
   if (isAuthRoute) {
     const url = request.nextUrl.clone()
@@ -66,8 +72,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Invite routes: always let through regardless of org status
-  if (isInviteRoute) {
+  // Invite accept: authenticated user, skip org check (page validates the invite)
+  if (isInviteAccept) {
     return supabaseResponse
   }
 
