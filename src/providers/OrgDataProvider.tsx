@@ -9,6 +9,7 @@ import { sendInviteAction } from '@/app/actions/invites'
 import { createLocation, deleteLocation, updateLocation } from '@/app/actions/locations'
 import {
   removeUserAction,
+  revokeInviteAction,
   updateUserDepartmentsAction,
   updateUserRoleAction,
 } from '@/app/actions/users'
@@ -436,8 +437,11 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
 
   const revokeInvite = useCallback(
     async (id: string) => {
-      const supabase = createClient()
-      await supabase.from('invites').delete().eq('id', id)
+      const result = await revokeInviteAction(id)
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
       toast.success('Invite revoked')
       await refetch()
     },

@@ -77,6 +77,23 @@ export async function updateUserDepartmentsAction(
   return { error: null }
 }
 
+export async function revokeInviteAction(
+  inviteId: string
+): Promise<{ error: string } | { error: null }> {
+  const { profile, admin } = await getActorProfile()
+
+  if (!profile?.org_id) return { error: 'No organisation found' }
+  if (!['owner', 'admin'].includes(profile.role)) return { error: 'Not authorised' }
+
+  const { error } = await admin
+    .from('invites')
+    .delete()
+    .eq('id', inviteId)
+    .eq('org_id', profile.org_id)
+
+  return { error: error?.message ?? null }
+}
+
 export async function removeUserAction(
   userId: string
 ): Promise<{ error: string } | { error: null }> {
