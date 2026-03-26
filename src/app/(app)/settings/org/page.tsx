@@ -193,19 +193,19 @@ export default function OrgSettingsPage() {
   return (
     <div className="space-y-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-6">
           {/* General */}
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">Organisation</CardTitle>
               <CardDescription>Update your organisation name and URL slug.</CardDescription>
             </CardHeader>
-            <CardContent className="max-w-md space-y-4">
+            <CardContent className="space-y-4">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="max-w-md">
                     <FormLabel>Organisation name</FormLabel>
                     <FormControl>
                       <Input {...field} />
@@ -218,7 +218,7 @@ export default function OrgSettingsPage() {
                 control={form.control}
                 name="slug"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="max-w-md">
                     <FormLabel>URL slug</FormLabel>
                     <FormControl>
                       <Input {...field} />
@@ -241,12 +241,12 @@ export default function OrgSettingsPage() {
                 Rename labels to match how your organisation talks about things.
               </CardDescription>
             </CardHeader>
-            <CardContent className="max-w-md">
+            <CardContent>
               <FormField
                 control={form.control}
                 name="departmentLabel"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="max-w-md">
                     <FormLabel>Department label</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g. Department, Program, Team, Division" {...field} />
@@ -269,7 +269,7 @@ export default function OrgSettingsPage() {
                 Choose which summary cards appear at the top of the dashboard.
               </CardDescription>
             </CardHeader>
-            <CardContent className="max-w-md space-y-4">
+            <CardContent className="space-y-4">
               <ToggleRow control={form.control} name="showCardTotal" label="Total assets" />
               <ToggleRow control={form.control} name="showCardActive" label="Active" />
               <ToggleRow control={form.control} name="showCardMaintenance" label="In maintenance" />
@@ -286,7 +286,7 @@ export default function OrgSettingsPage() {
                 Show or hide the larger sections below the stat cards.
               </CardDescription>
             </CardHeader>
-            <CardContent className="max-w-md space-y-4">
+            <CardContent className="space-y-4">
               <ToggleRow
                 control={form.control}
                 name="showCharts"
@@ -306,7 +306,7 @@ export default function OrgSettingsPage() {
                 Choose which columns are visible in the assets table.
               </CardDescription>
             </CardHeader>
-            <CardContent className="max-w-md space-y-4">
+            <CardContent className="space-y-4">
               <ToggleRow control={form.control} name="showColAssignedTo" label="Assigned to" />
               <ToggleRow control={form.control} name="showColDepartment" label={deptLabel} />
               <ToggleRow control={form.control} name="showColCategory" label="Category" />

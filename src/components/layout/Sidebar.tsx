@@ -28,6 +28,7 @@ type NavItem = {
   href: string
   icon: React.ElementType
   adminOnly?: boolean
+  activePrefix?: string
 }
 
 const NAV_MAIN: NavItem[] = [
@@ -46,7 +47,9 @@ function buildNavManage(deptLabel: string): NavItem[] {
   ]
 }
 
-const NAV_SETTINGS: NavItem[] = [{ label: 'Settings', href: '/settings/org', icon: Settings }]
+const NAV_SETTINGS: NavItem[] = [
+  { label: 'Settings', href: '/settings/org', icon: Settings, activePrefix: '/settings' },
+]
 
 interface NavLinkProps {
   item: NavItem
@@ -55,7 +58,9 @@ interface NavLinkProps {
 }
 
 function NavLink({ item, pathname, onNavClick }: NavLinkProps) {
-  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+  const prefix = item.activePrefix ?? item.href
+  const isActive =
+    pathname === item.href || pathname.startsWith(`${prefix}/`) || pathname === prefix
   const Icon = item.icon
 
   return (
