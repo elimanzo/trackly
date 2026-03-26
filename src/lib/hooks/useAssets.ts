@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { getAssetCount } from '@/app/actions/assets'
 import { createClient } from '@/lib/supabase/client'
-import type { AssetStatus, AssetWithRelations } from '@/lib/types'
+import type { AssetAssignment, AssetStatus, AssetWithRelations } from '@/lib/types'
 import { generateAssetTag } from '@/lib/utils/formatters'
 import { canManage } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
