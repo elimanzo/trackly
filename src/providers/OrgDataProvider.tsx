@@ -7,7 +7,11 @@ import { createCategory, deleteCategory, updateCategory } from '@/app/actions/ca
 import { createDepartment, deleteDepartment, updateDepartment } from '@/app/actions/departments'
 import { sendInviteAction } from '@/app/actions/invites'
 import { createLocation, deleteLocation, updateLocation } from '@/app/actions/locations'
-import { updateUserDepartmentsAction, updateUserRoleAction } from '@/app/actions/users'
+import {
+  removeUserAction,
+  updateUserDepartmentsAction,
+  updateUserRoleAction,
+} from '@/app/actions/users'
 import { createVendor, deleteVendor, updateVendor } from '@/app/actions/vendors'
 import { createClient } from '@/lib/supabase/client'
 import type {
@@ -97,6 +101,7 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('*, user_departments(department_id, departments(id, name))')
         .eq('org_id', orgId)
+        .neq('invite_status', 'deactivated')
         .order('full_name'),
       supabase
         .from('invites')
@@ -441,9 +446,11 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
 
   const removeUser = useCallback(
     async (id: string) => {
-      // Soft-remove: set invite_status to deactivated
-      const supabase = createClient()
-      await supabase.from('profiles').update({ invite_status: 'deactivated' }).eq('id', id)
+      const result = await removeUserAction(id)
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
       toast.success('User removed')
       await refetch()
     },

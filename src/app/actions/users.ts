@@ -76,3 +76,31 @@ export async function updateUserDepartmentsAction(
 
   return { error: null }
 }
+
+export async function removeUserAction(
+  userId: string
+): Promise<{ error: string } | { error: null }> {
+  const { actorId, profile, admin } = await getActorProfile()
+
+  if (!profile?.org_id) return { error: 'No organisation found' }
+  if (!['owner', 'admin'].includes(profile.role)) return { error: 'Not authorised' }
+  if (userId === actorId) return { error: 'You cannot remove yourself' }
+
+  const { data: target } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .eq('org_id', profile.org_id)
+    .single()
+
+  if (!target) return { error: 'User not found' }
+  if (target.role === 'owner') return { error: 'Cannot remove the org owner' }
+
+  const { error } = await admin
+    .from('profiles')
+    .update({ invite_status: 'deactivated' })
+    .eq('id', userId)
+    .eq('org_id', profile.org_id)
+
+  return { error: error?.message ?? null }
+}
