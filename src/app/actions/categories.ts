@@ -5,7 +5,9 @@ import type { CategoryFormInput } from '@/lib/types'
 import { logAudit } from './_audit'
 import { getContext } from './_context'
 
-export async function createCategory(input: CategoryFormInput): Promise<{ error: string } | null> {
+export async function createCategory(
+  input: CategoryFormInput
+): Promise<{ id: string } | { error: string }> {
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
@@ -29,7 +31,7 @@ export async function createCategory(input: CategoryFormInput): Promise<{ error:
     action: 'created',
   })
 
-  return null
+  return { id: data.id as string }
 }
 
 export async function updateCategory(

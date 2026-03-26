@@ -256,7 +256,7 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
   const handleCreateDepartment = useCallback(
     async (input: DepartmentFormInput) => {
       const result = await createDepartment(input)
-      if (result?.error) {
+      if ('error' in result) {
         toast.error(result.error)
         return
       }
@@ -298,7 +298,7 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
   const handleCreateCategory = useCallback(
     async (input: CategoryFormInput) => {
       const result = await createCategory(input)
-      if (result?.error) {
+      if ('error' in result) {
         toast.error(result.error)
         return
       }
@@ -340,7 +340,7 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
   const handleCreateLocation = useCallback(
     async (input: LocationFormInput) => {
       const result = await createLocation(input)
-      if (result?.error) {
+      if ('error' in result) {
         toast.error(result.error)
         return
       }
@@ -382,7 +382,7 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
   const handleCreateVendor = useCallback(
     async (input: VendorFormInput) => {
       const result = await createVendor(input)
-      if (result?.error) {
+      if ('error' in result) {
         toast.error(result.error)
         return
       }

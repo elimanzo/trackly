@@ -7,7 +7,7 @@ import { getContext } from './_context'
 
 export async function createDepartment(
   input: DepartmentFormInput
-): Promise<{ error: string } | null> {
+): Promise<{ id: string } | { error: string }> {
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
@@ -26,7 +26,7 @@ export async function createDepartment(
     action: 'created',
   })
 
-  return null
+  return { id: data.id as string }
 }
 
 export async function updateDepartment(
