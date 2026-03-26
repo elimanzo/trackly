@@ -152,7 +152,7 @@ export default function UsersPage() {
             Active members{' '}
             <span className="text-muted-foreground font-normal">({users.length})</span>
           </h2>
-          <div className="rounded-xl border shadow-sm">
+          <div className="rounded-md border shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -233,7 +233,7 @@ export default function UsersPage() {
               Pending invites{' '}
               <span className="text-muted-foreground font-normal">({pendingInvites.length})</span>
             </h2>
-            <div className="rounded-xl border shadow-sm">
+            <div className="rounded-md border shadow-sm">
               <Table>
                 <TableHeader>
                   <TableRow>

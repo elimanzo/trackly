@@ -152,7 +152,7 @@ export default function ReportsPage() {
       </Card>
 
       {/* Preview table */}
-      <div className="rounded-xl border shadow-sm">
+      <div className="rounded-md border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
