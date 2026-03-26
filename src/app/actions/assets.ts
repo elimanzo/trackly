@@ -1,26 +1,9 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
 import type { AssetFormInput, CheckoutFormInput } from '@/lib/types'
 
-async function getContext() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const admin = createAdminClient()
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('org_id')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (!profile?.org_id) return null
-  return { userId: user.id, orgId: profile.org_id as string, admin }
-}
+import { logAudit } from './_audit'
+import { getContext } from './_context'
 
 export async function createAsset(
   input: AssetFormInput
@@ -55,6 +38,14 @@ export async function createAsset(
     if (error.code === '23505') return { error: 'Asset tag already exists. Use a unique tag.' }
     return { error: error.message }
   }
+
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: data.id as string,
+    entityName: input.name,
+    action: 'created',
+  })
+
   return { id: data.id as string }
 }
 
@@ -64,6 +55,13 @@ export async function updateAsset(
 ): Promise<{ error: string } | null> {
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
+
+  // Fetch old values for change tracking
+  const { data: old } = await ctx.admin
+    .from('assets')
+    .select('name, status, category_id, department_id, location_id, quantity')
+    .eq('id', id)
+    .maybeSingle()
 
   const { error } = await ctx.admin
     .from('assets')
@@ -90,6 +88,24 @@ export async function updateAsset(
     if (error.code === '23505') return { error: 'Asset tag already exists. Use a unique tag.' }
     return { error: error.message }
   }
+
+  if (old) {
+    const changes: Record<string, { old: unknown; new: unknown }> = {}
+    if (old.name !== input.name) changes.name = { old: old.name, new: input.name }
+    if (!input.isBulk && old.status !== input.status)
+      changes.status = { old: old.status, new: input.status }
+    if (input.isBulk && old.quantity !== input.quantity)
+      changes.quantity = { old: old.quantity, new: input.quantity }
+
+    await logAudit(ctx, {
+      entityType: 'asset',
+      entityId: id,
+      entityName: input.name,
+      action: 'updated',
+      changes: Object.keys(changes).length > 0 ? changes : null,
+    })
+  }
+
   return null
 }
 
@@ -97,13 +113,24 @@ export async function deleteAsset(id: string): Promise<{ error: string } | null>
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
+  const { data: asset } = await ctx.admin.from('assets').select('name').eq('id', id).maybeSingle()
+
   const { error } = await ctx.admin
     .from('assets')
     .update({ deleted_at: new Date().toISOString(), updated_by: ctx.userId })
     .eq('id', id)
     .eq('org_id', ctx.orgId)
 
-  return error ? { error: error.message } : null
+  if (error) return { error: error.message }
+
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: id,
+    entityName: (asset?.name as string) ?? 'Unknown asset',
+    action: 'deleted',
+  })
+
+  return null
 }
 
 export async function checkoutAsset(
@@ -115,13 +142,13 @@ export async function checkoutAsset(
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
+  const { data: asset } = await ctx.admin
+    .from('assets')
+    .select('name, quantity')
+    .eq('id', assetId)
+    .single()
+
   if (isBulk) {
-    // Validate available stock
-    const { data: asset } = await ctx.admin
-      .from('assets')
-      .select('quantity')
-      .eq('id', assetId)
-      .single()
     const { data: activeRows } = await ctx.admin
       .from('asset_assignments')
       .select('quantity')
@@ -164,6 +191,17 @@ export async function checkoutAsset(
     if (error) return { error: error.message }
   }
 
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: assetId,
+    entityName: (asset?.name as string) ?? 'Unknown asset',
+    action: 'checked_out',
+    changes: {
+      assignedTo: { old: null, new: input.assignedToName },
+      ...(isBulk ? { quantity: { old: null, new: input.quantity } } : {}),
+    },
+  })
+
   return null
 }
 
@@ -171,6 +209,19 @@ export async function checkoutAsset(
 export async function returnAsset(assetId: string): Promise<{ error: string } | null> {
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
+
+  const { data: assignment } = await ctx.admin
+    .from('asset_assignments')
+    .select('assigned_to_name')
+    .eq('asset_id', assetId)
+    .is('returned_at', null)
+    .maybeSingle()
+
+  const { data: asset } = await ctx.admin
+    .from('assets')
+    .select('name')
+    .eq('id', assetId)
+    .maybeSingle()
 
   const { error: assignError } = await ctx.admin
     .from('asset_assignments')
@@ -186,7 +237,19 @@ export async function returnAsset(assetId: string): Promise<{ error: string } | 
     .eq('id', assetId)
     .eq('org_id', ctx.orgId)
 
-  return error ? { error: error.message } : null
+  if (error) return { error: error.message }
+
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: assetId,
+    entityName: (asset?.name as string) ?? 'Unknown asset',
+    action: 'returned',
+    changes: assignment?.assigned_to_name
+      ? { assignedTo: { old: assignment.assigned_to_name, new: null } }
+      : null,
+  })
+
+  return null
 }
 
 /** Partially or fully return a bulk assignment */
@@ -199,7 +262,7 @@ export async function returnBulkAssignment(
 
   const { data: row } = await ctx.admin
     .from('asset_assignments')
-    .select('quantity')
+    .select('quantity, assigned_to_name, asset_id, assets(name)')
     .eq('id', assignmentId)
     .single()
 
@@ -212,15 +275,31 @@ export async function returnBulkAssignment(
       .from('asset_assignments')
       .update({ returned_at: new Date().toISOString() })
       .eq('id', assignmentId)
-    return error ? { error: error.message } : null
+    if (error) return { error: error.message }
+  } else {
+    const { error } = await ctx.admin
+      .from('asset_assignments')
+      .update({ quantity: remaining })
+      .eq('id', assignmentId)
+    if (error) return { error: error.message }
   }
 
-  const { error } = await ctx.admin
-    .from('asset_assignments')
-    .update({ quantity: remaining })
-    .eq('id', assignmentId)
+  const assetJoin = row.assets as { name: string } | { name: string }[] | null
+  const assetName =
+    (Array.isArray(assetJoin) ? assetJoin[0]?.name : assetJoin?.name) ?? 'Unknown asset'
 
-  return error ? { error: error.message } : null
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: row.asset_id as string,
+    entityName: assetName,
+    action: 'returned',
+    changes: {
+      assignedTo: { old: row.assigned_to_name, new: null },
+      quantity: { old: row.quantity, new: remaining <= 0 ? 0 : remaining },
+    },
+  })
+
+  return null
 }
 
 /** Increase total stock quantity for a bulk asset */
@@ -233,11 +312,12 @@ export async function restockAsset(
 
   const { data: asset } = await ctx.admin
     .from('assets')
-    .select('quantity')
+    .select('name, quantity')
     .eq('id', assetId)
     .single()
 
-  const newQuantity = (asset?.quantity ?? 0) + additionalQuantity
+  const oldQuantity = (asset?.quantity ?? 0) as number
+  const newQuantity = oldQuantity + additionalQuantity
 
   const { error } = await ctx.admin
     .from('assets')
@@ -245,7 +325,17 @@ export async function restockAsset(
     .eq('id', assetId)
     .eq('org_id', ctx.orgId)
 
-  return error ? { error: error.message } : null
+  if (error) return { error: error.message }
+
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: assetId,
+    entityName: (asset?.name as string) ?? 'Unknown asset',
+    action: 'updated',
+    changes: { quantity: { old: oldQuantity, new: newQuantity } },
+  })
+
+  return null
 }
 
 /** Edit an existing checkout assignment */
@@ -284,6 +374,12 @@ export async function updateAssignment(
     }
   }
 
+  const { data: asset } = await ctx.admin
+    .from('assets')
+    .select('name')
+    .eq('id', assetId)
+    .maybeSingle()
+
   const { error } = await ctx.admin
     .from('asset_assignments')
     .update({
@@ -298,7 +394,17 @@ export async function updateAssignment(
     })
     .eq('id', assignmentId)
 
-  return error ? { error: error.message } : null
+  if (error) return { error: error.message }
+
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: assetId,
+    entityName: (asset?.name as string) ?? 'Unknown asset',
+    action: 'updated',
+    changes: { assignment: { old: null, new: input.assignedToName } },
+  })
+
+  return null
 }
 
 /** Count non-deleted assets in the org — used to generate the next asset tag */

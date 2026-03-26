@@ -6,6 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/lib/types'
 
+import { logAudit } from './_audit'
+
 async function getActorProfile() {
   const supabase = await createClient()
   const {
@@ -16,7 +18,7 @@ async function getActorProfile() {
   const admin = createAdminClient()
   const { data: profile } = await admin
     .from('profiles')
-    .select('org_id, role')
+    .select('org_id, role, full_name')
     .eq('id', user.id)
     .single()
 
@@ -49,6 +51,30 @@ export async function updateUserRoleAction(
     .update({ role })
     .eq('id', userId)
     .eq('org_id', profile.org_id)
+
+  if (!error) {
+    const { data: targetProfile } = await admin
+      .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .maybeSingle()
+
+    await logAudit(
+      {
+        userId: actorId,
+        orgId: profile.org_id as string,
+        actorName: (profile.full_name as string) ?? 'Unknown',
+        admin,
+      },
+      {
+        entityType: 'user',
+        entityId: userId,
+        entityName: (targetProfile?.full_name as string) ?? 'Unknown user',
+        action: 'role_changed',
+        changes: { role: { old: target.role, new: role } },
+      }
+    )
+  }
 
   return { error: error?.message ?? null }
 }

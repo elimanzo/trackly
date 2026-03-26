@@ -1,4 +1,12 @@
-import { ArrowLeftRight, CirclePlus, Pencil, Trash2, TrendingUp } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  CirclePlus,
+  Pencil,
+  Trash2,
+  TrendingUp,
+  UserCheck,
+  UserPlus,
+} from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -15,6 +23,8 @@ const ACTION_CONFIG: Record<
   checked_out: { label: 'Checked out', icon: ArrowLeftRight, color: 'text-primary' },
   returned: { label: 'Returned', icon: ArrowLeftRight, color: 'text-green-500' },
   status_changed: { label: 'Status changed', icon: TrendingUp, color: 'text-amber-500' },
+  invited: { label: 'Invited', icon: UserPlus, color: 'text-teal-500' },
+  role_changed: { label: 'Role changed', icon: UserCheck, color: 'text-indigo-500' },
 }
 
 interface RecentActivityProps {

@@ -11,6 +11,8 @@ export const AuditActionSchema = z.enum([
   'checked_out',
   'returned',
   'status_changed',
+  'invited',
+  'role_changed',
 ])
 
 export type AuditAction = z.infer<typeof AuditActionSchema>

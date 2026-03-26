@@ -25,8 +25,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsset } from '@/lib/hooks/useAssets'
-import type { AssetAssignment } from '@/lib/types'
-import { formatCurrency, formatDate } from '@/lib/utils/formatters'
+import { useAssetHistory } from '@/lib/hooks/useAuditLogs'
+import type { AssetAssignment, AuditLog } from '@/lib/types'
+import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
@@ -38,6 +39,7 @@ interface AssetDetailPageProps {
 export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id } = use(params)
   const { data: asset, isLoading, refresh } = useAsset(id)
+  const { data: history, isLoading: historyLoading } = useAssetHistory(id)
   const { user } = useAuth()
   const { org } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
@@ -332,9 +334,21 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
 
           {/* History tab */}
           <TabsContent value="history" className="mt-4">
-            <div className="text-muted-foreground rounded-xl border py-12 text-center text-sm">
-              Activity history coming soon.
-            </div>
+            {historyLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-muted-foreground rounded-md border py-12 text-center text-sm">
+                No activity recorded yet.
+              </div>
+            ) : (
+              <div className="space-y-0 rounded-md border">
+                {history.map((log, i) => (
+                  <AuditLogRow key={log.id} log={log} isLast={i === history.length - 1} />
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -516,5 +530,73 @@ function BulkReturnModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+const ACTION_LABELS: Record<AuditLog['action'], string> = {
+  created: 'Created',
+  updated: 'Updated',
+  deleted: 'Deleted',
+  checked_out: 'Checked out',
+  returned: 'Returned',
+  status_changed: 'Status changed',
+  invited: 'Invited',
+  role_changed: 'Role changed',
+}
+
+const ACTION_COLORS: Record<AuditLog['action'], string> = {
+  created: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  updated: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  deleted: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  checked_out: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  returned: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+  status_changed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  invited: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400',
+  role_changed: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
+}
+
+function AuditLogRow({ log, isLast }: { log: AuditLog; isLast: boolean }) {
+  const changes = log.changes ?? {}
+  return (
+    <div className={`flex items-start gap-3 px-4 py-3 ${!isLast ? 'border-b' : ''}`}>
+      <span
+        className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${ACTION_COLORS[log.action]}`}
+      >
+        {ACTION_LABELS[log.action]}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-sm">
+          <span className="font-medium">{log.actorName}</span>
+          {changes.assignedTo && (
+            <span className="text-muted-foreground">
+              {log.action === 'checked_out'
+                ? ` → ${String(changes.assignedTo.new)}`
+                : ` ← ${String(changes.assignedTo.old)}`}
+            </span>
+          )}
+          {changes.quantity && !changes.assignedTo && (
+            <span className="text-muted-foreground">
+              {' '}
+              qty {String(changes.quantity.old)} → {String(changes.quantity.new)}
+            </span>
+          )}
+          {changes.name && (
+            <span className="text-muted-foreground">
+              {' '}
+              renamed to &ldquo;{String(changes.name.new)}&rdquo;
+            </span>
+          )}
+          {changes.status && (
+            <span className="text-muted-foreground">
+              {' '}
+              {String(changes.status.old)} → {String(changes.status.new)}
+            </span>
+          )}
+        </p>
+      </div>
+      <time className="text-muted-foreground shrink-0 text-xs" title={formatDate(log.createdAt)}>
+        {formatRelativeTime(log.createdAt)}
+      </time>
+    </div>
   )
 }
