@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -40,6 +40,8 @@ type AcceptInviteInput = z.infer<typeof AcceptInviteSchema>
 
 export default function AcceptInvitePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const orgName = searchParams.get('org') ?? ''
 
   const form = useForm<AcceptInviteInput>({
     resolver: zodResolver(AcceptInviteSchema),
@@ -59,7 +61,9 @@ export default function AcceptInvitePage() {
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <CardTitle className="text-xl">Accept your invite</CardTitle>
+        <CardTitle className="text-xl">
+          {orgName ? `You've been invited to join ${orgName}` : 'Accept your invite'}
+        </CardTitle>
         <CardDescription>Set your name and a password to get started</CardDescription>
       </CardHeader>
       <CardContent>

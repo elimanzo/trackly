@@ -1,20 +1,13 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 
-/**
- * Handles both Supabase auth flows:
- * - PKCE: ?code=xxx  (OAuth, magic links)
- * - Implicit: #access_token=xxx (invite emails, password reset)
- *
- * The browser Supabase client automatically detects and processes both.
- * Server-side route handlers can't read URL hash fragments, so this must
- * be a client component.
- */
 export default function AuthCallbackPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -23,31 +16,39 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const supabase = createClient()
 
-    // exchangeCodeForSession handles PKCE codes; getSession handles hash tokens.
-    // Try code first, fall back to getting the current session (set by hash).
-    const code = new URLSearchParams(window.location.search).get('code')
-
     async function handleCallback() {
+      // Parse hash fragment — Supabase invite/magic-link emails use implicit
+      // flow and put tokens in the hash, not as a ?code= query param.
+      const hash = window.location.hash.slice(1)
+      const hashParams = new URLSearchParams(hash)
+
+      const errorCode = hashParams.get('error_code')
+      if (errorCode) {
+        router.replace('/login?error=invalid_link')
+        return
+      }
+
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
+
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        router.replace(error ? '/login?error=invalid_link' : next)
+        return
+      }
+
+      // PKCE code flow (OAuth, newer magic links)
+      const code = new URLSearchParams(window.location.search).get('code')
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) {
-          router.replace('/login?error=invalid_link')
-          return
-        }
-      } else {
-        // Wait briefly for the client to process the hash tokens
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        router.replace(error ? '/login?error=invalid_link' : next)
+        return
       }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (session) {
-        router.replace(next)
-      } else {
-        router.replace('/login?error=invalid_link')
-      }
+      router.replace('/login?error=invalid_link')
     }
 
     void handleCallback()

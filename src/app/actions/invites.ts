@@ -1,7 +1,5 @@
 'use server'
 
-import { redirect } from 'next/navigation'
-
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { Invite } from '@/lib/types'
@@ -14,6 +12,7 @@ export async function sendInviteAction(
   email: string,
   role: Invite['role']
 ): Promise<{ error: string } | { error: null }> {
+  email = email.toLowerCase().trim()
   const supabase = await createClient()
   const {
     data: { user },
@@ -22,10 +21,10 @@ export async function sendInviteAction(
 
   const admin = createAdminClient()
 
-  // Fetch inviter profile to get org + name
+  // Fetch inviter profile + org name
   const { data: profile } = await admin
     .from('profiles')
-    .select('org_id, full_name')
+    .select('org_id, full_name, organizations(name)')
     .eq('id', user.id)
     .single()
 
@@ -58,7 +57,9 @@ export async function sendInviteAction(
 
   // Send invite email via Supabase (routes through configured SMTP)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const redirectTo = `${appUrl}/auth/callback?next=/invite/accept`
+  const orgName = (profile.organizations as { name: string } | null)?.name ?? ''
+  const next = `/invite/accept?org=${encodeURIComponent(orgName)}`
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`
 
   const { error: authError } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo })
 
@@ -78,7 +79,7 @@ export async function sendInviteAction(
 export async function acceptInviteAction(
   fullName: string,
   password: string
-): Promise<{ error: string } | never> {
+): Promise<{ error: string } | { error: null }> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -87,11 +88,12 @@ export async function acceptInviteAction(
 
   const admin = createAdminClient()
 
-  // Find the pending invite for this email
+  // Find the pending invite for this email (normalize to lowercase — Supabase
+  // lowercases emails on auth user creation so mixed-case invites must match)
   const { data: invite } = await admin
     .from('invites')
     .select('*')
-    .eq('email', user.email!)
+    .eq('email', user.email!.toLowerCase())
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
     .maybeSingle()
@@ -121,5 +123,5 @@ export async function acceptInviteAction(
     .update({ accepted_at: new Date().toISOString() })
     .eq('id', invite.id as string)
 
-  redirect('/dashboard')
+  return { error: null }
 }

@@ -42,6 +42,7 @@ export default function LoginPage() {
       toast.error(error)
       return
     }
+    router.refresh()
     router.push('/dashboard')
   }
 
