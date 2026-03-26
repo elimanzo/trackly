@@ -125,11 +125,21 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
         .order('created_at', { ascending: false })
 
       if (filters.search) {
-        // Escape characters that have special meaning in PostgREST filter strings
-        // to prevent filter injection via the .or() string parameter.
-        const safe = filters.search.replace(/[,()\\]/g, '\\$&')
-        query = query.or(`name.ilike.%${safe}%,asset_tag.ilike.%${safe}%`)
+        const { data: ids } = await supabase.rpc('search_asset_ids', {
+          p_org_id: user!.orgId!,
+          p_search: filters.search,
+        })
+        if (!ids || ids.length === 0) {
+          if (!cancelled) {
+            setData([])
+            setTotalCount(0)
+            setIsLoading(false)
+          }
+          return
+        }
+        query = query.in('id', ids as string[])
       }
+
       if (filters.status) {
         query = query.eq('status', filters.status)
       }
