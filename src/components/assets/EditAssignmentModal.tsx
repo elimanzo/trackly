@@ -1,9 +1,10 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 
-import { checkoutAsset } from '@/app/actions/assets'
+import { updateAssignment } from '@/app/actions/assets'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -32,48 +33,69 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useDepartments } from '@/lib/hooks/useDepartments'
 import { useLocations } from '@/lib/hooks/useLocations'
-import { CheckoutFormSchema, type CheckoutFormInput } from '@/lib/types'
-import type { AssetWithRelations } from '@/lib/types'
-import { useAuth } from '@/providers/AuthProvider'
+import { CheckoutFormSchema, type AssetAssignment, type CheckoutFormInput } from '@/lib/types'
 import { useOrg } from '@/providers/OrgProvider'
 
-interface CheckoutModalProps {
-  asset: AssetWithRelations
+interface EditAssignmentModalProps {
+  assignment: AssetAssignment
+  assetId: string
+  isBulk: boolean
+  maxQuantity?: number // available + this assignment's current quantity
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
 }
 
-export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: CheckoutModalProps) {
-  const { user } = useAuth()
+export function EditAssignmentModal({
+  assignment,
+  assetId,
+  isBulk,
+  maxQuantity,
+  open,
+  onOpenChange,
+  onSuccess,
+}: EditAssignmentModalProps) {
   const { org } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: departments } = useDepartments()
   const { data: locations } = useLocations()
 
-  const available = asset.isBulk ? (asset.quantity ?? 0) - asset.quantityCheckedOut : null
-
   const form = useForm<CheckoutFormInput>({
     resolver: zodResolver(CheckoutFormSchema),
     defaultValues: {
-      assignedToUserId: null,
-      assignedToName: '',
-      quantity: 1,
-      departmentId: null,
-      locationId: null,
-      expectedReturnAt: null,
-      notes: '',
+      assignedToUserId: assignment.assignedToUserId,
+      assignedToName: assignment.assignedToName,
+      quantity: assignment.quantity,
+      departmentId: assignment.departmentId,
+      locationId: assignment.locationId,
+      expectedReturnAt: assignment.expectedReturnAt
+        ? assignment.expectedReturnAt.slice(0, 10)
+        : null,
+      notes: assignment.notes ?? '',
     },
   })
 
+  // Re-sync if a different assignment is opened
+  useEffect(() => {
+    form.reset({
+      assignedToUserId: assignment.assignedToUserId,
+      assignedToName: assignment.assignedToName,
+      quantity: assignment.quantity,
+      departmentId: assignment.departmentId,
+      locationId: assignment.locationId,
+      expectedReturnAt: assignment.expectedReturnAt
+        ? assignment.expectedReturnAt.slice(0, 10)
+        : null,
+      notes: assignment.notes ?? '',
+    })
+  }, [assignment.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function onSubmit(data: CheckoutFormInput) {
-    if (!user) return
-    const result = await checkoutAsset(asset.id, data, user.fullName, asset.isBulk)
+    const result = await updateAssignment(assignment.id, assetId, data, isBulk)
     if (result?.error) {
       form.setError('assignedToName', { message: result.error })
       return
     }
-    form.reset()
     onOpenChange(false)
     onSuccess?.()
   }
@@ -82,15 +104,8 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Check out {asset.isBulk ? 'items' : 'asset'}</DialogTitle>
+          <DialogTitle>Edit checkout</DialogTitle>
         </DialogHeader>
-        <p className="text-muted-foreground text-sm">
-          <span className="text-foreground font-medium">{asset.name}</span>
-          {asset.isBulk && available !== null && (
-            <span className="ml-2">— {available} available</span>
-          )}
-          {!asset.isBulk && <span> &mdash; {asset.assetTag}</span>}
-        </p>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -98,7 +113,7 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
               name="assignedToName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign to</FormLabel>
+                  <FormLabel>Assigned to</FormLabel>
                   <FormControl>
                     <Input placeholder="Full name" {...field} />
                   </FormControl>
@@ -107,7 +122,7 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
               )}
             />
 
-            {asset.isBulk && (
+            {isBulk && (
               <FormField
                 control={form.control}
                 name="quantity"
@@ -118,14 +133,16 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
                       <Input
                         type="number"
                         min={1}
-                        max={available ?? undefined}
+                        max={maxQuantity}
                         step={1}
                         value={field.value}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
-                    {available !== null && (
-                      <FormDescription className="text-xs">{available} in stock</FormDescription>
+                    {maxQuantity !== undefined && (
+                      <FormDescription className="text-xs">
+                        Max {maxQuantity} (available + currently on this assignment)
+                      </FormDescription>
                     )}
                     <FormMessage />
                   </FormItem>
@@ -209,6 +226,7 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="notes"
@@ -216,22 +234,19 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
                 <FormItem>
                   <FormLabel>Notes (optional)</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Reason, accessories included, etc."
-                      rows={2}
-                      {...field}
-                    />
+                    <Textarea rows={2} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={asset.isBulk && available === 0}>
-                Check out
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                Save changes
               </Button>
             </DialogFooter>
           </form>

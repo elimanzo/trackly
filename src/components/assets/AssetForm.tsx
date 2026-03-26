@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ASSET_STATUS_CONFIG } from '@/lib/constants'
 import { useCategories } from '@/lib/hooks/useCategories'
@@ -53,6 +54,8 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
     defaultValues: {
       name: asset?.name ?? '',
       assetTag: asset?.assetTag ?? defaultAssetTag ?? '',
+      isBulk: asset?.isBulk ?? false,
+      quantity: asset?.quantity ?? null,
       categoryId: asset?.categoryId ?? null,
       departmentId: asset?.departmentId ?? null,
       locationId: asset?.locationId ?? null,
@@ -64,6 +67,8 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
       notes: asset?.notes ?? '',
     },
   })
+
+  const isBulk = form.watch('isBulk')
 
   async function onSubmit(data: AssetFormInput) {
     if (isEdit && asset) {
@@ -114,30 +119,73 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
               </FormItem>
             )}
           />
+          {!isBulk && (
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {ASSET_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {ASSET_STATUS_CONFIG[s].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
           <FormField
             control={form.control}
-            name="status"
+            name="isBulk"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {ASSET_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {ASSET_STATUS_CONFIG[s].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
+              <FormItem className="flex items-center justify-between rounded-lg border p-3 sm:col-span-2">
+                <div>
+                  <FormLabel className="font-medium">Bulk / consumable item</FormLabel>
+                  <p className="text-muted-foreground text-xs">
+                    Track by quantity (USBs, cables, etc.) instead of individual asset tags.
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
               </FormItem>
             )}
           />
+          {isBulk && (
+            <FormField
+              control={form.control}
+              name="quantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Total quantity in stock</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      placeholder="0"
+                      value={field.value ?? ''}
+                      onChange={(e) =>
+                        field.onChange(e.target.value === '' ? null : Number(e.target.value))
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {/* Classification */}
