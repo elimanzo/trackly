@@ -48,6 +48,8 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
           ownerId: data.owner_id as string,
           logoUrl: (data.logo_url as string | null) ?? null,
           onboardingCompleted: data.onboarding_completed as boolean,
+          departmentLabel: (data.department_label as string | null) ?? 'Department',
+          dashboardConfig: (data.dashboard_config as Record<string, unknown> | null) ?? {},
           createdAt: data.created_at as string,
           updatedAt: data.updated_at as string,
         })

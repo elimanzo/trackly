@@ -17,6 +17,7 @@ import { useAsset } from '@/lib/hooks/useAssets'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface AssetDetailPageProps {
   params: Promise<{ id: string }>
@@ -26,6 +27,8 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id } = use(params)
   const { data: asset, isLoading, refresh } = useAsset(id)
   const { user } = useAuth()
+  const { org } = useOrg()
+  const deptLabel = org?.departmentLabel ?? 'Department'
   const router = useRouter()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -127,7 +130,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
                   <CardTitle className="text-sm font-semibold">Asset info</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <DetailRow label="Department" value={asset.departmentName ?? '—'} />
+                  <DetailRow label={deptLabel} value={asset.departmentName ?? '—'} />
                   <DetailRow label="Category" value={asset.categoryName ?? '—'} />
                   <DetailRow label="Location" value={asset.locationName ?? '—'} />
                   <DetailRow label="Vendor" value={asset.vendorName ?? '—'} />

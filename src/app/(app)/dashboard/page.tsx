@@ -12,6 +12,7 @@ import { useRecentActivity } from '@/lib/hooks/useAuditLogs'
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats'
 import { formatCurrency } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 const AssetsByStatusChart = dynamic(
   () => import('@/components/dashboard/AssetsByStatusChart').then((m) => m.AssetsByStatusChart),
@@ -33,10 +34,17 @@ function greeting(name: string): string {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { org } = useOrg()
   const { data: stats, isLoading } = useDashboardStats()
   const { data: logs } = useRecentActivity(8)
 
   if (isLoading) return <PageLoader />
+
+  const cfg = org?.dashboardConfig ?? {}
+  const showCharts = cfg.showCharts ?? true
+  const showWarranty = cfg.showWarranty ?? true
+  const showActivity = cfg.showActivity ?? true
+  const deptLabel = org?.departmentLabel ?? 'Department'
 
   const activeCount = stats.byStatus.find((s) => s.status === 'active')?.count ?? 0
   const maintenanceCount = stats.byStatus.find((s) => s.status === 'under_maintenance')?.count ?? 0
@@ -61,7 +69,11 @@ export default function DashboardPage() {
           label="Active"
           value={activeCount}
           icon={CheckCircle}
-          description={`${Math.round((activeCount / stats.totalAssets) * 100)}% of total`}
+          description={
+            stats.totalAssets > 0
+              ? `${Math.round((activeCount / stats.totalAssets) * 100)}% of total`
+              : undefined
+          }
           bgClass="bg-green-500 dark:bg-green-600"
           iconClass="text-white"
         />
@@ -89,16 +101,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <AssetsByStatusChart data={stats.byStatus} total={stats.totalAssets} />
-        <AssetsByDepartmentChart data={stats.byDepartment} />
-      </div>
+      {showCharts && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <AssetsByStatusChart data={stats.byStatus} total={stats.totalAssets} />
+          <AssetsByDepartmentChart data={stats.byDepartment} departmentLabel={deptLabel} />
+        </div>
+      )}
 
       {/* Activity + Warranty */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RecentActivity logs={logs} />
-        <WarrantyAlerts alerts={stats.warrantyAlerts} />
-      </div>
+      {(showActivity || showWarranty) && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {showActivity && <RecentActivity logs={logs} />}
+          {showWarranty && <WarrantyAlerts alerts={stats.warrantyAlerts} />}
+        </div>
+      )}
 
       <div className="text-muted-foreground flex items-center gap-2 text-xs">
         <Activity className="h-3.5 w-3.5" />

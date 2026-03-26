@@ -30,6 +30,7 @@ import { useLocations } from '@/lib/hooks/useLocations'
 import { useVendors } from '@/lib/hooks/useVendors'
 import { ASSET_STATUSES, AssetFormSchema, type AssetFormInput } from '@/lib/types'
 import type { AssetWithRelations } from '@/lib/types'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface AssetFormProps {
   asset?: AssetWithRelations
@@ -39,6 +40,8 @@ interface AssetFormProps {
 export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
   const router = useRouter()
   const { data: departments } = useDepartments()
+  const { org } = useOrg()
+  const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: categories } = useCategories()
   const { data: locations } = useLocations()
   const { data: vendors } = useVendors()
@@ -144,14 +147,14 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
             name="departmentId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Department</FormLabel>
+                <FormLabel>{deptLabel}</FormLabel>
                 <Select
                   value={field.value ?? '__none__'}
                   onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
+                      <SelectValue placeholder={`Select ${deptLabel.toLowerCase()}`} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>

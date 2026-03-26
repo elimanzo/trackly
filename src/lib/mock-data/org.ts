@@ -7,6 +7,8 @@ export const MOCK_ORG: Organization = {
   ownerId: 'user-0001',
   logoUrl: null,
   onboardingCompleted: true,
+  departmentLabel: 'Department',
+  dashboardConfig: {},
   createdAt: '2024-01-15T09:00:00.000Z',
   updatedAt: '2024-01-15T09:00:00.000Z',
 }
