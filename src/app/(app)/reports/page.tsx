@@ -1,6 +1,6 @@
 'use client'
 
-import { Download } from 'lucide-react'
+import { Download, SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -9,6 +9,14 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -30,9 +38,13 @@ import { type AssetFilters, useAssets } from '@/lib/hooks/useAssets'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { useDepartments } from '@/lib/hooks/useDepartments'
 import { ASSET_STATUSES } from '@/lib/types'
-import { exportAssetsToCsv } from '@/lib/utils/csv-export'
+import { type ReportColumn, exportAssetsToCsv } from '@/lib/utils/csv-export'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { useOrg } from '@/providers/OrgProvider'
+
+const LS_KEY = 'report-cols'
+
+type ColDef = { key: ReportColumn; label: string; allowed: boolean }
 
 export default function ReportsPage() {
   const [filters, setFilters] = useState<AssetFilters>({})
@@ -42,22 +54,54 @@ export default function ReportsPage() {
   const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: categories } = useCategories()
   const rc = org?.reportConfig ?? {}
-  const showAssignedTo = rc.showAssignedTo ?? true
-  const showDepartment = rc.showDepartment ?? true
-  const showCategory = rc.showCategory ?? true
-  const showLocation = rc.showLocation ?? false
-  const showStatus = rc.showStatus ?? true
-  const showPurchaseDate = rc.showPurchaseDate ?? false
-  const showPurchaseCost = rc.showPurchaseCost ?? false
-  const showWarrantyExpiry = rc.showWarrantyExpiry ?? false
-  const showVendor = rc.showVendor ?? false
+
+  // Columns the org allows — the whitelist
+  const allCols: ColDef[] = [
+    { key: 'assignedTo', label: 'Assigned to', allowed: rc.showAssignedTo ?? true },
+    { key: 'department', label: deptLabel, allowed: rc.showDepartment ?? true },
+    { key: 'category', label: 'Category', allowed: rc.showCategory ?? true },
+    { key: 'location', label: 'Location', allowed: rc.showLocation ?? false },
+    { key: 'status', label: 'Status', allowed: rc.showStatus ?? true },
+    { key: 'purchaseDate', label: 'Purchase date', allowed: rc.showPurchaseDate ?? false },
+    { key: 'purchaseCost', label: 'Cost', allowed: rc.showPurchaseCost ?? false },
+    { key: 'warrantyExpiry', label: 'Warranty', allowed: rc.showWarrantyExpiry ?? false },
+    { key: 'vendor', label: 'Vendor', allowed: rc.showVendor ?? false },
+    { key: 'notes', label: 'Notes', allowed: rc.showNotes ?? false },
+  ]
+  const allowedCols = allCols.filter((c) => c.allowed)
+
+  // Per-user visibility — initialized from localStorage, defaults to all allowed visible
+  const [visibleKeys, setVisibleKeys] = useState<Set<ReportColumn>>(() => {
+    try {
+      const stored = localStorage.getItem(LS_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as ReportColumn[]
+        return new Set(parsed.filter((k) => allowedCols.some((c) => c.key === k)))
+      }
+    } catch {}
+    return new Set(allowedCols.map((c) => c.key))
+  })
+
+  function toggleCol(key: ReportColumn, checked: boolean) {
+    setVisibleKeys((prev) => {
+      const next = new Set(prev)
+      checked ? next.add(key) : next.delete(key)
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(Array.from(next)))
+      } catch {}
+      return next
+    })
+  }
 
   if (isLoading) return <PageLoader />
 
   function handleExport() {
-    exportAssetsToCsv(assets, 'asset-report.csv')
+    exportAssetsToCsv(assets, 'asset-report.csv', visibleKeys)
     toast.success(`Exported ${assets.length} asset${assets.length !== 1 ? 's' : ''}`)
   }
+
+  const visibleCols = allowedCols.filter((c) => visibleKeys.has(c.key))
+  const colSpan = 2 + visibleCols.length
 
   return (
     <div className="space-y-6">
@@ -65,10 +109,34 @@ export default function ReportsPage() {
         title="Reports"
         description="Filter and export your asset data as CSV."
         action={
-          <Button onClick={handleExport} disabled={assets.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV ({assets.length})
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-xs">Toggle columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {allowedCols.map((col) => (
+                  <DropdownMenuCheckboxItem
+                    key={col.key}
+                    checked={visibleKeys.has(col.key)}
+                    onCheckedChange={(checked) => toggleCol(col.key, checked)}
+                  >
+                    {col.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button onClick={handleExport} disabled={assets.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV ({assets.length})
+            </Button>
+          </div>
         }
       />
 
@@ -158,35 +226,16 @@ export default function ReportsPage() {
             <TableRow>
               <TableHead>Tag</TableHead>
               <TableHead>Name</TableHead>
-              {showAssignedTo && <TableHead>Assigned to</TableHead>}
-              {showDepartment && <TableHead>{deptLabel}</TableHead>}
-              {showCategory && <TableHead>Category</TableHead>}
-              {showLocation && <TableHead>Location</TableHead>}
-              {showStatus && <TableHead>Status</TableHead>}
-              {showPurchaseDate && <TableHead>Purchase date</TableHead>}
-              {showPurchaseCost && <TableHead>Cost</TableHead>}
-              {showWarrantyExpiry && <TableHead>Warranty</TableHead>}
-              {showVendor && <TableHead>Vendor</TableHead>}
+              {visibleCols.map((c) => (
+                <TableHead key={c.key}>{c.label}</TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {assets.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={
-                    2 +
-                    [
-                      showAssignedTo,
-                      showDepartment,
-                      showCategory,
-                      showLocation,
-                      showStatus,
-                      showPurchaseDate,
-                      showPurchaseCost,
-                      showWarrantyExpiry,
-                      showVendor,
-                    ].filter(Boolean).length
-                  }
+                  colSpan={colSpan}
                   className="text-muted-foreground py-12 text-center text-sm"
                 >
                   No assets match the selected filters.
@@ -199,61 +248,24 @@ export default function ReportsPage() {
                     <span className="font-mono text-xs">{a.assetTag}</span>
                   </TableCell>
                   <TableCell className="font-medium">{a.name}</TableCell>
-                  {showAssignedTo && (
-                    <TableCell>
+                  {visibleCols.map((c) => (
+                    <TableCell key={c.key}>
                       <span className="text-muted-foreground text-sm">
-                        {a.currentAssignment?.assignedToName ?? '—'}
+                        {c.key === 'assignedTo' && (a.currentAssignment?.assignedToName ?? '—')}
+                        {c.key === 'department' && (a.departmentName ?? '—')}
+                        {c.key === 'category' && (a.categoryName ?? '—')}
+                        {c.key === 'location' && (a.locationName ?? '—')}
+                        {c.key === 'status' && <AssetStatusBadge status={a.status} />}
+                        {c.key === 'purchaseDate' && formatDate(a.purchaseDate)}
+                        {c.key === 'purchaseCost' &&
+                          (a.purchaseCost != null ? formatCurrency(a.purchaseCost) : '—')}
+                        {c.key === 'warrantyExpiry' &&
+                          (a.warrantyExpiry ? formatDate(a.warrantyExpiry) : '—')}
+                        {c.key === 'vendor' && (a.vendorName ?? '—')}
+                        {c.key === 'notes' && (a.notes ?? '—')}
                       </span>
                     </TableCell>
-                  )}
-                  {showDepartment && (
-                    <TableCell>
-                      <span className="text-muted-foreground text-sm">
-                        {a.departmentName ?? '—'}
-                      </span>
-                    </TableCell>
-                  )}
-                  {showCategory && (
-                    <TableCell>
-                      <span className="text-muted-foreground text-sm">{a.categoryName ?? '—'}</span>
-                    </TableCell>
-                  )}
-                  {showLocation && (
-                    <TableCell>
-                      <span className="text-muted-foreground text-sm">{a.locationName ?? '—'}</span>
-                    </TableCell>
-                  )}
-                  {showStatus && (
-                    <TableCell>
-                      <AssetStatusBadge status={a.status} />
-                    </TableCell>
-                  )}
-                  {showPurchaseDate && (
-                    <TableCell>
-                      <span className="text-muted-foreground text-sm">
-                        {formatDate(a.purchaseDate)}
-                      </span>
-                    </TableCell>
-                  )}
-                  {showPurchaseCost && (
-                    <TableCell>
-                      <span className="text-muted-foreground text-sm">
-                        {a.purchaseCost != null ? formatCurrency(a.purchaseCost) : '—'}
-                      </span>
-                    </TableCell>
-                  )}
-                  {showWarrantyExpiry && (
-                    <TableCell>
-                      <span className="text-muted-foreground text-sm">
-                        {a.warrantyExpiry ? formatDate(a.warrantyExpiry) : '—'}
-                      </span>
-                    </TableCell>
-                  )}
-                  {showVendor && (
-                    <TableCell>
-                      <span className="text-muted-foreground text-sm">{a.vendorName ?? '—'}</span>
-                    </TableCell>
-                  )}
+                  ))}
                 </TableRow>
               ))
             )}

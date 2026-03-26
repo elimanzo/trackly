@@ -6,11 +6,13 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   type SortingState,
+  type Updater,
+  type VisibilityState,
   useReactTable,
 } from '@tanstack/react-table'
-import { ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { ArrowUpDown, MoreHorizontal, Pencil, SlidersHorizontal, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 import { deleteAsset } from '@/app/actions/assets'
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
@@ -19,8 +21,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -37,6 +41,8 @@ import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
+
+const LS_KEY = 'asset-table-cols'
 
 interface AssetTableProps {
   assets: AssetWithRelations[]
@@ -61,6 +67,38 @@ export function AssetTable({ assets }: AssetTableProps) {
   const showVendor = tc.showVendor ?? false
 
   const canEditAssets = user ? canEdit(user.role) : false
+
+  // Columns the org allows — only these appear in the toggle dropdown
+  const toggleableCols = [
+    { id: 'assignedTo', label: 'Assigned to', allowed: showAssignedTo },
+    { id: 'categoryName', label: 'Category', allowed: showCategory },
+    { id: 'departmentName', label: deptLabel, allowed: showDepartment },
+    { id: 'status', label: 'Status', allowed: showStatus },
+    { id: 'locationName', label: 'Location', allowed: showLocation },
+    { id: 'purchaseDate', label: 'Purchase date', allowed: showPurchaseDate },
+    { id: 'purchaseCost', label: 'Cost', allowed: showPurchaseCost },
+    { id: 'warrantyExpiry', label: 'Warranty', allowed: showWarrantyExpiry },
+    { id: 'vendorName', label: 'Vendor', allowed: showVendor },
+  ].filter((c) => c.allowed)
+
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    try {
+      const stored = localStorage.getItem(LS_KEY)
+      return stored ? (JSON.parse(stored) as VisibilityState) : {}
+    } catch {
+      return {}
+    }
+  })
+
+  const updateVisibility = useCallback((updater: Updater<VisibilityState>) => {
+    setColumnVisibility((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }, [])
 
   const allColumns: (ColumnDef<AssetWithRelations> | false)[] = [
     {
@@ -244,14 +282,41 @@ export function AssetTable({ assets }: AssetTableProps) {
   const table = useReactTable({
     data: assets,
     columns,
-    state: { sorting },
+    state: { sorting, columnVisibility },
     onSortingChange: setSorting,
+    onColumnVisibilityChange: updateVisibility,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
   return (
     <>
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel className="text-xs">Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {toggleableCols.map((col) => (
+              <DropdownMenuCheckboxItem
+                key={col.id}
+                checked={columnVisibility[col.id] !== false}
+                onCheckedChange={(checked) =>
+                  updateVisibility((prev) => ({ ...prev, [col.id]: checked }))
+                }
+              >
+                {col.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <div className="rounded-md border shadow-sm">
         <Table>
           <TableHeader>
@@ -271,7 +336,7 @@ export function AssetTable({ assets }: AssetTableProps) {
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={table.getVisibleLeafColumns().length}
                   className="text-muted-foreground py-12 text-center text-sm"
                 >
                   No assets found.

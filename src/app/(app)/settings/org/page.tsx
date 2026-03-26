@@ -61,6 +61,7 @@ const OrgFormSchema = z.object({
   showRptPurchaseCost: z.boolean(),
   showRptWarrantyExpiry: z.boolean(),
   showRptVendor: z.boolean(),
+  showRptNotes: z.boolean(),
 })
 type OrgFormInput = z.infer<typeof OrgFormSchema>
 
@@ -135,6 +136,7 @@ export default function OrgSettingsPage() {
       showRptPurchaseCost: false,
       showRptWarrantyExpiry: false,
       showRptVendor: false,
+      showRptNotes: false,
     },
   })
 
@@ -170,6 +172,7 @@ export default function OrgSettingsPage() {
         showRptPurchaseCost: rc.showPurchaseCost ?? false,
         showRptWarrantyExpiry: rc.showWarrantyExpiry ?? false,
         showRptVendor: rc.showVendor ?? false,
+        showRptNotes: rc.showNotes ?? false,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,6 +210,7 @@ export default function OrgSettingsPage() {
       showPurchaseCost: data.showRptPurchaseCost,
       showWarrantyExpiry: data.showRptWarrantyExpiry,
       showVendor: data.showRptVendor,
+      showNotes: data.showRptNotes,
     }
     const result = await updateOrganization({
       name: data.name,
@@ -394,6 +398,7 @@ export default function OrgSettingsPage() {
                 label="Warranty expiry"
               />
               <ToggleRow control={form.control} name="showRptVendor" label="Vendor" />
+              <ToggleRow control={form.control} name="showRptNotes" label="Notes" />
             </CardContent>
           </Card>
 

@@ -41,6 +41,7 @@ export const ReportConfigSchema = z.object({
   showPurchaseCost: z.boolean().optional(),
   showWarrantyExpiry: z.boolean().optional(),
   showVendor: z.boolean().optional(),
+  showNotes: z.boolean().optional(),
 })
 
 export type ReportConfig = z.infer<typeof ReportConfigSchema>
