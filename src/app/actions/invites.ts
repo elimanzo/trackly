@@ -61,7 +61,8 @@ export async function sendInviteAction(
 
   // Send invite email via Supabase (routes through configured SMTP)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const orgName = (profile.organizations as { name: string } | null)?.name ?? ''
+  const orgs = profile.organizations as unknown as { name: string }[] | { name: string } | null
+  const orgName = (Array.isArray(orgs) ? orgs[0]?.name : orgs?.name) ?? ''
   const next = `/invite/accept?org=${encodeURIComponent(orgName)}`
   const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`
 
