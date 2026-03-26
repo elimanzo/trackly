@@ -46,7 +46,7 @@ export default function SetupCategoriesPage() {
     setSaving(true)
     for (const name of selected) {
       const result = await createCategory({ name })
-      if (result?.error) {
+      if ('error' in result) {
         toast.error(`Failed to create "${name}": ${result.error}`)
         setSaving(false)
         return

@@ -1,11 +1,25 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 
-import { createAsset, updateAsset } from '@/app/actions/assets'
+import { createAsset, getNextTagForPrefix, getTagPrefixes, updateAsset } from '@/app/actions/assets'
+import { createCategory } from '@/app/actions/categories'
+import { createDepartment } from '@/app/actions/departments'
+import { createLocation } from '@/app/actions/locations'
+import { createVendor } from '@/app/actions/vendors'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -33,6 +47,67 @@ import { ASSET_STATUSES, AssetFormSchema, type AssetFormInput } from '@/lib/type
 import type { AssetWithRelations } from '@/lib/types'
 import { useOrg } from '@/providers/OrgProvider'
 
+// ---------------------------------------------------------------------------
+// QuickAddDialog — generic single-name creation dialog
+// ---------------------------------------------------------------------------
+
+interface QuickAddDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  onAdd: (name: string) => Promise<string | null> // returns new id or null on error
+}
+
+function QuickAddDialog({ open, onOpenChange, title, onAdd }: QuickAddDialogProps) {
+  const [name, setName] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    if (!name.trim()) return
+    setSaving(true)
+    const id = await onAdd(name.trim())
+    setSaving(false)
+    if (id) {
+      setName('')
+      onOpenChange(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <Input
+          autoFocus
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void handleSave()
+            }
+          }}
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={!name.trim() || saving} onClick={() => void handleSave()}>
+            Add
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// AssetForm
+// ---------------------------------------------------------------------------
+
 interface AssetFormProps {
   asset?: AssetWithRelations
   defaultAssetTag?: string
@@ -48,6 +123,73 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
   const { data: vendors } = useVendors()
 
   const isEdit = !!asset
+
+  // ---------------------------------------------------------------------------
+  // Prefix-based tag state (new assets only)
+  // ---------------------------------------------------------------------------
+
+  // Split default tag into prefix + suffix (e.g. "AST-00001" → "AST", "00001")
+  const initialPrefix = (() => {
+    const tag = defaultAssetTag ?? 'AST-0001'
+    const idx = tag.lastIndexOf('-')
+    return idx > 0 ? tag.slice(0, idx) : 'AST'
+  })()
+
+  const initialSuffix = (() => {
+    const tag = defaultAssetTag ?? ''
+    const idx = tag.lastIndexOf('-')
+    return idx > 0 ? tag.slice(idx + 1) : '0001'
+  })()
+
+  const [prefix, setPrefix] = useState(initialPrefix)
+  const [tagSuffix, setTagSuffix] = useState(initialSuffix)
+  const [prefixSuggestions, setPrefixSuggestions] = useState<string[]>([])
+  const prefixInputId = 'prefix-suggestions'
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Fetch prefix suggestions once on mount
+  useEffect(() => {
+    getTagPrefixes()
+      .then(setPrefixSuggestions)
+      .catch(() => {})
+  }, [])
+
+  // Fetch next suffix when prefix changes (debounced)
+  useEffect(() => {
+    if (isEdit) return
+    const trimmed = prefix.trim()
+    if (!trimmed) return
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      getNextTagForPrefix(trimmed)
+        .then((tag) => {
+          const idx = tag.lastIndexOf('-')
+          if (idx > 0) setTagSuffix(tag.slice(idx + 1))
+        })
+        .catch(() => {})
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [prefix, isEdit])
+
+  const fullTag = isEdit
+    ? (asset?.assetTag ?? '')
+    : `${prefix.toUpperCase().replace(/[^A-Z0-9]/g, '') || prefix}-${tagSuffix}`
+
+  // ---------------------------------------------------------------------------
+  // Quick-add dialog state
+  // ---------------------------------------------------------------------------
+
+  const [quickAdd, setQuickAdd] = useState<
+    'category' | 'department' | 'location' | 'vendor' | null
+  >(null)
+
+  // ---------------------------------------------------------------------------
+  // Form
+  // ---------------------------------------------------------------------------
 
   const form = useForm<AssetFormInput>({
     resolver: zodResolver(AssetFormSchema),
@@ -67,6 +209,13 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
       notes: asset?.notes ?? '',
     },
   })
+
+  // Keep assetTag in sync with prefix/suffix changes (new only)
+  useEffect(() => {
+    if (!isEdit) {
+      form.setValue('assetTag', fullTag, { shouldValidate: false })
+    }
+  }, [fullTag, isEdit, form])
 
   const isBulk = form.watch('isBulk')
 
@@ -106,19 +255,56 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
               </FormItem>
             )}
           />
+
+          {/* Asset tag */}
           <FormField
             control={form.control}
             name="assetTag"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Asset tag</FormLabel>
-                <FormControl>
-                  <Input placeholder="AST-00001" {...field} />
-                </FormControl>
+                {isEdit ? (
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    {/* Prefix input */}
+                    <FormControl>
+                      <Input
+                        list={prefixInputId}
+                        placeholder="PREFIX"
+                        className="uppercase"
+                        value={prefix}
+                        onChange={(e) =>
+                          setPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                        }
+                        onBlur={() => {
+                          // Ensure form value is synced on blur
+                          form.setValue('assetTag', fullTag)
+                        }}
+                      />
+                    </FormControl>
+                    <datalist id={prefixInputId}>
+                      {prefixSuggestions.map((p) => (
+                        <option key={p} value={p} />
+                      ))}
+                    </datalist>
+                    <span className="text-muted-foreground shrink-0 text-sm">-</span>
+                    {/* Read-only suffix */}
+                    <Input
+                      readOnly
+                      value={tagSuffix}
+                      className="text-muted-foreground w-16 cursor-default bg-transparent text-center"
+                      tabIndex={-1}
+                    />
+                  </div>
+                )}
                 <FormMessage />
               </FormItem>
             )}
           />
+
           {!isBulk && (
             <FormField
               control={form.control}
@@ -190,6 +376,7 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
 
         {/* Classification */}
         <div className="grid gap-4 sm:grid-cols-3">
+          {/* Department */}
           <FormField
             control={form.control}
             name="departmentId"
@@ -198,7 +385,13 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
                 <FormLabel>{deptLabel}</FormLabel>
                 <Select
                   value={field.value ?? '__none__'}
-                  onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                  onValueChange={(v) => {
+                    if (v === '__new__') {
+                      setQuickAdd('department')
+                    } else {
+                      field.onChange(v === '__none__' ? null : v)
+                    }
+                  }}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -212,12 +405,20 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
                         {d.name}
                       </SelectItem>
                     ))}
+                    <SelectItem value="__new__" className="text-primary font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <Plus className="h-3.5 w-3.5" />
+                        Add {deptLabel.toLowerCase()}
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {/* Category */}
           <FormField
             control={form.control}
             name="categoryId"
@@ -226,7 +427,13 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
                 <FormLabel>Category</FormLabel>
                 <Select
                   value={field.value ?? '__none__'}
-                  onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                  onValueChange={(v) => {
+                    if (v === '__new__') {
+                      setQuickAdd('category')
+                    } else {
+                      field.onChange(v === '__none__' ? null : v)
+                    }
+                  }}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -240,12 +447,20 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
                         {c.name}
                       </SelectItem>
                     ))}
+                    <SelectItem value="__new__" className="text-primary font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <Plus className="h-3.5 w-3.5" />
+                        Add category
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {/* Location */}
           <FormField
             control={form.control}
             name="locationId"
@@ -254,7 +469,13 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
                 <FormLabel>Location</FormLabel>
                 <Select
                   value={field.value ?? '__none__'}
-                  onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                  onValueChange={(v) => {
+                    if (v === '__new__') {
+                      setQuickAdd('location')
+                    } else {
+                      field.onChange(v === '__none__' ? null : v)
+                    }
+                  }}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -268,6 +489,12 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
                         {l.name}
                       </SelectItem>
                     ))}
+                    <SelectItem value="__new__" className="text-primary font-medium">
+                      <span className="flex items-center gap-1.5">
+                        <Plus className="h-3.5 w-3.5" />
+                        Add location
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -345,7 +572,13 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
               <FormLabel>Vendor</FormLabel>
               <Select
                 value={field.value ?? '__none__'}
-                onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                onValueChange={(v) => {
+                  if (v === '__new__') {
+                    setQuickAdd('vendor')
+                  } else {
+                    field.onChange(v === '__none__' ? null : v)
+                  }
+                }}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -359,6 +592,12 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
                       {v.name}
                     </SelectItem>
                   ))}
+                  <SelectItem value="__new__" className="text-primary font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <Plus className="h-3.5 w-3.5" />
+                      Add vendor
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -393,6 +632,67 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
           </Button>
         </div>
       </form>
+
+      {/* Quick-add dialogs */}
+      {/* The server action inserts the record; OrgDataProvider's realtime subscription
+          will pick it up and refresh the list automatically. We just set the form value
+          immediately using the returned ID. */}
+      <QuickAddDialog
+        open={quickAdd === 'department'}
+        onOpenChange={(open) => !open && setQuickAdd(null)}
+        title={`Add ${deptLabel}`}
+        onAdd={async (name) => {
+          const result = await createDepartment({ name })
+          if ('error' in result) {
+            toast.error(result.error)
+            return null
+          }
+          form.setValue('departmentId', result.id)
+          return result.id
+        }}
+      />
+      <QuickAddDialog
+        open={quickAdd === 'category'}
+        onOpenChange={(open) => !open && setQuickAdd(null)}
+        title="Add category"
+        onAdd={async (name) => {
+          const result = await createCategory({ name })
+          if ('error' in result) {
+            toast.error(result.error)
+            return null
+          }
+          form.setValue('categoryId', result.id)
+          return result.id
+        }}
+      />
+      <QuickAddDialog
+        open={quickAdd === 'location'}
+        onOpenChange={(open) => !open && setQuickAdd(null)}
+        title="Add location"
+        onAdd={async (name) => {
+          const result = await createLocation({ name })
+          if ('error' in result) {
+            toast.error(result.error)
+            return null
+          }
+          form.setValue('locationId', result.id)
+          return result.id
+        }}
+      />
+      <QuickAddDialog
+        open={quickAdd === 'vendor'}
+        onOpenChange={(open) => !open && setQuickAdd(null)}
+        title="Add vendor"
+        onAdd={async (name) => {
+          const result = await createVendor({ name })
+          if ('error' in result) {
+            toast.error(result.error)
+            return null
+          }
+          form.setValue('vendorId', result.id)
+          return result.id
+        }}
+      />
     </Form>
   )
 }

@@ -420,3 +420,50 @@ export async function getAssetCount(): Promise<number> {
 
   return count ?? 0
 }
+
+/** Return distinct tag prefixes used in the org (everything before the last '-') */
+export async function getTagPrefixes(): Promise<string[]> {
+  const ctx = await getContext()
+  if (!ctx) return []
+
+  const { data } = await ctx.admin
+    .from('assets')
+    .select('asset_tag')
+    .eq('org_id', ctx.orgId)
+    .is('deleted_at', null)
+
+  if (!data) return []
+
+  const prefixes = new Set<string>()
+  for (const { asset_tag } of data as { asset_tag: string }[]) {
+    const idx = asset_tag.lastIndexOf('-')
+    if (idx > 0) prefixes.add(asset_tag.slice(0, idx))
+  }
+
+  return Array.from(prefixes).sort()
+}
+
+/** Return the next tag for a given prefix (e.g. "LAPTOP" → "LAPTOP-0001") */
+export async function getNextTagForPrefix(prefix: string): Promise<string> {
+  const ctx = await getContext()
+  const sanitized = prefix.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  if (!sanitized || !ctx) return `${sanitized || prefix}-0001`
+
+  const { data } = await ctx.admin
+    .from('assets')
+    .select('asset_tag')
+    .eq('org_id', ctx.orgId)
+    .is('deleted_at', null)
+    .ilike('asset_tag', `${sanitized}-%`)
+
+  let max = 0
+  for (const { asset_tag } of (data ?? []) as { asset_tag: string }[]) {
+    const match = new RegExp(`^${sanitized}-(\\d+)$`, 'i').exec(asset_tag)
+    if (match) {
+      const n = parseInt(match[1], 10)
+      if (n > max) max = n
+    }
+  }
+
+  return `${sanitized}-${String(max + 1).padStart(4, '0')}`
+}

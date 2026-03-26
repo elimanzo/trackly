@@ -5,7 +5,9 @@ import type { VendorFormInput } from '@/lib/types'
 import { logAudit } from './_audit'
 import { getContext } from './_context'
 
-export async function createVendor(input: VendorFormInput): Promise<{ error: string } | null> {
+export async function createVendor(
+  input: VendorFormInput
+): Promise<{ id: string } | { error: string }> {
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
@@ -31,7 +33,7 @@ export async function createVendor(input: VendorFormInput): Promise<{ error: str
     action: 'created',
   })
 
-  return null
+  return { id: data.id as string }
 }
 
 export async function updateVendor(

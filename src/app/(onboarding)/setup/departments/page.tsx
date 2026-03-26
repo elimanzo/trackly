@@ -46,7 +46,7 @@ export default function SetupDepartmentsPage() {
     setSaving(true)
     for (const name of selected) {
       const result = await createDepartment({ name })
-      if (result?.error) {
+      if ('error' in result) {
         toast.error(`Failed to create "${name}": ${result.error}`)
         setSaving(false)
         return
