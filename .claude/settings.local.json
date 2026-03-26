@@ -10,7 +10,8 @@
       "Bash(pnpm type-check:*)",
       "Bash(pnpm lint:*)",
       "Bash(ls:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(grep -E \"\\\\.\\(sql|ts\\)$\")"
     ]
   }
 }

@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { deleteAsset } from '@/app/actions/assets'
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -134,7 +135,18 @@ export function AssetTable({ assets }: AssetTableProps) {
     showStatus && {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => <AssetStatusBadge status={row.original.status} />,
+      cell: ({ row }) => {
+        const asset = row.original
+        if (asset.isBulk) {
+          const available = (asset.quantity ?? 0) - asset.quantityCheckedOut
+          return (
+            <Badge variant="secondary" className="text-xs">
+              {available}/{asset.quantity} avail.
+            </Badge>
+          )
+        }
+        return <AssetStatusBadge status={asset.status} />
+      },
     },
     showLocation && {
       accessorKey: 'locationName',

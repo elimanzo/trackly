@@ -28,18 +28,47 @@ type AssignmentRow = {
   expected_return_at: string | null
   returned_at: string | null
   notes: string | null
+  quantity: number
+  department_id: string | null
+  departments: { name: string } | null
+  location_id: string | null
+  locations: { name: string } | null
+}
+
+function mapAssignment(a: AssignmentRow, assetId: string): AssetAssignment {
+  return {
+    id: a.id,
+    assetId,
+    assignedToUserId: a.assigned_to_user_id,
+    assignedToName: a.assigned_to_name,
+    assignedBy: a.assigned_by,
+    assignedByName: a.assigned_by_name,
+    assignedAt: a.assigned_at,
+    expectedReturnAt: a.expected_return_at,
+    returnedAt: a.returned_at,
+    notes: a.notes,
+    quantity: a.quantity ?? 1,
+    departmentId: a.department_id ?? null,
+    departmentName: a.departments?.name ?? null,
+    locationId: a.location_id ?? null,
+    locationName: a.locations?.name ?? null,
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAssetRow(row: any): AssetWithRelations {
   const assignments: AssignmentRow[] = row.asset_assignments ?? []
-  const active = assignments.find((a) => a.returned_at === null) ?? null
+  const activeRows = assignments.filter((a) => a.returned_at === null)
+  const activeAssignments = activeRows.map((a) => mapAssignment(a, row.id as string))
+  const quantityCheckedOut = activeAssignments.reduce((sum, a) => sum + a.quantity, 0)
 
   return {
     id: row.id as string,
     orgId: row.org_id as string,
     assetTag: row.asset_tag as string,
     name: row.name as string,
+    isBulk: (row.is_bulk as boolean) ?? false,
+    quantity: (row.quantity as number | null) ?? null,
     categoryId: (row.category_id as string | null) ?? null,
     categoryName: (row.categories as { name: string } | null)?.name ?? null,
     departmentId: (row.department_id as string | null) ?? null,
@@ -58,25 +87,15 @@ function mapAssetRow(row: any): AssetWithRelations {
     updatedAt: row.updated_at as string,
     createdBy: (row.created_by as string) ?? '',
     updatedBy: (row.updated_by as string) ?? '',
-    currentAssignment: active
-      ? {
-          id: active.id,
-          assetId: row.id as string,
-          assignedToUserId: active.assigned_to_user_id,
-          assignedToName: active.assigned_to_name,
-          assignedBy: active.assigned_by,
-          assignedByName: active.assigned_by_name,
-          assignedAt: active.assigned_at,
-          expectedReturnAt: active.expected_return_at,
-          returnedAt: active.returned_at,
-          notes: active.notes,
-        }
-      : null,
+    quantityCheckedOut,
+    activeAssignments,
+    currentAssignment: activeAssignments[0] ?? null,
   }
 }
 
 const ASSET_SELECT = `
-  id, org_id, asset_tag, name, category_id, department_id, location_id, status,
+  id, org_id, asset_tag, name, is_bulk, quantity,
+  category_id, department_id, location_id, status,
   purchase_date, purchase_cost, warranty_expiry, vendor_id, notes,
   deleted_at, created_by, updated_by, created_at, updated_at,
   departments(name),
@@ -86,7 +105,9 @@ const ASSET_SELECT = `
   asset_assignments(
     id, assigned_to_user_id, assigned_to_name,
     assigned_by, assigned_by_name, assigned_at,
-    expected_return_at, returned_at, notes
+    expected_return_at, returned_at, notes,
+    quantity, department_id, location_id,
+    departments(name), locations(name)
   )
 `
 

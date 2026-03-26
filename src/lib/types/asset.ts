@@ -35,6 +35,8 @@ export const AssetSchema = z.object({
   orgId: z.string().uuid(),
   assetTag: z.string().min(1).max(50),
   name: z.string().min(1).max(200),
+  isBulk: z.boolean(),
+  quantity: z.number().int().nonnegative().nullable(),
   categoryId: z.string().uuid().nullable(),
   departmentId: z.string().uuid().nullable(),
   locationId: z.string().uuid().nullable(),
@@ -68,6 +70,11 @@ export const AssetAssignmentSchema = z.object({
   expectedReturnAt: z.string().datetime().nullable(),
   returnedAt: z.string().datetime().nullable(),
   notes: z.string().max(1000).nullable(),
+  quantity: z.number().int().min(1),
+  departmentId: z.string().uuid().nullable(),
+  departmentName: z.string().nullable(),
+  locationId: z.string().uuid().nullable(),
+  locationName: z.string().nullable(),
 })
 
 export type AssetAssignment = z.infer<typeof AssetAssignmentSchema>
@@ -81,7 +88,9 @@ export type AssetWithRelations = Asset & {
   departmentName: string | null
   locationName: string | null
   vendorName: string | null
-  currentAssignment: AssetAssignment | null
+  quantityCheckedOut: number
+  currentAssignment: AssetAssignment | null // non-bulk: single active assignment
+  activeAssignments: AssetAssignment[] // bulk: all active assignments
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +100,8 @@ export type AssetWithRelations = Asset & {
 export const AssetFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(200),
   assetTag: z.string().min(1, 'Asset tag is required').max(50),
+  isBulk: z.boolean(),
+  quantity: z.number().int().min(1, 'Quantity must be at least 1').nullable(),
   categoryId: z.string().min(1).nullable(),
   departmentId: z.string().uuid().nullable(),
   locationId: z.string().min(1).nullable(),
@@ -111,6 +122,9 @@ export type AssetFormInput = z.infer<typeof AssetFormSchema>
 export const CheckoutFormSchema = z.object({
   assignedToUserId: z.string().uuid().nullable(),
   assignedToName: z.string().min(1, 'Assignee name is required').max(200),
+  quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+  departmentId: z.string().uuid().nullable(),
+  locationId: z.string().uuid().nullable(),
   expectedReturnAt: z.string().nullable(),
   notes: z.string().max(1000).optional(),
 })
