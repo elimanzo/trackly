@@ -1,10 +1,12 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { updateOrganization } from '@/app/actions/org'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -30,18 +32,26 @@ const OrgFormSchema = z.object({
 type OrgFormInput = z.infer<typeof OrgFormSchema>
 
 export default function OrgSettingsPage() {
-  const { org } = useOrg()
+  const { org, setOrg } = useOrg()
 
   const form = useForm<OrgFormInput>({
     resolver: zodResolver(OrgFormSchema),
-    defaultValues: {
-      name: org?.name ?? '',
-      slug: org?.slug ?? '',
-    },
+    defaultValues: { name: '', slug: '' },
   })
 
-  function onSubmit(_data: OrgFormInput) {
-    // Phase 2: persist to Supabase
+  useEffect(() => {
+    if (org) {
+      form.reset({ name: org.name, slug: org.slug })
+    }
+  }, [org, form])
+
+  async function onSubmit(data: OrgFormInput) {
+    const result = await updateOrganization(data)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    if (org) setOrg({ ...org, name: data.name, slug: data.slug })
     toast.success('Organisation settings saved')
   }
 
@@ -85,7 +95,9 @@ export default function OrgSettingsPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Save changes</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                Save changes
+              </Button>
             </form>
           </Form>
         </CardContent>

@@ -37,3 +37,31 @@ export async function createOrganization(
 
   redirect('/setup/departments')
 }
+
+export async function updateOrganization(
+  input: CreateOrganizationInput
+): Promise<{ error: string } | { error: null }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const admin = createAdminClient()
+
+  const { data: profile } = await admin.from('profiles').select('org_id').eq('id', user.id).single()
+
+  if (!profile?.org_id) return { error: 'No organisation found' }
+
+  const { error } = await admin
+    .from('organizations')
+    .update({ name: input.name, slug: input.slug })
+    .eq('id', profile.org_id)
+
+  if (error) {
+    if (error.code === '23505') return { error: 'That URL slug is already taken.' }
+    return { error: error.message }
+  }
+
+  return { error: null }
+}

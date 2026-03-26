@@ -1,9 +1,10 @@
 'use client'
 
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
-import { MOCK_ORG } from '@/lib/mock-data'
+import { createClient } from '@/lib/supabase/client'
 import type { Organization } from '@/lib/types'
+import { useAuth } from '@/providers/AuthProvider'
 
 const ONBOARDING_KEY = 'asset-tracker-onboarding-completed'
 
@@ -18,17 +19,43 @@ type OrgContextValue = {
 const OrgContext = createContext<OrgContextValue | null>(null)
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
-  // Phase 1: always use the mock org; track onboarding state per-session
-  const [org] = useState<Organization | null>(MOCK_ORG)
+  const { user } = useAuth()
+  const [org, setOrgState] = useState<Organization | null>(null)
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true
     const stored = localStorage.getItem(ONBOARDING_KEY)
-    // Default to true so existing "logged in" users go straight to dashboard
     return stored === null ? true : stored === 'true'
   })
 
-  const setOrg = useCallback((_org: Organization) => {
-    // Phase 2: will persist to Supabase
+  useEffect(() => {
+    if (!user?.orgId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOrgState(null)
+      return
+    }
+    const supabase = createClient()
+    supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', user.orgId)
+      .single()
+      .then(({ data }: { data: Record<string, unknown> | null }) => {
+        if (!data) return
+        setOrgState({
+          id: data.id as string,
+          name: data.name as string,
+          slug: data.slug as string,
+          ownerId: data.owner_id as string,
+          logoUrl: (data.logo_url as string | null) ?? null,
+          onboardingCompleted: data.onboarding_completed as boolean,
+          createdAt: data.created_at as string,
+          updatedAt: data.updated_at as string,
+        })
+      })
+  }, [user?.orgId])
+
+  const setOrg = useCallback((o: Organization) => {
+    setOrgState(o)
   }, [])
 
   const completeOnboarding = useCallback(() => {
@@ -36,7 +63,6 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     setOnboardingCompleted(true)
   }, [])
 
-  /** Dev helper: reset onboarding so the flow can be demoed again */
   const resetOnboarding = useCallback(() => {
     localStorage.setItem(ONBOARDING_KEY, 'false')
     setOnboardingCompleted(false)
