@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Organization } from '@/lib/types'
 import { useAuth } from '@/providers/AuthProvider'
 
-const ONBOARDING_KEY = 'asset-tracker-onboarding-completed'
+const ONBOARDING_KEY = 'trackly-onboarding-completed'
 
 type OrgContextValue = {
   org: Organization | null
