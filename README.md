@@ -101,8 +101,7 @@ src/
 
 supabase/
 ├── migrations/         # Incremental schema migrations (applied in order)
-├── seeds/              # Dev seed data (users, org, assets)
-└── schema.sql          # Full schema reference (also migration 000)
+└── seeds/              # Dev seed data (users, org, assets)
 ```
 
 ## Adding a migration
