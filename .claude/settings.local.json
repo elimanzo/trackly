@@ -11,7 +11,8 @@
       "Bash(pnpm lint:*)",
       "Bash(ls:*)",
       "Bash(pnpm build:*)",
-      "Bash(grep -E \"\\\\.\\(sql|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(sql|ts\\)$\")",
+      "Bash(python3 -c \":*)"
     ]
   }
 }
