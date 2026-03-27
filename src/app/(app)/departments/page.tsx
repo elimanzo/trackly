@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
+import { countAssetsInDepartment } from '@/app/actions/departments'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -34,7 +35,7 @@ export default function DepartmentsPage() {
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Department | null>(null)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; assetCount: number } | null>(null)
 
   const form = useForm<DepartmentFormInput>({
     resolver: zodResolver(DepartmentFormSchema),
@@ -53,6 +54,11 @@ export default function DepartmentsPage() {
     setEditing(dept)
     form.reset({ name: dept.name, description: dept.description ?? '' })
     setSheetOpen(true)
+  }
+
+  async function openDelete(id: string) {
+    const count = await countAssetsInDepartment(id)
+    setDeleteTarget({ id, assetCount: count })
   }
 
   function onSubmit(data: DepartmentFormInput) {
@@ -115,7 +121,7 @@ export default function DepartmentsPage() {
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive h-8 w-8"
-                      onClick={() => setDeleteId(dept.id)}
+                      onClick={() => void openDelete(dept.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -180,17 +186,21 @@ export default function DepartmentsPage() {
       </Sheet>
 
       <ConfirmDialog
-        open={deleteId !== null}
+        open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleteId(null)
+          if (!open) setDeleteTarget(null)
         }}
         title={`Delete ${deptLabel.toLowerCase()}?`}
-        description={`This will permanently remove the ${deptLabel.toLowerCase()}.`}
+        description={
+          deleteTarget?.assetCount
+            ? `${deleteTarget.assetCount} asset${deleteTarget.assetCount !== 1 ? 's' : ''} will have their ${deptLabel.toLowerCase()} cleared. This cannot be undone.`
+            : `This will permanently remove the ${deptLabel.toLowerCase()}.`
+        }
         confirmLabel="Delete"
         destructive
         onConfirm={() => {
-          if (deleteId) deleteDepartment(deleteId)
-          setDeleteId(null)
+          if (deleteTarget) deleteDepartment(deleteTarget.id)
+          setDeleteTarget(null)
         }}
       />
     </>

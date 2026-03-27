@@ -244,10 +244,15 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
       void queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     }
 
+    const refetchAndInvalidateAssets = () => {
+      void refetch()
+      invalidateAssets()
+    }
+
     const channel = supabase
       .channel(`org-data-${orgId}`)
-      .on('postgres_changes', filter('departments'), () => void refetch())
-      .on('postgres_changes', filter('categories'), () => void refetch())
+      .on('postgres_changes', filter('departments'), refetchAndInvalidateAssets)
+      .on('postgres_changes', filter('categories'), refetchAndInvalidateAssets)
       .on('postgres_changes', filter('locations'), () => void refetch())
       .on('postgres_changes', filter('vendors'), () => void refetch())
       .on('postgres_changes', filter('profiles'), () => void refetch())

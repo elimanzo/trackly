@@ -59,6 +59,20 @@ export async function updateCategory(
   return null
 }
 
+export async function countAssetsInCategory(id: string): Promise<number> {
+  const ctx = await getContext()
+  if (!ctx) return 0
+
+  const { count } = await ctx.admin
+    .from('assets')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', ctx.orgId)
+    .eq('category_id', id)
+    .is('deleted_at', null)
+
+  return count ?? 0
+}
+
 export async function deleteCategory(id: string): Promise<{ error: string } | null> {
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
@@ -72,6 +86,13 @@ export async function deleteCategory(id: string): Promise<{ error: string } | nu
     .eq('org_id', ctx.orgId)
 
   if (error) return { error: error.message }
+
+  // Null out category_id on assets — mirrors what ON DELETE SET NULL would do for a hard delete
+  await ctx.admin
+    .from('assets')
+    .update({ category_id: null })
+    .eq('org_id', ctx.orgId)
+    .eq('category_id', id)
 
   await logAudit(ctx, {
     entityType: 'category',

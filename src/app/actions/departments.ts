@@ -54,6 +54,20 @@ export async function updateDepartment(
   return null
 }
 
+export async function countAssetsInDepartment(id: string): Promise<number> {
+  const ctx = await getContext()
+  if (!ctx) return 0
+
+  const { count } = await ctx.admin
+    .from('assets')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', ctx.orgId)
+    .eq('department_id', id)
+    .is('deleted_at', null)
+
+  return count ?? 0
+}
+
 export async function deleteDepartment(id: string): Promise<{ error: string } | null> {
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
@@ -71,6 +85,13 @@ export async function deleteDepartment(id: string): Promise<{ error: string } | 
     .eq('org_id', ctx.orgId)
 
   if (error) return { error: error.message }
+
+  // Null out department_id on assets — mirrors what ON DELETE SET NULL would do for a hard delete
+  await ctx.admin
+    .from('assets')
+    .update({ department_id: null })
+    .eq('org_id', ctx.orgId)
+    .eq('department_id', id)
 
   await logAudit(ctx, {
     entityType: 'department',

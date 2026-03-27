@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
+import { countAssetsInCategory } from '@/app/actions/categories'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -30,7 +31,7 @@ export default function CategoriesPage() {
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; assetCount: number } | null>(null)
 
   const form = useForm<CategoryFormInput>({
     resolver: zodResolver(CategoryFormSchema),
@@ -49,6 +50,11 @@ export default function CategoriesPage() {
     setEditing(cat)
     form.reset({ name: cat.name, description: cat.description ?? '', icon: cat.icon ?? '' })
     setSheetOpen(true)
+  }
+
+  async function openDelete(id: string) {
+    const count = await countAssetsInCategory(id)
+    setDeleteTarget({ id, assetCount: count })
   }
 
   function onSubmit(data: CategoryFormInput) {
@@ -111,7 +117,7 @@ export default function CategoriesPage() {
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive h-8 w-8"
-                      onClick={() => setDeleteId(cat.id)}
+                      onClick={() => void openDelete(cat.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -170,17 +176,21 @@ export default function CategoriesPage() {
       </Sheet>
 
       <ConfirmDialog
-        open={deleteId !== null}
+        open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleteId(null)
+          if (!open) setDeleteTarget(null)
         }}
         title="Delete category?"
-        description="This will permanently remove the category."
+        description={
+          deleteTarget?.assetCount
+            ? `${deleteTarget.assetCount} asset${deleteTarget.assetCount !== 1 ? 's' : ''} will have their category cleared. This cannot be undone.`
+            : 'This will permanently remove the category.'
+        }
         confirmLabel="Delete"
         destructive
         onConfirm={() => {
-          if (deleteId) deleteCategory(deleteId)
-          setDeleteId(null)
+          if (deleteTarget) deleteCategory(deleteTarget.id)
+          setDeleteTarget(null)
         }}
       />
     </>
