@@ -1,11 +1,11 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
 
-import { createOrganization } from '@/app/actions/org'
+import { checkOrgAvailability } from '@/app/actions/org'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -19,26 +19,43 @@ import {
 import { Input } from '@/components/ui/input'
 import { CreateOrganizationSchema, type CreateOrganizationInput } from '@/lib/types'
 import { slugify } from '@/lib/utils/formatters'
+import { useOnboarding } from '@/providers/OnboardingProvider'
 
 export default function CreateOrgPage() {
+  const router = useRouter()
+  const { name, slug, setOrgInfo } = useOnboarding()
+
   const form = useForm<CreateOrganizationInput>({
     resolver: zodResolver(CreateOrganizationSchema),
-    defaultValues: { name: '', slug: '' },
+    defaultValues: { name, slug },
   })
+
+  // Restore context state if user navigated back
+  useEffect(() => {
+    if (name) form.reset({ name, slug })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const watchedName = form.watch('name')
   useEffect(() => {
-    if (watchedName) {
+    // Only auto-generate slug when user hasn't manually set one yet
+    if (watchedName && !slug) {
       form.setValue('slug', slugify(watchedName), { shouldValidate: false })
     }
-  }, [watchedName, form])
+  }, [watchedName, form, slug])
 
   async function onSubmit(data: CreateOrganizationInput) {
-    const result = await createOrganization(data)
-    if (result?.error) {
-      toast.error(result.error)
+    const { nameTaken, slugTaken } = await checkOrgAvailability(data.name, data.slug)
+
+    if (nameTaken) {
+      form.setError('name', { message: 'An organization with this name already exists.' })
     }
-    // On success the server action redirects to /setup/departments
+    if (slugTaken) {
+      form.setError('slug', { message: 'This URL slug is already taken.' })
+    }
+    if (nameTaken || slugTaken) return
+
+    setOrgInfo(data.name, data.slug)
+    router.push('/setup/departments')
   }
 
   return (
@@ -83,7 +100,7 @@ export default function CreateOrgPage() {
               )}
             />
             <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Creating…' : 'Create Organization'}
+              {form.formState.isSubmitting ? 'Checking…' : 'Next'}
             </Button>
           </form>
         </Form>

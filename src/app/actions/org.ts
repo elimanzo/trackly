@@ -6,6 +6,68 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { CreateOrganizationInput, UpdateOrganizationInput } from '@/lib/types'
 
+export async function checkOrgAvailability(
+  name: string,
+  slug: string
+): Promise<{ nameTaken: boolean; slugTaken: boolean }> {
+  const admin = createAdminClient()
+  const [nameResult, slugResult] = await Promise.all([
+    admin.from('organizations').select('id').ilike('name', name).maybeSingle(),
+    admin.from('organizations').select('id').eq('slug', slug).maybeSingle(),
+  ])
+  return {
+    nameTaken: !!nameResult.data,
+    slugTaken: !!slugResult.data,
+  }
+}
+
+export async function completeOnboardingSetup(
+  org: { name: string; slug: string },
+  departments: string[],
+  categories: string[]
+): Promise<{ error: string } | never> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const admin = createAdminClient()
+
+  const { data: orgData, error: orgError } = await admin
+    .from('organizations')
+    .insert({ name: org.name, slug: org.slug, owner_id: user.id })
+    .select('id')
+    .single()
+
+  if (orgError) {
+    if (orgError.code === '23505') {
+      return {
+        error:
+          'That organization name or URL slug is already taken. Please go back and choose a different one.',
+      }
+    }
+    return { error: orgError.message }
+  }
+
+  await admin
+    .from('profiles')
+    .update({ org_id: orgData.id, invite_status: 'active' })
+    .eq('id', user.id)
+
+  if (departments.length > 0) {
+    await admin
+      .from('departments')
+      .insert(departments.map((name) => ({ name, org_id: orgData.id })))
+  }
+
+  if (categories.length > 0) {
+    await admin.from('categories').insert(categories.map((name) => ({ name, org_id: orgData.id })))
+  }
+
+  redirect('/dashboard')
+}
+
 export async function createOrganization(
   input: CreateOrganizationInput
 ): Promise<{ error: string } | never> {

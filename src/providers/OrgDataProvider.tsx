@@ -1,5 +1,6 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -62,6 +63,7 @@ const OrgDataContext = createContext<OrgDataContextValue | null>(null)
 export function OrgDataProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const orgId = user?.orgId ?? null
+  const queryClient = useQueryClient()
 
   const [departments, setDepartments] = useState<Department[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -230,6 +232,18 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
       filter: `org_id=eq.${orgId}`,
     })
 
+    const invalidateAssets = () => {
+      void queryClient.invalidateQueries({ queryKey: ['assets'] })
+      void queryClient.invalidateQueries({ queryKey: ['asset'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
+    }
+
+    const invalidateActivity = () => {
+      void queryClient.invalidateQueries({ queryKey: ['recentActivity'] })
+      void queryClient.invalidateQueries({ queryKey: ['assetHistory'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
+    }
+
     const channel = supabase
       .channel(`org-data-${orgId}`)
       .on('postgres_changes', filter('departments'), () => void refetch())
@@ -243,12 +257,14 @@ export function OrgDataProvider({ children }: { children: React.ReactNode }) {
         { event: '*', schema: 'public', table: 'user_departments' },
         () => void refetch()
       )
+      .on('postgres_changes', filter('assets'), invalidateAssets)
+      .on('postgres_changes', filter('audit_logs'), invalidateActivity)
       .subscribe()
 
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [orgId, refetch])
+  }, [orgId, refetch, queryClient])
 
   // -------------------------------------------------------------------------
   // Departments

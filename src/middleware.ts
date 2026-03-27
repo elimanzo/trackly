@@ -77,8 +77,8 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Has org → don't show org creation page
-  if (hasOrg && pathname.startsWith('/org/new')) {
+  // Has org → onboarding is done, redirect away from all onboarding routes
+  if (hasOrg && isOnboardingRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
