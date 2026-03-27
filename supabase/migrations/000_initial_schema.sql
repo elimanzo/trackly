@@ -4,12 +4,6 @@
 -- ============================================================
 
 -- ============================================================
--- EXTENSIONS
--- ============================================================
-
-create extension if not exists pgcrypto;
-
--- ============================================================
 -- ENUMS
 -- ============================================================
 
@@ -208,7 +202,7 @@ create table public.invites (
   org_id           uuid not null references public.organizations (id) on delete cascade,
   email            text not null,
   role             public.user_role not null default 'viewer',
-  token            text not null unique default encode(gen_random_bytes(32), 'hex'),
+  token            text not null unique default replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-',''),
   invited_by       uuid references public.profiles (id) on delete set null,
   invited_by_name  text not null,
   accepted_at      timestamptz,
