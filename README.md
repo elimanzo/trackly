@@ -1,36 +1,137 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Asset Tracker
 
-## Getting Started
+A multi-tenant SaaS app for tracking physical assets across departments — built with Next.js, Supabase, and Tailwind.
 
-First, run the development server:
+## Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Database / Auth:** Supabase (Postgres + RLS + Realtime)
+- **UI:** Tailwind CSS + shadcn/ui
+- **State:** React Query + React Context
+- **Deployment:** Vercel + Supabase
+
+## Roles
+
+| Role   | Access                                             |
+| ------ | -------------------------------------------------- |
+| Owner  | Full org control, settings, user management        |
+| Admin  | Full asset + user management org-wide              |
+| Editor | CRUD on assets within assigned departments         |
+| Viewer | Read-only + CSV export within assigned departments |
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- [Node.js 20+](https://nodejs.org)
+- [pnpm](https://pnpm.io) — `npm install -g pnpm`
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — required for the local Supabase stack
+- [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) — `brew install supabase/tap/supabase`
+
+### Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# 1. Clone and install dependencies
+git clone git@github.com:elimanzo/asset-tracker.git
+cd asset-tracker
+pnpm install
+
+# 2. Set up environment variables
+cp .env.local.example .env.local
+
+# 3. Start the local Supabase stack (requires Docker)
+pnpm db:start
+
+# 4. Start the dev server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Seeded accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All passwords: `Dev1234!`
 
-## Learn More
+| Email           | Name           | Role   | Department access |
+| --------------- | -------------- | ------ | ----------------- |
+| owner@acme.dev  | Alex Rivera    | Owner  | All               |
+| admin@acme.dev  | Sarah Mitchell | Admin  | All               |
+| editor@acme.dev | James Thornton | Editor | IT, Operations    |
+| viewer@acme.dev | Maria Chen     | Viewer | Finance, HR       |
 
-To learn more about Next.js, take a look at the following resources:
+### Local services
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Service         | URL                    | Description           |
+| --------------- | ---------------------- | --------------------- |
+| App             | http://localhost:3000  | Next.js dev server    |
+| Supabase Studio | http://localhost:54323 | Database GUI          |
+| Mailpit         | http://localhost:54324 | Catch-all email inbox |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Database scripts
 
-## Deploy on Vercel
+```bash
+pnpm db:start    # Start the local Supabase stack
+pnpm db:stop     # Stop the local Supabase stack
+pnpm db:reset    # Wipe DB, re-apply all migrations, re-run seeds
+pnpm db:studio   # Open Supabase Studio in browser
+pnpm db:email    # Open Mailpit (local email inbox) in browser
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`pnpm db:reset` is the main command for development — use it any time you want a clean slate with fresh seed data.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── (app)/          # Protected app routes (dashboard, assets, etc.)
+│   ├── (onboarding)/   # Org creation wizard
+│   ├── (auth)/         # Login, signup
+│   └── actions/        # Server actions (all mutations)
+├── components/         # UI components
+├── lib/
+│   ├── hooks/          # React Query data hooks
+│   ├── supabase/       # Supabase client factories (browser/server/admin)
+│   └── types/          # Zod schemas + TypeScript types
+└── providers/          # React context providers (Auth, OrgData, Onboarding)
+
+supabase/
+├── migrations/         # Incremental schema migrations (applied in order)
+├── seeds/              # Dev seed data (users, org, assets)
+└── schema.sql          # Full schema reference (also migration 000)
+```
+
+## Adding a migration
+
+```bash
+# Create a new numbered migration file
+touch supabase/migrations/010_your_change.sql
+
+# Edit the file, then apply it to your local DB
+pnpm db:reset
+```
+
+Migrations in `supabase/migrations/` are applied in filename order on every `db:reset`.
+
+---
+
+## Git workflow
+
+- `main` — production (auto-deploys to Vercel)
+- `feat/*` — feature branches, PR into `main`
+
+---
+
+## Environment variables
+
+| Variable                        | Description                                       |
+| ------------------------------- | ------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                              |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (safe to expose)                  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Service role key (server-side only, never expose) |
+
+Local values are pre-filled in `.env.local.example` — they're the same for every developer and only work against the local Docker stack.
