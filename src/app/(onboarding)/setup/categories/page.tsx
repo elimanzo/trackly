@@ -3,9 +3,7 @@
 import { Tag } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 
-import { createCategory } from '@/app/actions/categories'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -18,12 +16,13 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { SUGGESTED_CATEGORIES } from '@/lib/constants'
+import { useOnboarding } from '@/providers/OnboardingProvider'
 
 export default function SetupCategoriesPage() {
   const router = useRouter()
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const { categories, setCategories } = useOnboarding()
+  const [selected, setSelected] = useState<Set<string>>(new Set(categories))
   const [custom, setCustom] = useState('')
-  const [saving, setSaving] = useState(false)
 
   function toggle(name: string) {
     setSelected((prev) => {
@@ -42,16 +41,13 @@ export default function SetupCategoriesPage() {
     }
   }
 
-  async function onContinue() {
-    setSaving(true)
-    for (const name of selected) {
-      const result = await createCategory({ name })
-      if ('error' in result) {
-        toast.error(`Failed to create "${name}": ${result.error}`)
-        setSaving(false)
-        return
-      }
-    }
+  function onBack() {
+    setCategories(Array.from(selected))
+    router.push('/setup/departments')
+  }
+
+  function onContinue() {
+    setCategories(Array.from(selected))
     router.push('/setup/complete')
   }
 
@@ -110,11 +106,11 @@ export default function SetupCategoriesPage() {
           ))}
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="ghost" onClick={() => router.push('/setup/departments')}>
+        <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onContinue} disabled={saving}>
-          {saving ? 'Saving…' : selected.size > 0 ? `Continue (${selected.size} selected)` : 'Skip'}
+        <Button onClick={onContinue}>
+          {selected.size > 0 ? `Continue (${selected.size} selected)` : 'Skip'}
         </Button>
       </CardFooter>
     </Card>

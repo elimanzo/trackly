@@ -3,9 +3,7 @@
 import { Building2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 
-import { createDepartment } from '@/app/actions/departments'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -18,14 +16,15 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { SUGGESTED_DEPARTMENTS } from '@/lib/constants'
+import { useOnboarding } from '@/providers/OnboardingProvider'
 
 export default function SetupDepartmentsPage() {
   const router = useRouter()
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const { departments, setDepartments } = useOnboarding()
+  const [selected, setSelected] = useState<Set<string>>(new Set(departments))
   const [custom, setCustom] = useState('')
-  const [saving, setSaving] = useState(false)
 
-  function toggleDept(name: string) {
+  function toggle(name: string) {
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(name)) next.delete(name)
@@ -42,16 +41,13 @@ export default function SetupDepartmentsPage() {
     }
   }
 
-  async function onContinue() {
-    setSaving(true)
-    for (const name of selected) {
-      const result = await createDepartment({ name })
-      if ('error' in result) {
-        toast.error(`Failed to create "${name}": ${result.error}`)
-        setSaving(false)
-        return
-      }
-    }
+  function onBack() {
+    setDepartments(Array.from(selected))
+    router.push('/org/new')
+  }
+
+  function onContinue() {
+    setDepartments(Array.from(selected))
     router.push('/setup/categories')
   }
 
@@ -73,13 +69,12 @@ export default function SetupDepartmentsPage() {
               key={dept}
               className="border-border hover:bg-accent flex cursor-pointer items-center gap-2 rounded-lg border p-3 transition-colors"
             >
-              <Checkbox checked={selected.has(dept)} onCheckedChange={() => toggleDept(dept)} />
+              <Checkbox checked={selected.has(dept)} onCheckedChange={() => toggle(dept)} />
               <span className="text-sm font-medium">{dept}</span>
             </label>
           ))}
         </div>
 
-        {/* Custom department */}
         <div className="flex gap-2">
           <Input
             placeholder="Add custom department…"
@@ -92,7 +87,6 @@ export default function SetupDepartmentsPage() {
           </Button>
         </div>
 
-        {/* Selected custom ones not in suggestions */}
         {Array.from(selected)
           .filter((d) => !SUGGESTED_DEPARTMENTS.includes(d))
           .map((dept) => (
@@ -102,7 +96,7 @@ export default function SetupDepartmentsPage() {
             >
               <span className="text-sm font-medium">{dept}</span>
               <button
-                onClick={() => toggleDept(dept)}
+                onClick={() => toggle(dept)}
                 className="text-muted-foreground hover:text-destructive text-xs"
               >
                 Remove
@@ -111,11 +105,11 @@ export default function SetupDepartmentsPage() {
           ))}
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="ghost" onClick={() => router.push('/org/new')}>
+        <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onContinue} disabled={saving}>
-          {saving ? 'Saving…' : selected.size > 0 ? `Continue (${selected.size} selected)` : 'Skip'}
+        <Button onClick={onContinue}>
+          {selected.size > 0 ? `Continue (${selected.size} selected)` : 'Skip'}
         </Button>
       </CardFooter>
     </Card>
