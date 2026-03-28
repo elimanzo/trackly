@@ -10,15 +10,17 @@ import {
 } from '@/lib/types'
 
 import { logAudit } from './_audit'
+import type { ActionClients } from './_context'
 import { getContext } from './_context'
 
 export async function createAsset(
-  input: AssetFormInput
+  input: AssetFormInput,
+  clients?: ActionClients
 ): Promise<{ error: string } | { id: string }> {
   const parsed = AssetFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
+  const ctx = await getContext(clients)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data, error } = await ctx.admin
@@ -122,8 +124,11 @@ export async function updateAsset(
   return null
 }
 
-export async function deleteAsset(id: string): Promise<{ error: string } | null> {
-  const ctx = await getContext()
+export async function deleteAsset(
+  id: string,
+  clients?: ActionClients
+): Promise<{ error: string } | null> {
+  const ctx = await getContext(clients)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data: asset } = await ctx.admin.from('assets').select('name').eq('id', id).maybeSingle()

@@ -8,15 +8,16 @@ import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/lib/types'
 
 import { logAudit } from './_audit'
+import type { ActionClients } from './_context'
 
-async function getActorProfile() {
-  const supabase = await createClient()
+async function getActorProfile(clients?: ActionClients) {
+  const supabase = clients?.supabase ?? (await createClient())
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const admin = createAdminClient()
+  const admin = clients?.admin ?? createAdminClient()
   const { data: profile } = await admin
     .from('profiles')
     .select('org_id, role, full_name')
@@ -28,9 +29,10 @@ async function getActorProfile() {
 
 export async function updateUserRoleAction(
   userId: string,
-  role: Exclude<UserRole, 'owner'>
+  role: Exclude<UserRole, 'owner'>,
+  clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const { actorId, profile, admin } = await getActorProfile()
+  const { actorId, profile, admin } = await getActorProfile(clients)
 
   if (!profile?.org_id) return { error: 'No organisation found' }
   if (!['owner', 'admin'].includes(profile.role)) return { error: 'Not authorised' }
@@ -82,9 +84,10 @@ export async function updateUserRoleAction(
 
 export async function updateUserDepartmentsAction(
   userId: string,
-  departmentIds: string[]
+  departmentIds: string[],
+  clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const { profile, admin } = await getActorProfile()
+  const { profile, admin } = await getActorProfile(clients)
 
   if (!profile?.org_id) return { error: 'No organisation found' }
   if (!['owner', 'admin'].includes(profile.role)) return { error: 'Not authorised' }
@@ -105,9 +108,10 @@ export async function updateUserDepartmentsAction(
 }
 
 export async function revokeInviteAction(
-  inviteId: string
+  inviteId: string,
+  clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const { profile, admin } = await getActorProfile()
+  const { profile, admin } = await getActorProfile(clients)
 
   if (!profile?.org_id) return { error: 'No organisation found' }
   if (!['owner', 'admin'].includes(profile.role)) return { error: 'Not authorised' }
@@ -151,9 +155,10 @@ export async function revokeInviteAction(
 }
 
 export async function removeUserAction(
-  userId: string
+  userId: string,
+  clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const { actorId, profile, admin } = await getActorProfile()
+  const { actorId, profile, admin } = await getActorProfile(clients)
 
   if (!profile?.org_id) return { error: 'No organisation found' }
   if (!['owner', 'admin'].includes(profile.role)) return { error: 'Not authorised' }
@@ -184,10 +189,11 @@ export async function removeUserAction(
 }
 
 export async function requestPasswordResetAction(
-  email: string
+  email: string,
+  clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
   const normalised = email.toLowerCase().trim()
-  const admin = createAdminClient()
+  const admin = clients?.admin ?? createAdminClient()
 
   // Only send resets to known, active members — prevents strangers from
   // spamming reset emails to emails they don't own.
@@ -209,7 +215,7 @@ export async function requestPasswordResetAction(
 
   // Use the regular server client — resetPasswordForEmail actually sends the
   // email. admin.generateLink only returns the URL without sending.
-  const supabase = await createClient()
+  const supabase = clients?.supabase ?? (await createClient())
   await supabase.auth.resetPasswordForEmail(normalised, { redirectTo })
 
   return { error: null }

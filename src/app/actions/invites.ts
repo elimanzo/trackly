@@ -6,6 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { Invite } from '@/lib/types'
 
+import type { ActionClients } from './_context'
+
 // ---------------------------------------------------------------------------
 // sendInviteAction
 // ---------------------------------------------------------------------------
@@ -13,16 +15,17 @@ import type { Invite } from '@/lib/types'
 export async function sendInviteAction(
   email: string,
   role: Invite['role'],
-  departmentIds: string[] = []
+  departmentIds: string[] = [],
+  clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
   email = email.toLowerCase().trim()
-  const supabase = await createClient()
+  const supabase = clients?.supabase ?? (await createClient())
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const admin = createAdminClient()
+  const admin = clients?.admin ?? createAdminClient()
 
   // Fetch inviter profile + org name
   const { data: profile } = await admin

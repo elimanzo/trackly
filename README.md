@@ -118,6 +118,22 @@ Migrations in `supabase/migrations/` are applied in filename order on every `db:
 
 ---
 
+## Testing
+
+```bash
+pnpm test           # Run all tests (vitest)
+pnpm type-check     # TypeScript check
+```
+
+Tests live alongside the code they cover in `__tests__/` directories:
+
+- `src/lib/utils/__tests__/` — pure utility functions (permissions, formatters, csv-export)
+- `src/app/actions/__tests__/` — server actions with Supabase mocked at the boundary
+
+Pre-commit hooks run lint, type-check, and the full test suite automatically.
+
+---
+
 ## Git workflow
 
 - `main` — production (auto-deploys to Vercel)

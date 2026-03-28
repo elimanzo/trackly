@@ -9,14 +9,19 @@ export type ActionContext = {
   admin: ReturnType<typeof createAdminClient>
 }
 
-export async function getContext(): Promise<ActionContext | null> {
-  const supabase = await createClient()
+export type ActionClients = {
+  supabase?: Awaited<ReturnType<typeof createClient>>
+  admin?: ReturnType<typeof createAdminClient>
+}
+
+export async function getContext(clients?: ActionClients): Promise<ActionContext | null> {
+  const supabase = clients?.supabase ?? (await createClient())
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const admin = createAdminClient()
+  const admin = clients?.admin ?? createAdminClient()
   const { data: profile } = await admin
     .from('profiles')
     .select('org_id, full_name')
