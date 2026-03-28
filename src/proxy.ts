@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -27,9 +27,33 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Detect password-recovery session by inspecting the AMR claim in the JWT.
+  // Recovery sessions have amr: [{method: "recovery"}]. After updateUser()
+  // succeeds the session is refreshed and the recovery method is gone.
+  let isRecoverySession = false
+  if (user) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      try {
+        const payload = JSON.parse(atob(session.access_token.split('.')[1]))
+        isRecoverySession =
+          Array.isArray(payload.amr) &&
+          payload.amr.some((a: { method: string }) => a.method === 'recovery')
+      } catch {
+        // malformed token — treat as normal session
+      }
+    }
+  }
+
   const { pathname } = request.nextUrl
 
+  // login/signup — redirect authenticated users away to dashboard
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
+  // public routes — accessible by anyone, no redirects in either direction
+  const isPublicRoute =
+    pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')
   const isOnboardingRoute = pathname.startsWith('/org') || pathname.startsWith('/setup')
   // Auth callback must be reachable without a session — it's what establishes one
   const isAuthCallback = pathname.startsWith('/auth')
@@ -37,6 +61,7 @@ export async function middleware(request: NextRequest) {
   const isInviteAccept = pathname.startsWith('/invite')
   const isAppRoute =
     !isAuthRoute &&
+    !isPublicRoute &&
     !isOnboardingRoute &&
     !isAuthCallback &&
     !isInviteAccept &&
@@ -44,7 +69,7 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith('/_next')
 
   if (!user) {
-    if (isAuthCallback) return supabaseResponse
+    if (isAuthCallback || isPublicRoute) return supabaseResponse
     if (isAppRoute || isOnboardingRoute || isInviteAccept) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
@@ -63,7 +88,20 @@ export async function middleware(request: NextRequest) {
   const hasOrg = !!profile?.org_id
 
   // Auth callback must always run — it may replace the current session (invite flow)
-  if (isAuthCallback) return supabaseResponse
+  // Public routes (forgot/reset password) are always accessible regardless of auth state
+  if (isAuthCallback || isPublicRoute) return supabaseResponse
+
+  // Recovery session — block access to the app until password is set.
+  // Auth routes (login/signup) are let through so the user can abandon the flow.
+  if (isRecoverySession) {
+    if (isAuthRoute) return supabaseResponse
+    if (isAppRoute || isOnboardingRoute || isInviteAccept) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/reset-password'
+      url.search = '?recovery=1'
+      return NextResponse.redirect(url)
+    }
+  }
 
   // Already logged in → don't show auth pages
   if (isAuthRoute) {

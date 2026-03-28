@@ -13,43 +13,38 @@ export function AuthCallbackHandler() {
 
   useEffect(() => {
     const supabase = createClient()
+    const timeout = { current: undefined as ReturnType<typeof setTimeout> | undefined }
 
-    async function handleCallback() {
-      // Parse hash fragment — Supabase invite/magic-link emails use implicit
-      // flow and put tokens in the hash, not as a ?code= query param.
-      const hash = window.location.hash.slice(1)
-      const hashParams = new URLSearchParams(hash)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // PASSWORD_RECOVERY  — PKCE reset code was just exchanged
+      // SIGNED_IN          — fresh exchange (invite, OAuth)
+      // INITIAL_SESSION    — exchange already completed before we subscribed
+      //                      (AuthProvider processed the token first); session
+      //                      is non-null if the exchange succeeded
+      const succeeded =
+        event === 'PASSWORD_RECOVERY' ||
+        (event === 'SIGNED_IN' && !!session) ||
+        (event === 'INITIAL_SESSION' && !!session)
 
-      const errorCode = hashParams.get('error_code')
-      if (errorCode) {
-        router.replace('/login?error=invalid_link')
-        return
+      if (succeeded) {
+        clearTimeout(timeout.current)
+        subscription.unsubscribe()
+        router.replace(next)
       }
+    })
 
-      const accessToken = hashParams.get('access_token')
-      const refreshToken = hashParams.get('refresh_token')
-
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
-        router.replace(error ? '/login?error=invalid_link' : next)
-        return
-      }
-
-      // PKCE code flow (OAuth, newer magic links)
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        router.replace(error ? '/login?error=invalid_link' : next)
-        return
-      }
-
+    // Expired or invalid token — no success event fires within 4 s
+    timeout.current = setTimeout(() => {
+      subscription.unsubscribe()
       router.replace('/login?error=invalid_link')
-    }
+    }, 4000)
 
-    void handleCallback()
+    return () => {
+      clearTimeout(timeout.current)
+      subscription.unsubscribe()
+    }
   }, [next, router])
 
   return (

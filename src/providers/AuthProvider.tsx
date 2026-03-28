@@ -55,6 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (!mounted) return
+      if (_event === 'SIGNED_OUT') {
+        window.location.replace('/login')
+        return
+      }
+      if (_event === 'PASSWORD_RECOVERY') {
+        window.location.replace('/reset-password?recovery=1')
+        return
+      }
       if (!session?.user) {
         setUser(null)
         setIsLoading(false)
@@ -104,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    setUser(null)
+    // Navigation is handled by the SIGNED_OUT event in onAuthStateChange above
   }
 
   return (

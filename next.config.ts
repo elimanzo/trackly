@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // deadlocks with Supabase auth (documented incompatibility). All our
   // useEffect hooks already clean up correctly so strict mode adds no value.
   reactStrictMode: false,
+  allowedDevOrigins: ['127.0.0.1'],
 }
 
 export default nextConfig
