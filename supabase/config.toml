@@ -228,15 +228,15 @@ otp_expiry = 3600
 
 [auth.email.template.invite]
 subject = "You've been invited to join Trackly"
-content_path = "./supabase/templates/invite.html"
+content_path = "./templates/invite.html"
 
 [auth.email.template.recovery]
 subject = "Reset your Trackly password"
-content_path = "./supabase/templates/recovery.html"
+content_path = "./templates/recovery.html"
 
 [auth.email.template.confirmation]
 subject = "Confirm your Trackly email"
-content_path = "./supabase/templates/confirmation.html"
+content_path = "./templates/confirmation.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
