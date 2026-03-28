@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -42,7 +42,7 @@ type SignupInput = z.infer<typeof SignupSchema>
 
 export default function SignupPage() {
   const { signUp } = useAuth()
-  const router = useRouter()
+  const [verifyEmail, setVerifyEmail] = useState('')
 
   const form = useForm<SignupInput>({
     resolver: zodResolver(SignupSchema),
@@ -55,8 +55,26 @@ export default function SignupPage() {
       toast.error(error)
       return
     }
-    toast.success("Account created! Let's set up your organization.")
-    router.push('/org/new')
+    setVerifyEmail(data.email)
+  }
+
+  if (verifyEmail) {
+    return (
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="text-xl">Check your inbox</CardTitle>
+          <CardDescription>
+            We sent a confirmation link to <strong>{verifyEmail}</strong>. Click it to verify your
+            email and continue setting up your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/login" className="text-primary text-sm hover:underline">
+            Back to sign in
+          </Link>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
