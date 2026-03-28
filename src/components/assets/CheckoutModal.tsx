@@ -34,6 +34,7 @@ import { useDepartments } from '@/lib/hooks/useDepartments'
 import { useLocations } from '@/lib/hooks/useLocations'
 import { CheckoutFormSchema, type CheckoutFormInput } from '@/lib/types'
 import type { AssetWithRelations } from '@/lib/types'
+import { computeAvailable } from '@/lib/utils/availability'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -51,7 +52,9 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
   const { data: departments } = useDepartments()
   const { data: locations } = useLocations()
 
-  const available = asset.isBulk ? (asset.quantity ?? 0) - asset.quantityCheckedOut : null
+  const available = asset.isBulk
+    ? computeAvailable(asset.quantity ?? 0, asset.quantityCheckedOut)
+    : null
 
   const form = useForm<CheckoutFormInput>({
     resolver: zodResolver(CheckoutFormSchema),

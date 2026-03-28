@@ -38,6 +38,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { AssetWithRelations } from '@/lib/types'
+import { computeAvailable } from '@/lib/utils/availability'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
@@ -178,7 +179,7 @@ export function AssetTable({ assets }: AssetTableProps) {
       cell: ({ row }) => {
         const asset = row.original
         if (asset.isBulk) {
-          const available = (asset.quantity ?? 0) - asset.quantityCheckedOut
+          const available = computeAvailable(asset.quantity ?? 0, asset.quantityCheckedOut)
           return (
             <Badge variant="secondary" className="text-xs">
               {available}/{asset.quantity} avail.

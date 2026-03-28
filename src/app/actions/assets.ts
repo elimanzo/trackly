@@ -8,10 +8,31 @@ import {
   type AssetFormInput,
   type CheckoutFormInput,
 } from '@/lib/types'
+import { computeAvailable } from '@/lib/utils/availability'
 
 import { logAudit } from './_audit'
-import type { ActionClients } from './_context'
+import type { ActionClients, ActionContext } from './_context'
 import { getContext, requireCanEdit } from './_context'
+
+// ---------------------------------------------------------------------------
+// Private helpers
+// ---------------------------------------------------------------------------
+
+/** Sum of active checked-out quantities for an asset, optionally excluding one assignment. */
+async function fetchCheckedOut(
+  admin: ActionContext['admin'],
+  assetId: string,
+  excludeAssignmentId?: string
+): Promise<number> {
+  const { data: rows } = await admin
+    .from('asset_assignments')
+    .select('id, quantity')
+    .eq('asset_id', assetId)
+    .is('returned_at', null)
+  return ((rows ?? []) as { id: string; quantity: number }[])
+    .filter((r) => !excludeAssignmentId || r.id !== excludeAssignmentId)
+    .reduce((sum, r) => sum + (r.quantity ?? 1), 0)
+}
 
 export async function createAsset(
   input: AssetFormInput,
@@ -188,16 +209,8 @@ export async function checkoutAsset(
   if (denied) return denied
 
   if (isBulk) {
-    const { data: activeRows } = await ctx.admin
-      .from('asset_assignments')
-      .select('quantity')
-      .eq('asset_id', assetId)
-      .is('returned_at', null)
-    const checkedOut = (activeRows ?? []).reduce(
-      (sum: number, r: { quantity: number }) => sum + (r.quantity ?? 1),
-      0
-    )
-    const available = (asset?.quantity ?? 0) - checkedOut
+    const checkedOut = await fetchCheckedOut(ctx.admin, assetId)
+    const available = computeAvailable(asset?.quantity ?? 0, checkedOut)
     if (input.quantity > available) {
       return { error: `Only ${available} available in stock.` }
     }
@@ -405,9 +418,10 @@ export async function updateAssignment(
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
+  // quantity included here so no separate fetch is needed for bulk validation
   const { data: asset } = await ctx.admin
     .from('assets')
-    .select('name, department_id')
+    .select('name, department_id, quantity')
     .eq('id', assetId)
     .maybeSingle()
 
@@ -416,26 +430,14 @@ export async function updateAssignment(
 
   if (isBulk) {
     // Validate: new quantity must not exceed available + what this assignment currently holds
-    const { data: stockRow } = await ctx.admin
-      .from('assets')
-      .select('quantity')
-      .eq('id', assetId)
-      .single()
-    const { data: activeRows } = await ctx.admin
-      .from('asset_assignments')
-      .select('id, quantity')
-      .eq('asset_id', assetId)
-      .is('returned_at', null)
-    const currentRow = (activeRows ?? []).find(
-      (r: { id: string; quantity: number }) => r.id === assignmentId
-    )
-    const otherCheckedOut = (activeRows ?? [])
-      .filter((r: { id: string; quantity: number }) => r.id !== assignmentId)
-      .reduce((sum: number, r: { quantity: number }) => sum + (r.quantity ?? 1), 0)
-    const maxAllowed = (stockRow?.quantity ?? 0) - otherCheckedOut
+    const [checkedOutByOthers, { data: currentAsgn }] = await Promise.all([
+      fetchCheckedOut(ctx.admin, assetId, assignmentId),
+      ctx.admin.from('asset_assignments').select('quantity').eq('id', assignmentId).maybeSingle(),
+    ])
+    const maxAllowed = computeAvailable(asset?.quantity ?? 0, checkedOutByOthers)
     if (input.quantity > maxAllowed) {
       return {
-        error: `Only ${maxAllowed} available (${currentRow?.quantity ?? 0} currently on this assignment).`,
+        error: `Only ${maxAllowed} available (${(currentAsgn?.quantity as number | null) ?? 0} currently on this assignment).`,
       }
     }
   }
