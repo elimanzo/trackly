@@ -1,5 +1,6 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -178,6 +179,38 @@ export async function removeUserAction(
 
   // Delete the auth user so they can be re-invited cleanly later
   await admin.auth.admin.deleteUser(userId)
+
+  return { error: null }
+}
+
+export async function requestPasswordResetAction(
+  email: string
+): Promise<{ error: string } | { error: null }> {
+  const normalised = email.toLowerCase().trim()
+  const admin = createAdminClient()
+
+  // Only send resets to known, active members — prevents strangers from
+  // spamming reset emails to emails they don't own.
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('email', normalised)
+    .not('org_id', 'is', null)
+    .maybeSingle()
+
+  // Always return success — don't reveal whether the email is registered.
+  if (!profile) return { error: null }
+
+  const headersList = await headers()
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ?? headersList.get('origin') ?? 'http://localhost:3000'
+
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent('/reset-password?recovery=1')}`
+
+  // Use the regular server client — resetPasswordForEmail actually sends the
+  // email. admin.generateLink only returns the URL without sending.
+  const supabase = await createClient()
+  await supabase.auth.resetPasswordForEmail(normalised, { redirectTo })
 
   return { error: null }
 }

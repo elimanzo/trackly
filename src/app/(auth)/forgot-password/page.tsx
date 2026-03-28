@@ -4,9 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { requestPasswordResetAction } from '@/app/actions/users'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -18,7 +18,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { createClient } from '@/lib/supabase/client'
 
 const ForgotSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -35,14 +34,8 @@ export default function ForgotPasswordPage() {
   })
 
   async function onSubmit(data: ForgotInput) {
-    const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/reset-password?recovery=1')}`,
-    })
-    if (error) {
-      toast.error(error.message)
-      return
-    }
+    await requestPasswordResetAction(data.email)
+    // Always show success — server action never reveals whether email exists
     setSent(true)
   }
 
