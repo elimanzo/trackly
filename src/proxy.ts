@@ -91,6 +91,17 @@ export async function proxy(request: NextRequest) {
   // Public routes (forgot/reset password) are always accessible regardless of auth state
   if (isAuthCallback || isPublicRoute) return supabaseResponse
 
+  // Unconfirmed email — session exists but email not yet verified.
+  // Invite users have email_confirmed_at set when they claim their invite link,
+  // so this only blocks self-signup accounts that haven't clicked the confirmation email.
+  if (!user.email_confirmed_at) {
+    if (isAuthRoute) return supabaseResponse
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.search = '?error=confirm_email'
+    return NextResponse.redirect(url)
+  }
+
   // Recovery session — block access to the app until password is set.
   // Auth routes (login/signup) are let through so the user can abandon the flow.
   if (isRecoverySession) {
