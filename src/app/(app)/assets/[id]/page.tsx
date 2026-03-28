@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsset } from '@/lib/hooks/useAssets'
 import { useAssetHistory } from '@/lib/hooks/useAuditLogs'
 import type { AssetAssignment, AuditLog } from '@/lib/types'
+import { computeAvailable, computeMaxForEdit } from '@/lib/utils/availability'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/formatters'
 import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
@@ -60,7 +61,9 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   if (!asset) return notFound()
 
   const canEditAssets = user ? canEdit(user.role) : false
-  const available = asset.isBulk ? (asset.quantity ?? 0) - asset.quantityCheckedOut : null
+  const available = asset.isBulk
+    ? computeAvailable(asset.quantity ?? 0, asset.quantityCheckedOut)
+    : null
   const canCheckOut = asset.isBulk ? (available ?? 0) > 0 : asset.status !== 'checked_out'
 
   async function handleReturn() {
@@ -387,7 +390,11 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
           isBulk={asset.isBulk}
           maxQuantity={
             asset.isBulk
-              ? (asset.quantity ?? 0) - asset.quantityCheckedOut + editAssignment.quantity
+              ? computeMaxForEdit(
+                  asset.quantity ?? 0,
+                  asset.quantityCheckedOut,
+                  editAssignment.quantity
+                )
               : undefined
           }
           open={!!editAssignment}
