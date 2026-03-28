@@ -22,11 +22,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { useVendorMutations, useVendors } from '@/lib/hooks/useVendors'
 import { VendorFormSchema, type Vendor, type VendorFormInput } from '@/lib/types'
-import { useOrgData } from '@/providers/OrgDataProvider'
 
 export default function VendorsPage() {
-  const { vendors, isLoading, createVendor, updateVendor, deleteVendor } = useOrgData()
+  const { data: vendors, isLoading } = useVendors()
+  const { create: createVendor, update: updateVendor, remove: deleteVendor } = useVendorMutations()
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Vendor | null>(null)

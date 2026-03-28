@@ -23,13 +23,17 @@ import {
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { useDepartmentMutations, useDepartments } from '@/lib/hooks/useDepartments'
 import { DepartmentFormSchema, type Department, type DepartmentFormInput } from '@/lib/types'
-import { useOrgData } from '@/providers/OrgDataProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
 export default function DepartmentsPage() {
-  const { departments, isLoading, createDepartment, updateDepartment, deleteDepartment } =
-    useOrgData()
+  const { data: departments, isLoading } = useDepartments()
+  const {
+    create: createDepartment,
+    update: updateDepartment,
+    remove: deleteDepartment,
+  } = useDepartmentMutations()
   const { org } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
 

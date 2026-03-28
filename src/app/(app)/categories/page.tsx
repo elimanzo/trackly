@@ -23,11 +23,16 @@ import {
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { useCategoryMutations, useCategories } from '@/lib/hooks/useCategories'
 import { CategoryFormSchema, type Category, type CategoryFormInput } from '@/lib/types'
-import { useOrgData } from '@/providers/OrgDataProvider'
 
 export default function CategoriesPage() {
-  const { categories, isLoading, createCategory, updateCategory, deleteCategory } = useOrgData()
+  const { data: categories, isLoading } = useCategories()
+  const {
+    create: createCategory,
+    update: updateCategory,
+    remove: deleteCategory,
+  } = useCategoryMutations()
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)

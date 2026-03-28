@@ -34,13 +34,12 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ASSET_STATUS_CONFIG } from '@/lib/constants'
-import { useCategories } from '@/lib/hooks/useCategories'
-import { useDepartments } from '@/lib/hooks/useDepartments'
-import { useLocations } from '@/lib/hooks/useLocations'
-import { useVendors } from '@/lib/hooks/useVendors'
+import { useCategoryMutations, useCategories } from '@/lib/hooks/useCategories'
+import { useDepartmentMutations, useDepartments } from '@/lib/hooks/useDepartments'
+import { useLocationMutations, useLocations } from '@/lib/hooks/useLocations'
+import { useVendorMutations, useVendors } from '@/lib/hooks/useVendors'
 import { ASSET_STATUSES, AssetFormSchema, type AssetFormInput } from '@/lib/types'
 import type { AssetWithRelations } from '@/lib/types'
-import { useOrgData } from '@/providers/OrgDataProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
 // ---------------------------------------------------------------------------
@@ -113,11 +112,14 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
   const router = useRouter()
   const { data: departments } = useDepartments()
   const { org } = useOrg()
-  const orgData = useOrgData()
+  const { create: createDepartment } = useDepartmentMutations()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: categories } = useCategories()
+  const { create: createCategory } = useCategoryMutations()
   const { data: locations } = useLocations()
+  const { create: createLocation } = useLocationMutations()
   const { data: vendors } = useVendors()
+  const { create: createVendor } = useVendorMutations()
 
   const isEdit = !!asset
 
@@ -630,15 +632,12 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
         </div>
       </form>
 
-      {/* Quick-add dialogs — use orgData handlers which call server action,
-          await refetch(), then return the new ID so the list is fresh before
-          we set the form value. */}
       <QuickAddDialog
         open={quickAdd === 'department'}
         onOpenChange={(open) => !open && setQuickAdd(null)}
         title={`Add ${deptLabel}`}
         onAdd={async (name) => {
-          const id = await orgData.createDepartment({ name })
+          const id = await createDepartment({ name })
           if (id) form.setValue('departmentId', id)
           return id
         }}
@@ -648,7 +647,7 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
         onOpenChange={(open) => !open && setQuickAdd(null)}
         title="Add category"
         onAdd={async (name) => {
-          const id = await orgData.createCategory({ name })
+          const id = await createCategory({ name })
           if (id) form.setValue('categoryId', id)
           return id
         }}
@@ -658,7 +657,7 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
         onOpenChange={(open) => !open && setQuickAdd(null)}
         title="Add location"
         onAdd={async (name) => {
-          const id = await orgData.createLocation({ name })
+          const id = await createLocation({ name })
           if (id) form.setValue('locationId', id)
           return id
         }}
@@ -668,7 +667,7 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
         onOpenChange={(open) => !open && setQuickAdd(null)}
         title="Add vendor"
         onAdd={async (name) => {
-          const id = await orgData.createVendor({ name })
+          const id = await createVendor({ name })
           if (id) form.setValue('vendorId', id)
           return id
         }}
