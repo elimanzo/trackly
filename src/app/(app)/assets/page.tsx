@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { AssetCard } from '@/components/assets/AssetCard'
 import { AssetFiltersBar } from '@/components/assets/AssetFilters'
 import { AssetTable } from '@/components/assets/AssetTable'
+import { StaggerChildren, StaggerItem } from '@/components/motion/StaggerChildren'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PaginationBar } from '@/components/shared/PaginationBar'
@@ -98,11 +99,13 @@ export default function AssetsPage() {
       ) : view === 'table' ? (
         <AssetTable assets={assets} />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <StaggerChildren className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {assets.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} />
+            <StaggerItem key={asset.id}>
+              <AssetCard asset={asset} />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerChildren>
       )}
 
       <PaginationBar

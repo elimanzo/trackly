@@ -6,6 +6,8 @@ import dynamic from 'next/dynamic'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts'
+import { FadeIn } from '@/components/motion/FadeIn'
+import { StaggerChildren, StaggerItem } from '@/components/motion/StaggerChildren'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecentActivity } from '@/lib/hooks/useAuditLogs'
@@ -73,68 +75,78 @@ export default function DashboardPage() {
         showCardMaintenance ||
         showCardRetired ||
         showCardValue) && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
+        <StaggerChildren className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
           {showCardTotal && (
-            <StatCard label="Total Assets" value={stats.totalAssets} icon={Package} />
+            <StaggerItem>
+              <StatCard label="Total Assets" value={stats.totalAssets} icon={Package} />
+            </StaggerItem>
           )}
           {showCardActive && (
-            <StatCard
-              label="Active"
-              value={activeCount}
-              icon={CheckCircle}
-              description={
-                stats.totalAssets > 0
-                  ? `${Math.round((activeCount / stats.totalAssets) * 100)}% of total`
-                  : undefined
-              }
-              bgClass="bg-green-500 dark:bg-green-600"
-              iconClass="text-white"
-            />
+            <StaggerItem>
+              <StatCard
+                label="Active"
+                value={activeCount}
+                icon={CheckCircle}
+                description={
+                  stats.totalAssets > 0
+                    ? `${Math.round((activeCount / stats.totalAssets) * 100)}% of total`
+                    : undefined
+                }
+                bgClass="bg-green-500 dark:bg-green-600"
+                iconClass="text-white"
+              />
+            </StaggerItem>
           )}
           {showCardMaintenance && (
-            <StatCard
-              label="Maintenance"
-              value={maintenanceCount}
-              icon={Wrench}
-              bgClass="bg-amber-500 dark:bg-amber-600"
-              iconClass="text-white"
-            />
+            <StaggerItem>
+              <StatCard
+                label="Maintenance"
+                value={maintenanceCount}
+                icon={Wrench}
+                bgClass="bg-amber-500 dark:bg-amber-600"
+                iconClass="text-white"
+              />
+            </StaggerItem>
           )}
           {showCardRetired && (
-            <StatCard
-              label="Retired"
-              value={retiredCount}
-              icon={AlertTriangle}
-              bgClass="bg-slate-400 dark:bg-slate-600"
-              iconClass="text-white"
-            />
+            <StaggerItem>
+              <StatCard
+                label="Retired"
+                value={retiredCount}
+                icon={AlertTriangle}
+                bgClass="bg-slate-400 dark:bg-slate-600"
+                iconClass="text-white"
+              />
+            </StaggerItem>
           )}
           {showCardValue && (
-            <StatCard
-              label="Total Value"
-              value={formatCompactCurrency(stats.totalValue)}
-              icon={DollarSign}
-              bgClass="bg-violet-500 dark:bg-violet-600"
-              iconClass="text-white"
-            />
+            <StaggerItem>
+              <StatCard
+                label="Total Value"
+                value={formatCompactCurrency(stats.totalValue)}
+                icon={DollarSign}
+                bgClass="bg-violet-500 dark:bg-violet-600"
+                iconClass="text-white"
+              />
+            </StaggerItem>
           )}
-        </div>
+        </StaggerChildren>
       )}
 
       {/* Charts */}
       {showCharts && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <FadeIn delay={0.12} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <AssetsByStatusChart data={stats.byStatus} total={stats.totalAssets} />
           <AssetsByDepartmentChart data={stats.byDepartment} departmentLabel={deptLabel} />
-        </div>
+        </FadeIn>
       )}
 
       {/* Activity + Warranty */}
       {(showActivity || showWarranty) && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <FadeIn delay={0.18} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {showActivity && <RecentActivity logs={logs} />}
           {showWarranty && <WarrantyAlerts alerts={stats.warrantyAlerts} />}
-        </div>
+        </FadeIn>
       )}
 
       <div className="text-muted-foreground flex items-center gap-2 text-xs">

@@ -1,5 +1,6 @@
 'use client'
 
+import { MotionConfig } from 'framer-motion'
 import { ThemeProvider } from 'next-themes'
 
 import { Toaster } from '@/components/ui/sonner'
@@ -11,17 +12,19 @@ import { QueryProvider } from './QueryProvider'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <QueryProvider>
-        <AuthProvider>
-          <OrgProvider>
-            <OrgDataProvider>
-              {children}
-              <Toaster richColors position="top-right" />
-            </OrgDataProvider>
-          </OrgProvider>
-        </AuthProvider>
-      </QueryProvider>
-    </ThemeProvider>
+    <MotionConfig reducedMotion="user">
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <QueryProvider>
+          <AuthProvider>
+            <OrgProvider>
+              <OrgDataProvider>
+                {children}
+                <Toaster richColors position="top-right" />
+              </OrgDataProvider>
+            </OrgProvider>
+          </AuthProvider>
+        </QueryProvider>
+      </ThemeProvider>
+    </MotionConfig>
   )
 }
