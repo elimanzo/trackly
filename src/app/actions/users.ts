@@ -111,13 +111,42 @@ export async function revokeInviteAction(
   if (!profile?.org_id) return { error: 'No organisation found' }
   if (!['owner', 'admin'].includes(profile.role)) return { error: 'Not authorised' }
 
+  // Grab the email before deleting so we can clean up the auth user
+  const { data: invite } = await admin
+    .from('invites')
+    .select('email')
+    .eq('id', inviteId)
+    .eq('org_id', profile.org_id)
+    .maybeSingle()
+
   const { error } = await admin
     .from('invites')
     .delete()
     .eq('id', inviteId)
     .eq('org_id', profile.org_id)
 
-  return { error: error?.message ?? null }
+  if (error) return { error: error.message }
+
+  // Remove the pending auth user so the same email can be re-invited.
+  // inviteUserByEmail creates an auth user immediately; without deleting it
+  // a subsequent invite to the same address would fail with "already registered".
+  // The on_auth_user_created trigger creates a profile with org_id = null for
+  // pending users, so we can look up the user ID that way.
+  if (invite?.email) {
+    const { data: pendingProfile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('email', invite.email)
+      .is('org_id', null)
+      .maybeSingle()
+
+    if (pendingProfile) {
+      await admin.auth.admin.deleteUser(pendingProfile.id as string)
+      // profile row is removed automatically via ON DELETE CASCADE on auth.users
+    }
+  }
+
+  return { error: null }
 }
 
 export async function removeUserAction(

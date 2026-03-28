@@ -15,18 +15,20 @@ export function AuthCallbackHandler() {
     const supabase = createClient()
     const timeout = { current: undefined as ReturnType<typeof setTimeout> | undefined }
 
+    // Capture synchronously before _initialize() clears the code via history.replaceState.
+    // When a code is present the PKCE exchange is in-flight; INITIAL_SESSION may fire
+    // with a pre-existing session before the exchange finishes, so we must wait for
+    // SIGNED_IN / PASSWORD_RECOVERY. Without a code the exchange already happened
+    // before this component mounted, so INITIAL_SESSION with a session means success.
+    const codeInUrl = new URL(window.location.href).searchParams.has('code')
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      // PASSWORD_RECOVERY  — PKCE reset code was just exchanged
-      // SIGNED_IN          — fresh exchange (invite, OAuth)
-      // INITIAL_SESSION    — exchange already completed before we subscribed
-      //                      (AuthProvider processed the token first); session
-      //                      is non-null if the exchange succeeded
       const succeeded =
         event === 'PASSWORD_RECOVERY' ||
         (event === 'SIGNED_IN' && !!session) ||
-        (event === 'INITIAL_SESSION' && !!session)
+        (!codeInUrl && event === 'INITIAL_SESSION' && !!session)
 
       if (succeeded) {
         clearTimeout(timeout.current)
