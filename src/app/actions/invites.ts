@@ -49,16 +49,21 @@ export async function sendInviteAction(
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  const { error: insertError } = await admin.from('invites').insert({
-    org_id: profile.org_id,
-    email,
-    role,
-    token: crypto.randomUUID(),
-    invited_by: user.id,
-    invited_by_name: profile.full_name,
-    expires_at: expiresAt,
-    department_ids: departmentIds,
-  })
+  // Capture the inserted row's ID so the rollback delete is precise
+  const { data: newInvite, error: insertError } = await admin
+    .from('invites')
+    .insert({
+      org_id: profile.org_id,
+      email,
+      role,
+      token: crypto.randomUUID(),
+      invited_by: user.id,
+      invited_by_name: profile.full_name,
+      expires_at: expiresAt,
+      department_ids: departmentIds,
+    })
+    .select('id')
+    .single()
 
   if (insertError) return { error: insertError.message }
 
@@ -78,8 +83,12 @@ export async function sendInviteAction(
   })
 
   if (authError) {
-    // Roll back the invite row so the user can try again
-    await admin.from('invites').delete().eq('email', email).eq('org_id', profile.org_id)
+    // Roll back using the invite's own ID — precise and safe even if the
+    // email happens to match another pending invite created concurrently
+    await admin
+      .from('invites')
+      .delete()
+      .eq('id', (newInvite as { id: string }).id)
     return { error: authError.message }
   }
 
@@ -134,9 +143,10 @@ export async function acceptInviteAction(
   // Apply pre-assigned departments from the invite
   const deptIds = (invite.department_ids as string[] | null) ?? []
   if (deptIds.length > 0) {
-    await admin
+    const { error: deptError } = await admin
       .from('user_departments')
       .insert(deptIds.map((department_id: string) => ({ user_id: user.id, department_id })))
+    if (deptError) return { error: deptError.message }
   }
 
   // Mark invite accepted
