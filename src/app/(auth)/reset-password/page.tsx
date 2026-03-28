@@ -49,9 +49,11 @@ export default function ResetPasswordPage() {
 
     // Direct navigation — send authenticated users to dashboard, others to login
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data }) => {
-      router.replace(data.session ? '/dashboard' : '/login')
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data }: { data: { session: { access_token: string } | null } }) => {
+        router.replace(data.session ? '/dashboard' : '/login')
+      })
   }, [isRecovery, router])
 
   async function onSubmit(data: ResetInput) {

@@ -1,5 +1,6 @@
 'use client'
 
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
@@ -27,7 +28,7 @@ export function AuthCallbackHandler() {
     if (accessToken && refreshToken) {
       supabase.auth
         .setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ error }) => {
+        .then(({ error }: { error: { message: string } | null }) => {
           if (!cancelled) router.replace(error ? '/login?error=invalid_link' : next)
         })
       return () => {
@@ -43,7 +44,7 @@ export function AuthCallbackHandler() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       const succeeded =
         event === 'PASSWORD_RECOVERY' ||
         (event === 'SIGNED_IN' && !!session) ||
