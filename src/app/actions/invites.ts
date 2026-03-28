@@ -66,7 +66,13 @@ export async function sendInviteAction(
   const next = `/invite/accept?org=${encodeURIComponent(orgName)}`
   const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`
 
-  const { error: authError } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo })
+  const { error: authError } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo,
+    data: {
+      org_name: orgName,
+      invited_by_name: (profile.full_name as string) ?? 'Your team',
+    },
+  })
 
   if (authError) {
     // Roll back the invite row so the user can try again
