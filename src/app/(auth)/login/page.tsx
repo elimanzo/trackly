@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -28,6 +29,8 @@ type LoginInput = z.infer<typeof LoginSchema>
 
 export default function LoginPage() {
   const { signIn } = useAuth()
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(LoginSchema),
@@ -47,7 +50,11 @@ export default function LoginPage() {
     <Card className="shadow-md">
       <CardHeader>
         <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>Sign in to your account</CardDescription>
+        <CardDescription>
+          {error === 'confirm_email'
+            ? 'Please confirm your email address before signing in. Check your inbox for the verification link.'
+            : 'Sign in to your account'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
