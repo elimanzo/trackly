@@ -3,7 +3,7 @@
 import { DepartmentFormSchema, type DepartmentFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
-import { getContext } from './_context'
+import { getAdminCtx, getContext } from './_context'
 
 export async function createDepartment(
   input: DepartmentFormInput
@@ -11,11 +11,8 @@ export async function createDepartment(
   const parsed = DepartmentFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data, error } = await ctx.admin
     .from('departments')
@@ -42,11 +39,8 @@ export async function updateDepartment(
   const parsed = DepartmentFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
     .from('departments')
@@ -81,11 +75,8 @@ export async function countAssetsInDepartment(id: string): Promise<number> {
 }
 
 export async function deleteDepartment(id: string): Promise<{ error: string } | null> {
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data: dept } = await ctx.admin
     .from('departments')

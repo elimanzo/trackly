@@ -3,7 +3,7 @@
 import { CategoryFormSchema, type CategoryFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
-import { getContext } from './_context'
+import { getAdminCtx, getContext } from './_context'
 
 export async function createCategory(
   input: CategoryFormInput
@@ -11,11 +11,8 @@ export async function createCategory(
   const parsed = CategoryFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data, error } = await ctx.admin
     .from('categories')
@@ -47,11 +44,8 @@ export async function updateCategory(
   const parsed = CategoryFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
     .from('categories')
@@ -86,11 +80,8 @@ export async function countAssetsInCategory(id: string): Promise<number> {
 }
 
 export async function deleteCategory(id: string): Promise<{ error: string } | null> {
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data: cat } = await ctx.admin.from('categories').select('name').eq('id', id).maybeSingle()
 
