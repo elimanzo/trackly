@@ -192,12 +192,13 @@ export async function checkoutAsset(
   assetId: string,
   input: CheckoutFormInput,
   assignedByName: string,
-  isBulk: boolean
+  isBulk: boolean,
+  clients?: ActionClients
 ): Promise<{ error: string } | null> {
   const parsed = CheckoutFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
+  const ctx = await getContext(clients)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data: asset } = await ctx.admin
@@ -209,6 +210,7 @@ export async function checkoutAsset(
   const denied = requireCanEdit(ctx, (asset?.department_id as string | null) ?? null)
   if (denied) return denied
 
+  // Fast-path: reject immediately if obviously out of stock
   if (isBulk) {
     const checkedOut = await fetchCheckedOut(ctx.admin, assetId)
     const available = computeAvailable(asset?.quantity ?? 0, checkedOut)
@@ -217,22 +219,39 @@ export async function checkoutAsset(
     }
   }
 
-  const { error: assignError } = await ctx.admin.from('asset_assignments').insert({
-    asset_id: assetId,
-    assigned_to_user_id: input.assignedToUserId,
-    assigned_to_name: input.assignedToName,
-    assigned_by: ctx.userId,
-    assigned_by_name: assignedByName,
-    quantity: input.quantity,
-    department_id: input.departmentId || null,
-    location_id: input.locationId || null,
-    expected_return_at: input.expectedReturnAt
-      ? new Date(input.expectedReturnAt).toISOString()
-      : null,
-    notes: input.notes || null,
-  })
+  // Insert first, then re-verify for bulk assets — catches concurrent checkouts
+  // that both pass the pre-check above before either inserts
+  const { data: newAssignment, error: assignError } = await ctx.admin
+    .from('asset_assignments')
+    .insert({
+      asset_id: assetId,
+      assigned_to_user_id: input.assignedToUserId,
+      assigned_to_name: input.assignedToName,
+      assigned_by: ctx.userId,
+      assigned_by_name: assignedByName,
+      quantity: input.quantity,
+      department_id: input.departmentId || null,
+      location_id: input.locationId || null,
+      expected_return_at: input.expectedReturnAt
+        ? new Date(input.expectedReturnAt).toISOString()
+        : null,
+      notes: input.notes || null,
+    })
+    .select('id')
+    .single()
 
   if (assignError) return { error: assignError.message }
+
+  if (isBulk) {
+    const totalCheckedOut = await fetchCheckedOut(ctx.admin, assetId)
+    if (totalCheckedOut > (asset?.quantity ?? 0)) {
+      await ctx.admin
+        .from('asset_assignments')
+        .delete()
+        .eq('id', (newAssignment as { id: string }).id)
+      return { error: 'This item just went out of stock. Please try again.' }
+    }
+  }
 
   // Bulk assets stay 'active'; only serialized assets become 'checked_out'
   if (!isBulk) {

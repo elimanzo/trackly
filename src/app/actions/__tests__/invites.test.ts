@@ -42,24 +42,32 @@ describe('sendInviteAction', () => {
     expect(result).toEqual({ error: 'A pending invite already exists for this email' })
   })
 
-  it('rolls back the invite row and returns error when auth invite fails', async () => {
+  it('rolls back the invite row by ID and returns error when auth invite fails', async () => {
     mockInviteUserByEmail.mockResolvedValueOnce({ error: { message: 'SMTP unavailable' } })
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
-    chain.single.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
-    })
+    chain.single
+      .mockResolvedValueOnce({
+        data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
+      })
+      // insert.select.single — returns the new invite's ID
+      .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
     chain.maybeSingle.mockResolvedValueOnce({ data: null })
 
     const result = await sendInviteAction('new@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: 'SMTP unavailable' })
+    // Rollback should target the specific invite ID, not email+org
+    expect(chain.eq).toHaveBeenCalledWith('id', 'new-invite-001')
   })
 
   it('returns null error on success', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
-    chain.single.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
-    })
+    chain.single
+      .mockResolvedValueOnce({
+        data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
+      })
+      // insert.select.single
+      .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
     chain.maybeSingle.mockResolvedValueOnce({ data: null })
 
     const result = await sendInviteAction('new@example.com', 'viewer', [], clients)
