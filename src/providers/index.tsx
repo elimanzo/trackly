@@ -4,9 +4,9 @@ import { MotionConfig } from 'framer-motion'
 import { ThemeProvider } from 'next-themes'
 
 import { Toaster } from '@/components/ui/sonner'
+import { OrgRealtimeSync } from '@/lib/hooks/useOrgRealtimeSync'
 
 import { AuthProvider } from './AuthProvider'
-import { OrgDataProvider } from './OrgDataProvider'
 import { OrgProvider } from './OrgProvider'
 import { QueryProvider } from './QueryProvider'
 
@@ -17,10 +17,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <QueryProvider>
           <AuthProvider>
             <OrgProvider>
-              <OrgDataProvider>
-                {children}
-                <Toaster richColors position="top-right" />
-              </OrgDataProvider>
+              <OrgRealtimeSync />
+              {children}
+              <Toaster richColors position="top-right" />
             </OrgProvider>
           </AuthProvider>
         </QueryProvider>

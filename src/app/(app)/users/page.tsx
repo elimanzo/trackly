@@ -54,12 +54,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { USER_ROLE_CONFIG } from '@/lib/constants'
+import { useDepartments } from '@/lib/hooks/useDepartments'
+import { useOrgUserMutations, useOrgUsers } from '@/lib/hooks/useOrgUsers'
 import type { ProfileWithDepartments } from '@/lib/types'
 import { UserRoleSchema } from '@/lib/types'
 import { formatRelativeTime } from '@/lib/utils/formatters'
 import { getInitials } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
-import { useOrgData } from '@/providers/OrgDataProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
 const InviteFormSchema = z.object({
@@ -69,17 +70,10 @@ const InviteFormSchema = z.object({
 type InviteFormInput = z.infer<typeof InviteFormSchema>
 
 export default function UsersPage() {
-  const {
-    users,
-    departments,
-    isLoading,
-    pendingInvites,
-    sendInvite,
-    revokeInvite,
-    removeUser,
-    updateUserRole,
-    updateUserDepartments,
-  } = useOrgData()
+  const { users, pendingInvites, isLoading } = useOrgUsers()
+  const { data: departments } = useDepartments()
+  const { sendInvite, revokeInvite, removeUser, updateUserRole, updateUserDepartments } =
+    useOrgUserMutations()
 
   const { user: currentUser } = useAuth()
   const { org } = useOrg()

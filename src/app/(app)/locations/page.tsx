@@ -22,11 +22,16 @@ import {
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { useLocationMutations, useLocations } from '@/lib/hooks/useLocations'
 import { LocationFormSchema, type Location, type LocationFormInput } from '@/lib/types'
-import { useOrgData } from '@/providers/OrgDataProvider'
 
 export default function LocationsPage() {
-  const { locations, isLoading, createLocation, updateLocation, deleteLocation } = useOrgData()
+  const { data: locations, isLoading } = useLocations()
+  const {
+    create: createLocation,
+    update: updateLocation,
+    remove: deleteLocation,
+  } = useLocationMutations()
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Location | null>(null)
