@@ -3,7 +3,7 @@
 import { LocationFormSchema, type LocationFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
-import { getContext } from './_context'
+import { getAdminCtx } from './_context'
 
 export async function createLocation(
   input: LocationFormInput
@@ -11,11 +11,8 @@ export async function createLocation(
   const parsed = LocationFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data, error } = await ctx.admin
     .from('locations')
@@ -42,11 +39,8 @@ export async function updateLocation(
   const parsed = LocationFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
     .from('locations')
@@ -67,11 +61,8 @@ export async function updateLocation(
 }
 
 export async function deleteLocation(id: string): Promise<{ error: string } | null> {
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data: loc } = await ctx.admin.from('locations').select('name').eq('id', id).maybeSingle()
 

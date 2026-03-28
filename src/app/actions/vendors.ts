@@ -3,7 +3,7 @@
 import { VendorFormSchema, type VendorFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
-import { getContext } from './_context'
+import { getAdminCtx } from './_context'
 
 export async function createVendor(
   input: VendorFormInput
@@ -11,11 +11,8 @@ export async function createVendor(
   const parsed = VendorFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data, error } = await ctx.admin
     .from('vendors')
@@ -49,11 +46,8 @@ export async function updateVendor(
   const parsed = VendorFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
     .from('vendors')
@@ -80,11 +74,8 @@ export async function updateVendor(
 }
 
 export async function deleteVendor(id: string): Promise<{ error: string } | null> {
-  const ctx = await getContext()
-  if (!ctx) return { error: 'Not authenticated' }
-
-  const denied = ctx.requireRole('admin')
-  if (denied) return denied
+  const ctx = await getAdminCtx()
+  if ('error' in ctx) return ctx
 
   const { data: vendor } = await ctx.admin.from('vendors').select('name').eq('id', id).maybeSingle()
 

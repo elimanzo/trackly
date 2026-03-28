@@ -49,6 +49,13 @@ export async function getContext(clients?: ActionClients): Promise<ActionContext
   }
 }
 
+/** Get context and assert admin role in one call. Returns the context or an error object. */
+export async function getAdminCtx(): Promise<ActionContext | { error: string }> {
+  const ctx = await getContext()
+  if (!ctx) return { error: 'Not authenticated' }
+  return ctx.requireRole('admin') ?? ctx
+}
+
 export function requireCanEdit(
   ctx: ActionContext,
   assetDepartmentId: string | null
