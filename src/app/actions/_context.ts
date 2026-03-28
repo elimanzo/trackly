@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/lib/types'
-import { canEdit, canManage } from '@/lib/utils/permissions'
+import { canEdit, canEditInDepartment, canManage } from '@/lib/utils/permissions'
 
 export type ActionContext = {
   userId: string
@@ -53,8 +53,7 @@ export function requireCanEdit(
   ctx: ActionContext,
   assetDepartmentId: string | null
 ): { error: string } | null {
-  if (ctx.role === 'owner' || ctx.role === 'admin') return null
-  if (ctx.role === 'editor' && assetDepartmentId && ctx.departmentIds.includes(assetDepartmentId))
-    return null
-  return { error: 'Not authorised' }
+  return canEditInDepartment(ctx.role, ctx.departmentIds, assetDepartmentId)
+    ? null
+    : { error: 'Not authorised' }
 }

@@ -4,6 +4,7 @@ import type { AssetWithRelations, ProfileWithDepartments } from '@/lib/types'
 import {
   canEdit,
   canEditAsset,
+  canEditInDepartment,
   canManage,
   canViewAsset,
   canViewDepartment,
@@ -138,6 +139,38 @@ describe('canViewDepartment', () => {
 
   it('denies access to viewer not assigned to that department', () => {
     expect(canViewDepartment(makeUser('viewer', []), DEPT_A)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// canEditInDepartment
+// ---------------------------------------------------------------------------
+
+describe('canEditInDepartment', () => {
+  it('allows owner regardless of department', () => {
+    expect(canEditInDepartment('owner', [], null)).toBe(true)
+    expect(canEditInDepartment('owner', [], DEPT_A)).toBe(true)
+  })
+
+  it('allows admin regardless of department', () => {
+    expect(canEditInDepartment('admin', [], null)).toBe(true)
+    expect(canEditInDepartment('admin', [], DEPT_A)).toBe(true)
+  })
+
+  it('allows editor in their assigned department', () => {
+    expect(canEditInDepartment('editor', [DEPT_A], DEPT_A)).toBe(true)
+  })
+
+  it('denies editor in a different department', () => {
+    expect(canEditInDepartment('editor', [DEPT_B], DEPT_A)).toBe(false)
+  })
+
+  it('denies editor when asset has no department', () => {
+    expect(canEditInDepartment('editor', [DEPT_A], null)).toBe(false)
+  })
+
+  it('denies viewer regardless of department', () => {
+    expect(canEditInDepartment('viewer', [DEPT_A], DEPT_A)).toBe(false)
   })
 })
 

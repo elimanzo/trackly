@@ -16,13 +16,23 @@ export function canViewDepartment(user: ProfileWithDepartments, departmentId: st
   return user.departmentIds.includes(departmentId)
 }
 
+/**
+ * Core department-level edit check: can this role/dept-list edit an asset in a given department?
+ * Single source of truth shared by both the server-side requireCanEdit and the client-side canEditAsset.
+ */
+export function canEditInDepartment(
+  role: UserRole,
+  departmentIds: string[],
+  assetDepartmentId: string | null
+): boolean {
+  if (role === 'owner' || role === 'admin') return true
+  if (role === 'editor' && assetDepartmentId) return departmentIds.includes(assetDepartmentId)
+  return false
+}
+
 /** Whether the user can edit/delete a specific asset */
 export function canEditAsset(user: ProfileWithDepartments, asset: AssetWithRelations): boolean {
-  if (canManage(user.role)) return true
-  if (user.role === 'editor' && asset.departmentId) {
-    return user.departmentIds.includes(asset.departmentId)
-  }
-  return false
+  return canEditInDepartment(user.role, user.departmentIds, asset.departmentId ?? null)
 }
 
 /** Whether the user can see the asset (viewer or above in same dept) */
