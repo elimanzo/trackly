@@ -60,6 +60,25 @@ describe('sendInviteAction', () => {
     expect(chain.eq).toHaveBeenCalledWith('id', 'new-invite-001')
   })
 
+  it('keeps invite row and returns success when invitee already has a Google account', async () => {
+    mockInviteUserByEmail.mockResolvedValueOnce({
+      error: { message: 'A user with this email address has already been registered' },
+    })
+    const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
+    chain.single
+      .mockResolvedValueOnce({
+        data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
+      })
+      .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
+    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+
+    const result = await sendInviteAction('google-user@example.com', 'editor', [], clients)
+
+    expect(result).toEqual({ error: null })
+    // Must NOT have rolled back the invite row
+    expect(chain.delete).not.toHaveBeenCalled()
+  })
+
   it('returns null error on success', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
     chain.single
