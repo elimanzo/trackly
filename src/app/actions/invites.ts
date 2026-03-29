@@ -83,13 +83,22 @@ export async function sendInviteAction(
   })
 
   if (authError) {
-    // Roll back using the invite's own ID — precise and safe even if the
-    // email happens to match another pending invite created concurrently
-    await admin
-      .from('invites')
-      .delete()
-      .eq('id', (newInvite as { id: string }).id)
-    return { error: authError.message }
+    // If the email belongs to an existing auth user (e.g. signed up via Google),
+    // inviteUserByEmail fails but the invite row is valid — the pending invite
+    // will be auto-completed when they next sign in via Google.
+    const alreadyExists =
+      authError.message.toLowerCase().includes('already been registered') ||
+      authError.message.toLowerCase().includes('already registered') ||
+      authError.message.toLowerCase().includes('user already exists')
+
+    if (!alreadyExists) {
+      // Only roll back for unexpected errors (e.g. SMTP failure)
+      await admin
+        .from('invites')
+        .delete()
+        .eq('id', (newInvite as { id: string }).id)
+      return { error: authError.message }
+    }
   }
 
   return { error: null }
