@@ -165,6 +165,76 @@ export async function removeUserAction(
   return { error: null }
 }
 
+// ---------------------------------------------------------------------------
+// leaveOrgAction
+// ---------------------------------------------------------------------------
+
+export async function leaveOrgAction(): Promise<{ error: string } | { error: null }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const admin = createAdminClient()
+
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('org_id, role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (!profile?.org_id) return { error: 'You are not in an organisation' }
+  if (profile.role === 'owner')
+    return { error: 'Owners cannot leave — delete the organisation instead' }
+
+  await admin.from('user_departments').delete().eq('user_id', user.id)
+
+  const { error } = await admin
+    .from('profiles')
+    .update({
+      org_id: null,
+      role: 'viewer',
+      invite_status: 'pending',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', user.id)
+
+  return { error: error?.message ?? null }
+}
+
+// ---------------------------------------------------------------------------
+// deleteAccountAction
+// ---------------------------------------------------------------------------
+
+export async function deleteAccountAction(): Promise<{ error: string } | { error: null }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const admin = createAdminClient()
+
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('org_id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profile?.org_id)
+    return { error: 'Leave or delete your organisation before deleting your account' }
+
+  // Deleting the auth user cascades to the profile row
+  const { error } = await admin.auth.admin.deleteUser(user.id)
+
+  return { error: error?.message ?? null }
+}
+
+// ---------------------------------------------------------------------------
+// requestPasswordResetAction
+// ---------------------------------------------------------------------------
+
 export async function requestPasswordResetAction(
   email: string,
   clients?: ActionClients
