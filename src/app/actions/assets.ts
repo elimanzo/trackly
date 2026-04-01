@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { createPolicy } from '@/lib/permissions'
 import {
   AssetFormSchema,
   CheckoutFormSchema,
@@ -14,7 +15,7 @@ import { computeAvailable } from '@/lib/utils/availability'
 
 import { logAudit } from './_audit'
 import type { ActionClients, ActionContext } from './_context'
-import { getContext, requireCanEdit } from './_context'
+import { getContext } from './_context'
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -46,7 +47,7 @@ export async function createAsset(
   const ctx = await getContext(clients)
   if (!ctx) return { error: 'Not authenticated' }
 
-  const denied = requireCanEdit(ctx, input.departmentId ?? null)
+  const denied = createPolicy(ctx).enforce('asset:create', input.departmentId ?? null)
   if (denied) return denied
 
   const { data, error } = await ctx.admin
@@ -105,7 +106,10 @@ export async function updateAsset(
     .eq('id', id)
     .maybeSingle()
 
-  const denied = requireCanEdit(ctx, (old?.department_id as string | null) ?? null)
+  const denied = createPolicy(ctx).enforce(
+    'asset:update',
+    (old?.department_id as string | null) ?? null
+  )
   if (denied) return denied
 
   const { error } = await ctx.admin
@@ -167,7 +171,10 @@ export async function deleteAsset(
     .eq('id', id)
     .maybeSingle()
 
-  const denied = requireCanEdit(ctx, (asset?.department_id as string | null) ?? null)
+  const denied = createPolicy(ctx).enforce(
+    'asset:delete',
+    (asset?.department_id as string | null) ?? null
+  )
   if (denied) return denied
 
   const { error } = await ctx.admin
@@ -209,7 +216,10 @@ export async function checkoutAsset(
     .eq('id', assetId)
     .single()
 
-  const denied = requireCanEdit(ctx, (asset?.department_id as string | null) ?? null)
+  const denied = createPolicy(ctx).enforce(
+    'asset:checkout',
+    (asset?.department_id as string | null) ?? null
+  )
   if (denied) return denied
 
   // Fast-path: reject immediately if obviously out of stock
@@ -297,7 +307,10 @@ export async function returnAsset(assetId: string): Promise<{ error: string } | 
     .eq('id', assetId)
     .maybeSingle()
 
-  const denied = requireCanEdit(ctx, (asset?.department_id as string | null) ?? null)
+  const denied = createPolicy(ctx).enforce(
+    'asset:return',
+    (asset?.department_id as string | null) ?? null
+  )
   if (denied) return denied
 
   const { error: assignError } = await ctx.admin
@@ -352,7 +365,7 @@ export async function returnBulkAssignment(
   const assetDeptId =
     (Array.isArray(assetJoin) ? assetJoin[0]?.department_id : assetJoin?.department_id) ?? null
 
-  const denied = requireCanEdit(ctx, assetDeptId)
+  const denied = createPolicy(ctx).enforce('asset:return', assetDeptId)
   if (denied) return denied
 
   const remaining = (row.quantity as number) - quantityToReturn
@@ -402,7 +415,10 @@ export async function restockAsset(
     .eq('id', assetId)
     .single()
 
-  const denied = requireCanEdit(ctx, (asset?.department_id as string | null) ?? null)
+  const denied = createPolicy(ctx).enforce(
+    'asset:restock',
+    (asset?.department_id as string | null) ?? null
+  )
   if (denied) return denied
 
   const oldQuantity = (asset?.quantity ?? 0) as number
@@ -448,7 +464,10 @@ export async function updateAssignment(
     .eq('id', assetId)
     .maybeSingle()
 
-  const denied = requireCanEdit(ctx, (asset?.department_id as string | null) ?? null)
+  const denied = createPolicy(ctx).enforce(
+    'assignment:update',
+    (asset?.department_id as string | null) ?? null
+  )
   if (denied) return denied
 
   if (isBulk) {

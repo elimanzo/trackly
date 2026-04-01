@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/lib/types'
-import { canEdit, canEditInDepartment, canManage } from '@/lib/utils/permissions'
+import { canEdit, canManage } from '@/lib/utils/permissions'
 
 export type ActionContext = {
   userId: string
@@ -54,13 +54,4 @@ export async function getAdminCtx(): Promise<ActionContext | { error: string }> 
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
   return ctx.requireRole('admin') ?? ctx
-}
-
-export function requireCanEdit(
-  ctx: ActionContext,
-  assetDepartmentId: string | null
-): { error: string } | null {
-  return canEditInDepartment(ctx.role, ctx.departmentIds, assetDepartmentId)
-    ? null
-    : { error: 'Not authorised' }
 }

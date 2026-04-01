@@ -3,6 +3,7 @@ import { useCallback } from 'react'
 
 import { getNextTagForPrefix } from '@/app/actions/assets'
 import { ASSET_TAG_PREFIX } from '@/lib/constants'
+import { applyDepartmentConstraint, createPolicy } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/client'
 import type {
   AssetAssignment,
@@ -13,7 +14,6 @@ import type {
 } from '@/lib/types'
 import { ASSET_STATUS_LABELS } from '@/lib/types/asset'
 import { computeAvailable } from '@/lib/utils/availability'
-import { canManage } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 
 export type AssetFilters = {
@@ -201,13 +201,7 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
       if (filters.departmentId) query = query.eq('department_id', filters.departmentId)
       if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
 
-      if (!canManage(user!.role)) {
-        if (user!.departmentIds.length > 0) {
-          query = query.in('department_id', user!.departmentIds)
-        } else {
-          query = query.eq('department_id', '00000000-0000-0000-0000-000000000000')
-        }
-      }
+      query = applyDepartmentConstraint(query, createPolicy(user!).queryConstraint())
 
       const from = (page - 1) * pageSize
       const to = from + pageSize - 1
