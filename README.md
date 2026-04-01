@@ -1,4 +1,4 @@
-# Asset Tracker
+# Trackly
 
 A multi-tenant SaaS app for tracking physical assets across departments — built with Next.js, Supabase, and Tailwind.
 
@@ -12,12 +12,12 @@ A multi-tenant SaaS app for tracking physical assets across departments — buil
 
 ## Roles
 
-| Role   | Access                                             |
-| ------ | -------------------------------------------------- |
-| Owner  | Full org control, settings, user management        |
-| Admin  | Full asset + user management org-wide              |
-| Editor | CRUD on assets within assigned departments         |
-| Viewer | Read-only + CSV export within assigned departments |
+| Role   | Access                                      |
+| ------ | ------------------------------------------- |
+| Owner  | Full org control, settings, user management |
+| Admin  | Full asset + user management org-wide       |
+| Editor | CRUD on assets within assigned departments  |
+| Viewer | Read-only within assigned departments       |
 
 ---
 
@@ -34,21 +34,23 @@ A multi-tenant SaaS app for tracking physical assets across departments — buil
 
 ```bash
 # 1. Clone and install dependencies
-git clone git@github.com:elimanzo/asset-tracker.git
-cd asset-tracker
+git clone git@github.com:elimanzo/trackly.git
+cd trackly
 pnpm install
 
-# 2. Set up environment variables
-cp .env.local.example .env.local
-
-# 3. Start the local Supabase stack (requires Docker)
+# 2. Start the local Supabase stack (requires Docker)
 pnpm db:start
+
+# 3. Copy the example env file and fill in values from `supabase status`
+cp .env.local.example .env.local
 
 # 4. Start the dev server
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+The anon key and service role key are printed by `supabase status` after the stack starts. The URL is always `http://127.0.0.1:54321`.
 
 ### Seeded accounts
 
@@ -81,6 +83,17 @@ pnpm db:email    # Open Mailpit (local email inbox) in browser
 
 `pnpm db:reset` is the main command for development — use it any time you want a clean slate with fresh seed data.
 
+### Google OAuth (optional for local dev)
+
+To test Google sign-in locally:
+
+1. Create a project at [console.cloud.google.com](https://console.cloud.google.com)
+2. APIs & Services → Credentials → Create OAuth 2.0 Client ID (Web application)
+3. Add authorized redirect URI: `http://localhost:54321/auth/v1/callback`
+4. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to `.env.local`
+
+Google sign-in is not required to run the app locally — email/password auth works without it.
+
 ---
 
 ## Project Structure
@@ -88,20 +101,23 @@ pnpm db:email    # Open Mailpit (local email inbox) in browser
 ```
 src/
 ├── app/
-│   ├── (app)/          # Protected app routes (dashboard, assets, etc.)
+│   ├── (app)/          # Protected app routes (dashboard, assets, settings, etc.)
 │   ├── (onboarding)/   # Org creation wizard
-│   ├── (auth)/         # Login, signup
-│   └── actions/        # Server actions (all mutations)
-├── components/         # UI components
+│   ├── (auth)/         # Login, signup, password reset
+│   ├── actions/        # Server actions (all mutations go here)
+│   └── auth/           # OAuth callback handler
+├── components/         # Shared UI components
 ├── lib/
-│   ├── hooks/          # React Query data hooks
-│   ├── supabase/       # Supabase client factories (browser/server/admin)
+│   ├── hooks/          # React Query data hooks + cache invalidation graph
+│   ├── permissions/    # Permission policy (createPolicy, action vocabulary)
+│   ├── supabase/       # Supabase client factories (browser / server / admin)
 │   └── types/          # Zod schemas + TypeScript types
-└── providers/          # React context providers (Auth, OrgData, Onboarding)
+└── providers/          # React context providers (Auth, Onboarding)
 
 supabase/
 ├── migrations/         # Incremental schema migrations (applied in order)
-└── seeds/              # Dev seed data (users, org, assets)
+├── seeds/              # Dev seed data (users, org, assets)
+└── templates/          # Custom Supabase email templates
 ```
 
 ## Adding a migration
@@ -122,13 +138,15 @@ Migrations in `supabase/migrations/` are applied in filename order on every `db:
 
 ```bash
 pnpm test           # Run all tests (vitest)
-pnpm type-check     # TypeScript check
+pnpm type-check     # TypeScript strict check
 ```
 
 Tests live alongside the code they cover in `__tests__/` directories:
 
-- `src/lib/utils/__tests__/` — pure utility functions (permissions, formatters, csv-export)
-- `src/app/actions/__tests__/` — server actions with Supabase mocked at the boundary
+- `src/lib/utils/__tests__/` — pure utility functions (availability, asset tags)
+- `src/lib/permissions/__tests__/` — permission policy (enforce, queryConstraint)
+- `src/lib/hooks/__tests__/` — cache invalidation graph
+- `src/app/actions/__tests__/` — server actions (Supabase mocked at the boundary)
 
 Pre-commit hooks run lint, type-check, and the full test suite automatically.
 
@@ -143,10 +161,13 @@ Pre-commit hooks run lint, type-check, and the full test suite automatically.
 
 ## Environment variables
 
-| Variable                        | Description                                       |
-| ------------------------------- | ------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                              |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (safe to expose)                  |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Service role key (server-side only, never expose) |
+| Variable                        | Required   | Description                                       |
+| ------------------------------- | ---------- | ------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Yes        | Supabase project URL                              |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes        | Public anon key (safe to expose)                  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Yes        | Service role key (server-side only, never expose) |
+| `NEXT_PUBLIC_APP_URL`           | Yes        | App origin (e.g. `https://trackly.vercel.app`)    |
+| `GOOGLE_CLIENT_ID`              | OAuth only | Google OAuth client ID                            |
+| `GOOGLE_CLIENT_SECRET`          | OAuth only | Google OAuth client secret                        |
 
-Local values are pre-filled in `.env.local.example` — they're the same for every developer and only work against the local Docker stack.
+Local values are documented in `.env.local.example`. The Supabase keys for local dev are printed by `supabase status`.
