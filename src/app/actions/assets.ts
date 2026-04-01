@@ -2,6 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 
+import {
+  checkoutAsset as checkoutAssetDomain,
+  createSupabaseCheckoutPorts,
+  returnBulkAssignment as returnBulkAssignmentDomain,
+  returnSerializedAsset,
+  updateAssignment as updateAssignmentDomain,
+} from '@/lib/checkout'
 import { createPolicy } from '@/lib/permissions'
 import {
   AssetFormSchema,
@@ -11,31 +18,10 @@ import {
   type TypedAsset,
 } from '@/lib/types'
 import { nextTagInSequence, sanitizePrefix } from '@/lib/utils/assetTag'
-import { computeAvailable } from '@/lib/utils/availability'
 
 import { logAudit } from './_audit'
-import type { ActionClients, ActionContext } from './_context'
+import type { ActionClients } from './_context'
 import { getContext } from './_context'
-
-// ---------------------------------------------------------------------------
-// Private helpers
-// ---------------------------------------------------------------------------
-
-/** Sum of active checked-out quantities for an asset, optionally excluding one assignment. */
-async function fetchCheckedOut(
-  admin: ActionContext['admin'],
-  assetId: string,
-  excludeAssignmentId?: string
-): Promise<number> {
-  const { data: rows } = await admin
-    .from('asset_assignments')
-    .select('id, quantity')
-    .eq('asset_id', assetId)
-    .is('returned_at', null)
-  return ((rows ?? []) as { id: string; quantity: number }[])
-    .filter((r) => !excludeAssignmentId || r.id !== excludeAssignmentId)
-    .reduce((sum, r) => sum + (r.quantity ?? 1), 0)
-}
 
 export async function createAsset(
   input: AssetFormInput,
@@ -208,12 +194,10 @@ export async function checkoutAsset(
   const ctx = await getContext(clients)
   if (!ctx) return { error: 'Not authenticated' }
 
-  const { id: assetId, isBulk } = assetRef
-
   const { data: asset } = await ctx.admin
     .from('assets')
-    .select('name, quantity, department_id')
-    .eq('id', assetId)
+    .select('department_id')
+    .eq('id', assetRef.id)
     .single()
 
   const denied = createPolicy(ctx).enforce(
@@ -222,71 +206,13 @@ export async function checkoutAsset(
   )
   if (denied) return denied
 
-  // Fast-path: reject immediately if obviously out of stock
-  if (isBulk) {
-    const checkedOut = await fetchCheckedOut(ctx.admin, assetId)
-    const available = computeAvailable(asset?.quantity ?? 0, checkedOut)
-    if (input.quantity > available) {
-      return { error: `Only ${available} available in stock.` }
-    }
-  }
-
-  // Insert first, then re-verify for bulk assets — catches concurrent checkouts
-  // that both pass the pre-check above before either inserts
-  const { data: newAssignment, error: assignError } = await ctx.admin
-    .from('asset_assignments')
-    .insert({
-      asset_id: assetId,
-      assigned_to_user_id: input.assignedToUserId,
-      assigned_to_name: input.assignedToName,
-      assigned_by: ctx.userId,
-      assigned_by_name: assignedByName,
-      quantity: input.quantity,
-      department_id: input.departmentId || null,
-      location_id: input.locationId || null,
-      expected_return_at: input.expectedReturnAt
-        ? new Date(input.expectedReturnAt).toISOString()
-        : null,
-      notes: input.notes || null,
-    })
-    .select('id')
-    .single()
-
-  if (assignError) return { error: assignError.message }
-
-  if (isBulk) {
-    const totalCheckedOut = await fetchCheckedOut(ctx.admin, assetId)
-    if (totalCheckedOut > (asset?.quantity ?? 0)) {
-      await ctx.admin
-        .from('asset_assignments')
-        .delete()
-        .eq('id', (newAssignment as { id: string }).id)
-      return { error: 'This item just went out of stock. Please try again.' }
-    }
-  }
-
-  // Bulk assets stay 'active'; only serialized assets become 'checked_out'
-  if (!isBulk) {
-    const { error } = await ctx.admin
-      .from('assets')
-      .update({ status: 'checked_out', updated_by: ctx.userId })
-      .eq('id', assetId)
-      .eq('org_id', ctx.orgId)
-    if (error) return { error: error.message }
-  }
-
-  await logAudit(ctx, {
-    entityType: 'asset',
-    entityId: assetId,
-    entityName: (asset?.name as string) ?? 'Unknown asset',
-    action: 'checked_out',
-    changes: {
-      assignedTo: { old: null, new: input.assignedToName },
-      ...(isBulk ? { quantity: { old: null, new: input.quantity } } : {}),
-    },
-  })
-
-  return null
+  return checkoutAssetDomain(
+    assetRef.id,
+    parsed.data,
+    assignedByName,
+    ctx.userId,
+    createSupabaseCheckoutPorts(ctx)
+  )
 }
 
 /** Return a serialized (non-bulk) asset entirely */
@@ -294,16 +220,9 @@ export async function returnAsset(assetId: string): Promise<{ error: string } | 
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
-  const { data: assignment } = await ctx.admin
-    .from('asset_assignments')
-    .select('assigned_to_name')
-    .eq('asset_id', assetId)
-    .is('returned_at', null)
-    .maybeSingle()
-
   const { data: asset } = await ctx.admin
     .from('assets')
-    .select('name, department_id')
+    .select('department_id')
     .eq('id', assetId)
     .maybeSingle()
 
@@ -313,33 +232,7 @@ export async function returnAsset(assetId: string): Promise<{ error: string } | 
   )
   if (denied) return denied
 
-  const { error: assignError } = await ctx.admin
-    .from('asset_assignments')
-    .update({ returned_at: new Date().toISOString() })
-    .eq('asset_id', assetId)
-    .is('returned_at', null)
-
-  if (assignError) return { error: assignError.message }
-
-  const { error } = await ctx.admin
-    .from('assets')
-    .update({ status: 'active', updated_by: ctx.userId })
-    .eq('id', assetId)
-    .eq('org_id', ctx.orgId)
-
-  if (error) return { error: error.message }
-
-  await logAudit(ctx, {
-    entityType: 'asset',
-    entityId: assetId,
-    entityName: (asset?.name as string) ?? 'Unknown asset',
-    action: 'returned',
-    changes: assignment?.assigned_to_name
-      ? { assignedTo: { old: assignment.assigned_to_name, new: null } }
-      : null,
-  })
-
-  return null
+  return returnSerializedAsset(assetId, createSupabaseCheckoutPorts(ctx))
 }
 
 /** Partially or fully return a bulk assignment */
@@ -350,55 +243,32 @@ export async function returnBulkAssignment(
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
-  const { data: row } = await ctx.admin
+  // Fetch asset_id → department_id for permission check
+  const { data: asgn } = await ctx.admin
     .from('asset_assignments')
-    .select('quantity, assigned_to_name, asset_id, assets(name, department_id)')
+    .select('asset_id')
     .eq('id', assignmentId)
     .single()
 
-  if (!row) return { error: 'Assignment not found.' }
+  const { data: asset } = asgn
+    ? await ctx.admin
+        .from('assets')
+        .select('department_id')
+        .eq('id', asgn.asset_id as string)
+        .single()
+    : { data: null }
 
-  const assetJoin = row.assets as
-    | { name: string; department_id: string | null }
-    | { name: string; department_id: string | null }[]
-    | null
-  const assetDeptId =
-    (Array.isArray(assetJoin) ? assetJoin[0]?.department_id : assetJoin?.department_id) ?? null
-
-  const denied = createPolicy(ctx).enforce('asset:return', assetDeptId)
+  const denied = createPolicy(ctx).enforce(
+    'asset:return',
+    (asset?.department_id as string | null) ?? null
+  )
   if (denied) return denied
 
-  const remaining = (row.quantity as number) - quantityToReturn
-
-  if (remaining <= 0) {
-    const { error } = await ctx.admin
-      .from('asset_assignments')
-      .update({ returned_at: new Date().toISOString() })
-      .eq('id', assignmentId)
-    if (error) return { error: error.message }
-  } else {
-    const { error } = await ctx.admin
-      .from('asset_assignments')
-      .update({ quantity: remaining })
-      .eq('id', assignmentId)
-    if (error) return { error: error.message }
-  }
-
-  const assetName =
-    (Array.isArray(assetJoin) ? assetJoin[0]?.name : assetJoin?.name) ?? 'Unknown asset'
-
-  await logAudit(ctx, {
-    entityType: 'asset',
-    entityId: row.asset_id as string,
-    entityName: assetName,
-    action: 'returned',
-    changes: {
-      assignedTo: { old: row.assigned_to_name, new: null },
-      quantity: { old: row.quantity, new: remaining <= 0 ? 0 : remaining },
-    },
-  })
-
-  return null
+  return returnBulkAssignmentDomain(
+    assignmentId,
+    quantityToReturn,
+    createSupabaseCheckoutPorts(ctx)
+  )
 }
 
 /** Increase total stock quantity for a bulk asset */
@@ -455,13 +325,10 @@ export async function updateAssignment(
   const ctx = await getContext()
   if (!ctx) return { error: 'Not authenticated' }
 
-  const { id: assetId, isBulk } = assetRef
-
-  // quantity included here so no separate fetch is needed for bulk validation
   const { data: asset } = await ctx.admin
     .from('assets')
-    .select('name, department_id, quantity')
-    .eq('id', assetId)
+    .select('department_id')
+    .eq('id', assetRef.id)
     .maybeSingle()
 
   const denied = createPolicy(ctx).enforce(
@@ -470,45 +337,13 @@ export async function updateAssignment(
   )
   if (denied) return denied
 
-  if (isBulk) {
-    // Validate: new quantity must not exceed available + what this assignment currently holds
-    const [checkedOutByOthers, { data: currentAsgn }] = await Promise.all([
-      fetchCheckedOut(ctx.admin, assetId, assignmentId),
-      ctx.admin.from('asset_assignments').select('quantity').eq('id', assignmentId).maybeSingle(),
-    ])
-    const maxAllowed = computeAvailable(asset?.quantity ?? 0, checkedOutByOthers)
-    if (input.quantity > maxAllowed) {
-      return {
-        error: `Only ${maxAllowed} available (${(currentAsgn?.quantity as number | null) ?? 0} currently on this assignment).`,
-      }
-    }
-  }
-
-  const { error } = await ctx.admin
-    .from('asset_assignments')
-    .update({
-      assigned_to_name: input.assignedToName,
-      quantity: input.quantity,
-      department_id: input.departmentId || null,
-      location_id: input.locationId || null,
-      expected_return_at: input.expectedReturnAt
-        ? new Date(input.expectedReturnAt).toISOString()
-        : null,
-      notes: input.notes || null,
-    })
-    .eq('id', assignmentId)
-
-  if (error) return { error: error.message }
-
-  await logAudit(ctx, {
-    entityType: 'asset',
-    entityId: assetId,
-    entityName: (asset?.name as string) ?? 'Unknown asset',
-    action: 'updated',
-    changes: { assignment: { old: null, new: input.assignedToName } },
-  })
-
-  return null
+  return updateAssignmentDomain(
+    assignmentId,
+    assetRef.id,
+    assetRef.isBulk,
+    parsed.data,
+    createSupabaseCheckoutPorts(ctx)
+  )
 }
 
 /** Return distinct tag prefixes used in the org (everything before the last '-') */
