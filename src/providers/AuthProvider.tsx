@@ -13,6 +13,7 @@ type AuthContextValue = {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<{ error: string | null }>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -128,8 +129,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null }
   }
 
+  async function refreshUser() {
+    const supabase = createClient()
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser()
+    if (!authUser) return
+    const profile = await fetchProfile(authUser.id)
+    setUser(profile)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, signIn, signUp, signOut, signInWithGoogle, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   )

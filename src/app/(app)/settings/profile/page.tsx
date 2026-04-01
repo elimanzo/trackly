@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
+import { updateProfileAction } from '@/app/actions/profile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -23,7 +24,7 @@ import { useAuth } from '@/providers/AuthProvider'
 import { DangerZone } from './DangerZone'
 
 export default function ProfileSettingsPage() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const hasOrg = !!user?.orgId
 
   const form = useForm<UpdateProfileInput>({
@@ -33,8 +34,13 @@ export default function ProfileSettingsPage() {
     },
   })
 
-  function onSubmit(_data: UpdateProfileInput) {
-    // Phase 2: persist to Supabase + update auth context
+  async function onSubmit(data: UpdateProfileInput) {
+    const result = await updateProfileAction(data)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    await refreshUser()
     toast.success('Profile updated')
   }
 

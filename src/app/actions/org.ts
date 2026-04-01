@@ -52,19 +52,25 @@ export async function completeOnboardingSetup(
     return { error: orgError.message }
   }
 
-  await admin
+  const { error: profileError } = await admin
     .from('profiles')
     .update({ org_id: orgData.id, invite_status: 'active' })
     .eq('id', user.id)
 
+  if (profileError) return { error: profileError.message }
+
   if (departments.length > 0) {
-    await admin
+    const { error: deptError } = await admin
       .from('departments')
       .insert(departments.map((name) => ({ name, org_id: orgData.id })))
+    if (deptError) return { error: deptError.message }
   }
 
   if (categories.length > 0) {
-    await admin.from('categories').insert(categories.map((name) => ({ name, org_id: orgData.id })))
+    const { error: catError } = await admin
+      .from('categories')
+      .insert(categories.map((name) => ({ name, org_id: orgData.id })))
+    if (catError) return { error: catError.message }
   }
 
   // Return success — client will do a full-page navigation to flush stale AuthProvider state
@@ -168,7 +174,7 @@ export async function deleteOrgAction(): Promise<{ error: string } | { error: nu
   const orgId = profile.org_id as string
 
   // Detach all members first so their accounts survive the org deletion
-  await admin
+  const { error: detachMembersError } = await admin
     .from('profiles')
     .update({
       org_id: null,
@@ -179,8 +185,10 @@ export async function deleteOrgAction(): Promise<{ error: string } | { error: nu
     .eq('org_id', orgId)
     .neq('id', user.id)
 
+  if (detachMembersError) return { error: detachMembersError.message }
+
   // Clear owner's own profile
-  await admin
+  const { error: detachOwnerError } = await admin
     .from('profiles')
     .update({
       org_id: null,
@@ -189,6 +197,8 @@ export async function deleteOrgAction(): Promise<{ error: string } | { error: nu
       updated_at: new Date().toISOString(),
     })
     .eq('id', user.id)
+
+  if (detachOwnerError) return { error: detachOwnerError.message }
 
   // Delete the org — cascades departments, categories, locations, vendors,
   // assets, invites, audit_logs, user_departments
