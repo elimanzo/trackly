@@ -3,7 +3,9 @@
 import { BoxesIcon, CheckIcon } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/providers/AuthProvider'
 
 const STEPS = [
   { label: 'Create org', path: '/org/new' },
@@ -15,18 +17,22 @@ const STEPS = [
 export function OnboardingShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const currentIndex = STEPS.findIndex((s) => s.path === pathname)
+  const { signOut } = useAuth()
 
   return (
     <div className="bg-background flex min-h-screen flex-col">
       {/* Header */}
-      <header className="border-border bg-card flex h-14 items-center border-b px-6 shadow-xs">
+      <header className="border-border bg-card flex h-14 items-center justify-between border-b px-6 shadow-xs">
         <div className="flex items-center gap-2">
           <div className="bg-primary flex h-7 w-7 items-center justify-center rounded-lg shadow-sm">
             <BoxesIcon className="text-primary-foreground h-4 w-4" />
           </div>
           <span className="text-sm font-semibold">Trackly</span>
+          <span className="text-muted-foreground ml-2 text-xs">Organization Setup</span>
         </div>
-        <span className="text-muted-foreground ml-4 text-xs">Organization Setup</span>
+        <Button variant="ghost" size="sm" onClick={signOut}>
+          Sign out
+        </Button>
       </header>
 
       {/* Stepper */}
