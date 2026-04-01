@@ -19,6 +19,8 @@ import { USER_ROLE_CONFIG } from '@/lib/constants'
 import { UpdateProfileSchema, type UpdateProfileInput } from '@/lib/types'
 import { useAuth } from '@/providers/AuthProvider'
 
+import { DangerZone } from './DangerZone'
+
 export default function ProfileSettingsPage() {
   const { user } = useAuth()
 
@@ -70,6 +72,7 @@ export default function ProfileSettingsPage() {
           </Form>
         </CardContent>
       </Card>
+      <DangerZone />
     </div>
   )
 }
