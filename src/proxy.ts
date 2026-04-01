@@ -59,12 +59,15 @@ export async function proxy(request: NextRequest) {
   const isAuthCallback = pathname.startsWith('/auth')
   // Invite accept requires a session but must skip the "no org" redirect
   const isInviteAccept = pathname.startsWith('/invite')
+  // Settings are accessible without an org (profile view + delete account)
+  const isSettingsRoute = pathname.startsWith('/settings')
   const isAppRoute =
     !isAuthRoute &&
     !isPublicRoute &&
     !isOnboardingRoute &&
     !isAuthCallback &&
     !isInviteAccept &&
+    !isSettingsRoute &&
     pathname !== '/' &&
     !pathname.startsWith('/_next')
 
