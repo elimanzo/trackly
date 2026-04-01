@@ -2,6 +2,7 @@ import { createCategory, deleteCategory, updateCategory } from '@/app/actions/ca
 import type { Category, CategoryFormInput } from '@/lib/types'
 
 import { makeEntityHooks } from './makeEntityHooks'
+import { invalidateForTable } from './queryInvalidation'
 
 const {
   keys: categoryKeys,
@@ -26,10 +27,7 @@ const {
     update: updateCategory,
     delete: deleteCategory,
   },
-  onDeleteSuccess: (queryClient) => {
-    void queryClient.invalidateQueries({ queryKey: ['assets'] })
-    void queryClient.invalidateQueries({ queryKey: ['asset'] })
-  },
+  onDeleteSuccess: (queryClient, orgId) => invalidateForTable(queryClient, orgId, 'categories'),
 })
 
 export { categoryKeys }

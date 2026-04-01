@@ -16,7 +16,7 @@ export type EntityHookConfig<TEntity, TFormInput> = {
     update: (id: string, input: TFormInput) => Promise<{ error: string } | null>
     delete: (id: string) => Promise<{ error: string } | null>
   }
-  onDeleteSuccess?: (queryClient: ReturnType<typeof useQueryClient>) => void
+  onDeleteSuccess?: (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => void
 }
 
 export function makeEntityHooks<TEntity, TFormInput>(
@@ -93,7 +93,7 @@ export function makeEntityHooks<TEntity, TFormInput>(
       onSuccess: () => {
         toast.success(`${label} deleted`)
         invalidate()
-        onDeleteSuccess?.(queryClient)
+        onDeleteSuccess?.(queryClient, orgId)
       },
       onError: (err: Error) => toast.error(err.message),
     })

@@ -2,6 +2,7 @@ import { createDepartment, deleteDepartment, updateDepartment } from '@/app/acti
 import type { Department, DepartmentFormInput } from '@/lib/types'
 
 import { makeEntityHooks } from './makeEntityHooks'
+import { invalidateForTable } from './queryInvalidation'
 
 const {
   keys: departmentKeys,
@@ -25,10 +26,7 @@ const {
     update: updateDepartment,
     delete: deleteDepartment,
   },
-  onDeleteSuccess: (queryClient) => {
-    void queryClient.invalidateQueries({ queryKey: ['assets'] })
-    void queryClient.invalidateQueries({ queryKey: ['asset'] })
-  },
+  onDeleteSuccess: (queryClient, orgId) => invalidateForTable(queryClient, orgId, 'departments'),
 })
 
 export { departmentKeys }

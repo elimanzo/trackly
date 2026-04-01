@@ -2,6 +2,7 @@ import { createLocation, deleteLocation, updateLocation } from '@/app/actions/lo
 import type { Location, LocationFormInput } from '@/lib/types'
 
 import { makeEntityHooks } from './makeEntityHooks'
+import { invalidateForTable } from './queryInvalidation'
 
 const {
   keys: locationKeys,
@@ -24,6 +25,7 @@ const {
     update: updateLocation,
     delete: deleteLocation,
   },
+  onDeleteSuccess: (queryClient, orgId) => invalidateForTable(queryClient, orgId, 'locations'),
 })
 
 export { locationKeys }

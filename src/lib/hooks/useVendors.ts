@@ -2,6 +2,7 @@ import { createVendor, deleteVendor, updateVendor } from '@/app/actions/vendors'
 import type { Vendor, VendorFormInput } from '@/lib/types'
 
 import { makeEntityHooks } from './makeEntityHooks'
+import { invalidateForTable } from './queryInvalidation'
 
 const {
   keys: vendorKeys,
@@ -27,6 +28,7 @@ const {
     update: updateVendor,
     delete: deleteVendor,
   },
+  onDeleteSuccess: (queryClient, orgId) => invalidateForTable(queryClient, orgId, 'vendors'),
 })
 
 export { vendorKeys }

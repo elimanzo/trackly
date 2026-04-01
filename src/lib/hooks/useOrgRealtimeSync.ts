@@ -4,11 +4,7 @@ import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/providers/AuthProvider'
 
-import { categoryKeys } from './useCategories'
-import { departmentKeys } from './useDepartments'
-import { locationKeys } from './useLocations'
-import { orgUserKeys } from './useOrgUsers'
-import { vendorKeys } from './useVendors'
+import { invalidateForTable, type AppTable } from './queryInvalidation'
 
 export function OrgRealtimeSync() {
   const { user } = useAuth()
@@ -26,43 +22,23 @@ export function OrgRealtimeSync() {
       filter: `org_id=eq.${orgId}`,
     })
 
-    const invalidateAssets = () => {
-      void queryClient.invalidateQueries({ queryKey: ['assets'] })
-      void queryClient.invalidateQueries({ queryKey: ['asset'] })
-      void queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
-    }
+    const on = (table: AppTable) => () => invalidateForTable(queryClient, orgId, table)
 
     const channel = supabase
       .channel(`org-realtime-${orgId}`)
-      .on('postgres_changes', filter('departments'), () => {
-        void queryClient.invalidateQueries({ queryKey: departmentKeys.all(orgId) })
-        invalidateAssets()
-      })
-      .on('postgres_changes', filter('categories'), () => {
-        void queryClient.invalidateQueries({ queryKey: categoryKeys.all(orgId) })
-        invalidateAssets()
-      })
-      .on('postgres_changes', filter('locations'), () => {
-        void queryClient.invalidateQueries({ queryKey: locationKeys.all(orgId) })
-      })
-      .on('postgres_changes', filter('vendors'), () => {
-        void queryClient.invalidateQueries({ queryKey: vendorKeys.all(orgId) })
-      })
-      .on('postgres_changes', filter('profiles'), () => {
-        void queryClient.invalidateQueries({ queryKey: orgUserKeys.all(orgId) })
-      })
-      .on('postgres_changes', filter('invites'), () => {
-        void queryClient.invalidateQueries({ queryKey: orgUserKeys.all(orgId) })
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_departments' }, () => {
-        void queryClient.invalidateQueries({ queryKey: orgUserKeys.all(orgId) })
-      })
-      .on('postgres_changes', filter('assets'), invalidateAssets)
-      .on('postgres_changes', filter('audit_logs'), () => {
-        void queryClient.invalidateQueries({ queryKey: ['recentActivity'] })
-        void queryClient.invalidateQueries({ queryKey: ['assetHistory'] })
-        void queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
-      })
+      .on('postgres_changes', filter('departments'), on('departments'))
+      .on('postgres_changes', filter('categories'), on('categories'))
+      .on('postgres_changes', filter('locations'), on('locations'))
+      .on('postgres_changes', filter('vendors'), on('vendors'))
+      .on('postgres_changes', filter('profiles'), on('profiles'))
+      .on('postgres_changes', filter('invites'), on('invites'))
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_departments' },
+        on('user_departments')
+      )
+      .on('postgres_changes', filter('assets'), on('assets'))
+      .on('postgres_changes', filter('audit_logs'), on('audit_logs'))
       .subscribe()
 
     return () => {
