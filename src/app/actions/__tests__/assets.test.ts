@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { AssetFormInput, CheckoutFormInput } from '@/lib/types'
+import type { AssetFormInput } from '@/lib/types'
 
 import { checkoutAsset, createAsset, deleteAsset } from '../assets'
 
@@ -137,129 +137,25 @@ describe('deleteAsset', () => {
 })
 
 // ---------------------------------------------------------------------------
-// checkoutAsset
+// checkoutAsset — action-layer only (domain logic covered in lib/checkout/__tests__)
 // ---------------------------------------------------------------------------
-
-function makeCheckoutInput(overrides: Partial<CheckoutFormInput> = {}): CheckoutFormInput {
-  return {
-    assignedToUserId: '00000000-0000-4000-8000-000000000001',
-    assignedToName: 'Alice',
-    quantity: 1,
-    departmentId: null,
-    locationId: null,
-    expectedReturnAt: null,
-    notes: undefined,
-    ...overrides,
-  }
-}
-
-/** Helper: mock a fetchCheckedOut call (uses chain.then) */
-function mockFetchCheckedOut(
-  chain: ReturnType<typeof makeChain>,
-  rows: { id: string; quantity: number }[]
-) {
-  chain.then.mockImplementationOnce((resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
-    Promise.resolve({ data: rows, error: null }).then(resolve, reject)
-  )
-}
 
 describe('checkoutAsset', () => {
   it('returns error when user is not authenticated', async () => {
     const clients = makeUnauthenticatedClients(chain)
     const result = await checkoutAsset(
       { id: 'asset-0001', isBulk: false },
-      makeCheckoutInput(),
+      {
+        assignedToUserId: '00000000-0000-4000-8000-000000000001',
+        assignedToName: 'Alice',
+        quantity: 1,
+        departmentId: null,
+        locationId: null,
+        expectedReturnAt: null,
+      },
       'Admin',
       clients
     )
     expect(result).toEqual({ error: 'Not authenticated' })
-  })
-
-  it('rejects bulk checkout when pre-check shows insufficient stock', async () => {
-    const clients = makeClients(chain)
-    // getContext: profile + user_departments
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'Admin', role: 'admin' },
-    })
-    chain.then.mockImplementationOnce(
-      (resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
-        Promise.resolve({ data: [], error: null }).then(resolve, reject)
-    )
-    // asset fetch: quantity=2, 2 already checked out → 0 available
-    chain.single.mockResolvedValueOnce({
-      data: { name: 'Laptop', quantity: 2, department_id: null },
-    })
-    // pre-check fetchCheckedOut → 2 checked out
-    mockFetchCheckedOut(chain, [
-      { id: 'asgn-001', quantity: 1 },
-      { id: 'asgn-002', quantity: 1 },
-    ])
-
-    const result = await checkoutAsset(
-      { id: 'asset-0001', isBulk: true },
-      makeCheckoutInput({ quantity: 1 }),
-      'Admin',
-      clients
-    )
-    expect(result).toEqual({ error: 'Only 0 available in stock.' })
-  })
-
-  it('rolls back assignment and returns error when post-insert re-check detects over-allocation', async () => {
-    const clients = makeClients(chain)
-    // getContext: profile + user_departments
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'Admin', role: 'admin' },
-    })
-    chain.then.mockImplementationOnce(
-      (resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
-        Promise.resolve({ data: [], error: null }).then(resolve, reject)
-    )
-    // asset fetch: quantity=1
-    chain.single
-      .mockResolvedValueOnce({ data: { name: 'Laptop', quantity: 1, department_id: null } })
-      // insert.select.single → assignment ID
-      .mockResolvedValueOnce({ data: { id: 'asgn-new-001' }, error: null })
-    // pre-check fetchCheckedOut → 0 checked out (passes fast-path)
-    mockFetchCheckedOut(chain, [])
-    // post-insert fetchCheckedOut → 2 total (concurrent checkout snuck in)
-    mockFetchCheckedOut(chain, [
-      { id: 'asgn-concurrent', quantity: 1 },
-      { id: 'asgn-new-001', quantity: 1 },
-    ])
-
-    const result = await checkoutAsset(
-      { id: 'asset-0001', isBulk: true },
-      makeCheckoutInput({ quantity: 1 }),
-      'Admin',
-      clients
-    )
-    expect(result).toEqual({ error: 'This item just went out of stock. Please try again.' })
-    // Rollback by assignment ID
-    expect(chain.eq).toHaveBeenCalledWith('id', 'asgn-new-001')
-  })
-
-  it('returns null on successful serialized checkout', async () => {
-    const clients = makeClients(chain)
-    // getContext: profile + user_departments
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'Admin', role: 'admin' },
-    })
-    chain.then.mockImplementationOnce(
-      (resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
-        Promise.resolve({ data: [], error: null }).then(resolve, reject)
-    )
-    // asset fetch
-    chain.single
-      .mockResolvedValueOnce({ data: { name: 'Laptop', quantity: null, department_id: null } })
-      // insert.select.single
-      .mockResolvedValueOnce({ data: { id: 'asgn-new-001' }, error: null })
-
-    const result = await checkoutAsset(
-      { id: 'asset-0001', isBulk: false },
-      makeCheckoutInput(),
-      'Admin',
-      clients
-    )
-    expect(result).toBeNull()
   })
 })
