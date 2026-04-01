@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { sendInviteAction } from '../invites'
+import { acceptInviteViaGoogleAction, sendInviteAction } from '../invites'
 
 import { makeChain, makeClients } from './_helpers'
 
@@ -92,5 +92,49 @@ describe('sendInviteAction', () => {
     const result = await sendInviteAction('new@example.com', 'viewer', [], clients)
 
     expect(result).toEqual({ error: null })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// acceptInviteViaGoogleAction
+// ---------------------------------------------------------------------------
+
+const PENDING_INVITE = {
+  id: 'invite-001',
+  org_id: 'org-0001',
+  role: 'editor',
+  department_ids: ['dept-001'],
+  expires_at: new Date(Date.now() + 86400_000).toISOString(),
+  accepted_at: null,
+}
+
+describe('acceptInviteViaGoogleAction', () => {
+  it('applies org/role/departments and returns null error on success', async () => {
+    const clients = makeClients(chain, { email: 'invited@example.com' })
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
+
+    const result = await acceptInviteViaGoogleAction('Alex Rivera', clients)
+
+    expect(result).toEqual({ error: null })
+  })
+
+  it('returns error when no pending invite exists', async () => {
+    const clients = makeClients(chain, { email: 'noinvite@example.com' })
+    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+
+    const result = await acceptInviteViaGoogleAction('Alex Rivera', clients)
+
+    expect(result).toEqual({
+      error: 'Invite not found or has expired. Ask your admin to resend it.',
+    })
+  })
+
+  it('returns error when session is missing', async () => {
+    const clients = makeClients(chain)
+    clients.supabase!.auth.getUser = vi.fn().mockResolvedValue({ data: { user: null } })
+
+    const result = await acceptInviteViaGoogleAction('Alex Rivera', clients)
+
+    expect(result).toEqual({ error: 'Session expired. Please use the invite link again.' })
   })
 })

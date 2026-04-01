@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -99,7 +100,13 @@ function ToggleRow({
 export default function OrgSettingsPage() {
   const { org, setOrg } = useOrg()
   const { user } = useAuth()
+  const router = useRouter()
   const isOwner = user?.role === 'owner'
+  const isAdmin = user?.role === 'admin'
+
+  useEffect(() => {
+    if (user && !isOwner && !isAdmin) router.replace('/settings/profile')
+  }, [user, isOwner, isAdmin, router])
   const dc = org?.dashboardConfig ?? {}
   const tc = org?.assetTableConfig ?? {}
   const rc = org?.reportConfig ?? {}

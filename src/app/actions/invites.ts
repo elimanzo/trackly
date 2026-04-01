@@ -105,6 +105,60 @@ export async function sendInviteAction(
 }
 
 // ---------------------------------------------------------------------------
+// acceptInviteViaGoogleAction
+// ---------------------------------------------------------------------------
+
+export async function acceptInviteViaGoogleAction(
+  fullName: string,
+  clients?: ActionClients
+): Promise<{ error: string } | { error: null }> {
+  const supabase = clients?.supabase ?? (await createClient())
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Session expired. Please use the invite link again.' }
+
+  const admin = clients?.admin ?? createAdminClient()
+
+  const { data: invite } = await admin
+    .from('invites')
+    .select('*')
+    .eq('email', user.email!.toLowerCase())
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+
+  if (!invite) return { error: 'Invite not found or has expired. Ask your admin to resend it.' }
+
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id: user.id,
+    org_id: invite.org_id,
+    full_name: fullName,
+    email: user.email,
+    role: invite.role as string,
+    invite_status: 'active',
+    updated_at: new Date().toISOString(),
+  })
+
+  if (profileError) return { error: profileError.message }
+
+  const deptIds = (invite.department_ids as string[] | null) ?? []
+  if (deptIds.length > 0) {
+    const { error: deptError } = await admin
+      .from('user_departments')
+      .insert(deptIds.map((department_id: string) => ({ user_id: user.id, department_id })))
+    if (deptError) return { error: deptError.message }
+  }
+
+  await admin
+    .from('invites')
+    .update({ accepted_at: new Date().toISOString() })
+    .eq('id', invite.id as string)
+
+  return { error: null }
+}
+
+// ---------------------------------------------------------------------------
 // acceptInviteAction
 // ---------------------------------------------------------------------------
 
