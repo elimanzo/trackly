@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 
-import { googleSignInDestination } from '@/app/actions/auth'
+import { completeInviteForGoogleUser, googleSignInDestination } from '@/app/actions/auth'
 import { createClient } from '@/lib/supabase/client'
 
 export function AuthCallbackHandler() {
@@ -63,14 +63,24 @@ export function AuthCallbackHandler() {
         subscription.unsubscribe()
 
         // For Google OAuth (PKCE code flow with no explicit `next`), determine
-        // the correct destination based on whether the user already has an org.
+        // the correct destination based on pending invites and org membership.
         if (!searchParams.get('next')) {
-          const result = await googleSignInDestination()
+          // 1. Check for a pending invite and auto-complete it if found
+          const email = session.user.email ?? ''
+          const inviteResult = await completeInviteForGoogleUser(session.user.id, email)
           if (cancelled) return
-          if ('error' in result) {
+          if ('error' in inviteResult) {
             router.replace('/login?error=auth_failed')
             return
           }
+          if (inviteResult.destination !== null) {
+            router.replace(inviteResult.destination)
+            return
+          }
+
+          // 2. No pending invite — route based on whether user has an org
+          const result = await googleSignInDestination(session.user.id)
+          if (cancelled) return
           // Pre-fill display name from Google profile when sending to org wizard
           if (result.destination === '/org/new' && session.user.user_metadata?.full_name) {
             const name = encodeURIComponent(session.user.user_metadata.full_name as string)
