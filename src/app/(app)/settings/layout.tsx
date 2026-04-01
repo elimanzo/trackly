@@ -4,14 +4,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 import { cn } from '@/lib/utils'
-
-const SETTINGS_NAV = [
-  { label: 'Organisation', href: '/settings/org' },
-  { label: 'Profile', href: '/settings/profile' },
-]
+import { useAuth } from '@/providers/AuthProvider'
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { user } = useAuth()
+  const canAccessOrgSettings = user?.role === 'owner' || user?.role === 'admin'
+
+  const nav = [
+    ...(canAccessOrgSettings ? [{ label: 'Organisation', href: '/settings/org' }] : []),
+    { label: 'Profile', href: '/settings/profile' },
+  ]
 
   return (
     <div className="space-y-6">
@@ -20,7 +23,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       </div>
       <div className="flex flex-col gap-6 md:flex-row">
         <nav className="flex shrink-0 flex-row gap-1 md:sticky md:top-0 md:w-44 md:flex-col md:self-start">
-          {SETTINGS_NAV.map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
