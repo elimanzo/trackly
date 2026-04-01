@@ -109,6 +109,7 @@ export default function LocationsPage() {
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => openEdit(loc)}
+                      aria-label={`Edit ${loc.name}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -117,6 +118,7 @@ export default function LocationsPage() {
                       size="icon"
                       className="text-destructive hover:text-destructive h-8 w-8"
                       onClick={() => setDeleteId(loc.id)}
+                      aria-label={`Delete ${loc.name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

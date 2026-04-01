@@ -118,6 +118,7 @@ export default function DepartmentsPage() {
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => openEdit(dept)}
+                      aria-label={`Edit ${dept.name}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -126,6 +127,7 @@ export default function DepartmentsPage() {
                       size="icon"
                       className="text-destructive hover:text-destructive h-8 w-8"
                       onClick={() => void openDelete(dept.id)}
+                      aria-label={`Delete ${dept.name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

@@ -53,7 +53,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         size="icon"
         className="text-muted-foreground hover:text-foreground mr-1 h-8 w-8"
         onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-        aria-label="Toggle theme"
+        aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </Button>
@@ -62,7 +62,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       {user && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              aria-label="Open user menu"
+            >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                   {getInitials(user.fullName)}

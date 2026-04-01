@@ -48,6 +48,7 @@ export function AssetCard({ asset }: AssetCardProps) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-label={`More options for ${asset.name}`}
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
