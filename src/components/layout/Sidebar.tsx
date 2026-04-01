@@ -90,7 +90,9 @@ export function Sidebar({ onNavClick }: SidebarProps) {
   const { org } = useOrg()
   const hasOrg = !!user?.orgId
   const isAdmin = user ? canManage(user.role) : false
-  const visibleManageItems = isAdmin ? buildNavManage(org?.departmentLabel ?? 'Department') : []
+  const isSettingsRoute = pathname.startsWith('/settings')
+  const visibleManageItems =
+    isAdmin && !isSettingsRoute ? buildNavManage(org?.departmentLabel ?? 'Department') : []
 
   return (
     <div className="bg-sidebar flex h-full flex-col">
@@ -107,7 +109,7 @@ export function Sidebar({ onNavClick }: SidebarProps) {
 
       {/* Nav */}
       <ScrollArea className="flex-1 px-3 py-3">
-        {hasOrg && (
+        {hasOrg && !isSettingsRoute && (
           <nav className="space-y-1">
             {NAV_MAIN.map((item) => (
               <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
@@ -129,9 +131,9 @@ export function Sidebar({ onNavClick }: SidebarProps) {
           </>
         )}
 
-        {(hasOrg || visibleManageItems.length > 0) && (
+        {(hasOrg && !isSettingsRoute) || visibleManageItems.length > 0 ? (
           <Separator className="bg-sidebar-border my-3" />
-        )}
+        ) : null}
         <nav className="space-y-1">
           {NAV_SETTINGS.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
