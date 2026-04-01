@@ -9,7 +9,8 @@ import { useAuth } from '@/providers/AuthProvider'
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { user } = useAuth()
-  const canAccessOrgSettings = user?.role === 'owner' || user?.role === 'admin'
+  const hasOrg = !!user?.orgId
+  const canAccessOrgSettings = hasOrg && (user?.role === 'owner' || user?.role === 'admin')
 
   const nav = [
     ...(canAccessOrgSettings ? [{ label: 'Organisation', href: '/settings/org' }] : []),

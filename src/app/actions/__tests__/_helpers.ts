@@ -50,6 +50,7 @@ export function makeClients(
     supabase: {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId, email } } }),
+        signInWithOtp: vi.fn().mockResolvedValue({ error: null }),
       },
     } as unknown as NonNullable<ActionClients['supabase']>,
     admin: {

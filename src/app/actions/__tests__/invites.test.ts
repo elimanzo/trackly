@@ -4,6 +4,12 @@ import { acceptInviteViaGoogleAction, sendInviteAction } from '../invites'
 
 import { makeChain, makeClients } from './_helpers'
 
+// Mock the raw @supabase/supabase-js client used for implicit-flow OTP
+const mockSignInWithOtp = vi.fn().mockResolvedValue({ error: null })
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({ auth: { signInWithOtp: mockSignInWithOtp } })),
+}))
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -51,7 +57,9 @@ describe('sendInviteAction', () => {
       })
       // insert.select.single — returns the new invite's ID
       .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
-    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: null }) // no duplicate invite
+      .mockResolvedValueOnce({ data: null }) // no existing auth user
 
     const result = await sendInviteAction('new@example.com', 'editor', [], clients)
 
@@ -60,21 +68,22 @@ describe('sendInviteAction', () => {
     expect(chain.eq).toHaveBeenCalledWith('id', 'new-invite-001')
   })
 
-  it('keeps invite row and returns success when invitee already has a Google account', async () => {
-    mockInviteUserByEmail.mockResolvedValueOnce({
-      error: { message: 'A user with this email address has already been registered' },
-    })
+  it('keeps invite row and returns success when invitee already has an account', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
     chain.single
       .mockResolvedValueOnce({
         data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
       })
       .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
-    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: null }) // no duplicate invite
+      .mockResolvedValueOnce({ data: { id: 'existing-user' } }) // profile exists → use OTP
 
-    const result = await sendInviteAction('google-user@example.com', 'editor', [], clients)
+    const result = await sendInviteAction('existing@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: null })
+    // inviteUserByEmail must not be called — we used OTP instead
+    expect(mockInviteUserByEmail).not.toHaveBeenCalled()
     // Must NOT have rolled back the invite row
     expect(chain.delete).not.toHaveBeenCalled()
   })
@@ -87,7 +96,9 @@ describe('sendInviteAction', () => {
       })
       // insert.select.single
       .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
-    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: null }) // no duplicate invite
+      .mockResolvedValueOnce({ data: null }) // no existing auth user
 
     const result = await sendInviteAction('new@example.com', 'viewer', [], clients)
 

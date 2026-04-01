@@ -88,6 +88,7 @@ export function Sidebar({ onNavClick }: SidebarProps) {
   const pathname = usePathname()
   const { user } = useAuth()
   const { org } = useOrg()
+  const hasOrg = !!user?.orgId
   const isAdmin = user ? canManage(user.role) : false
   const visibleManageItems = isAdmin ? buildNavManage(org?.departmentLabel ?? 'Department') : []
 
@@ -106,11 +107,13 @@ export function Sidebar({ onNavClick }: SidebarProps) {
 
       {/* Nav */}
       <ScrollArea className="flex-1 px-3 py-3">
-        <nav className="space-y-1">
-          {NAV_MAIN.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
-          ))}
-        </nav>
+        {hasOrg && (
+          <nav className="space-y-1">
+            {NAV_MAIN.map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
+            ))}
+          </nav>
+        )}
 
         {visibleManageItems.length > 0 && (
           <>
@@ -126,7 +129,9 @@ export function Sidebar({ onNavClick }: SidebarProps) {
           </>
         )}
 
-        <Separator className="bg-sidebar-border my-3" />
+        {(hasOrg || visibleManageItems.length > 0) && (
+          <Separator className="bg-sidebar-border my-3" />
+        )}
         <nav className="space-y-1">
           {NAV_SETTINGS.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />

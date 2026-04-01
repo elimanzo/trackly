@@ -27,7 +27,7 @@ export async function completeOnboardingSetup(
   org: { name: string; slug: string },
   departments: string[],
   categories: string[]
-): Promise<{ error: string } | never> {
+): Promise<{ error: string } | { error: null }> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -67,7 +67,8 @@ export async function completeOnboardingSetup(
     await admin.from('categories').insert(categories.map((name) => ({ name, org_id: orgData.id })))
   }
 
-  redirect('/dashboard')
+  // Return success — client will do a full-page navigation to flush stale AuthProvider state
+  return { error: null }
 }
 
 export async function createOrganization(
@@ -140,4 +141,58 @@ export async function updateOrganization(
   }
 
   return { error: null }
+}
+
+// ---------------------------------------------------------------------------
+// deleteOrgAction
+// ---------------------------------------------------------------------------
+
+export async function deleteOrgAction(): Promise<{ error: string } | { error: null }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const admin = createAdminClient()
+
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('org_id, role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.org_id) return { error: 'No organisation found' }
+  if (profile.role !== 'owner') return { error: 'Only the organisation owner can delete it' }
+
+  const orgId = profile.org_id as string
+
+  // Detach all members first so their accounts survive the org deletion
+  await admin
+    .from('profiles')
+    .update({
+      org_id: null,
+      role: 'viewer',
+      invite_status: 'pending',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('org_id', orgId)
+    .neq('id', user.id)
+
+  // Clear owner's own profile
+  await admin
+    .from('profiles')
+    .update({
+      org_id: null,
+      role: 'viewer',
+      invite_status: 'pending',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', user.id)
+
+  // Delete the org — cascades departments, categories, locations, vendors,
+  // assets, invites, audit_logs, user_departments
+  const { error } = await admin.from('organizations').delete().eq('id', orgId)
+
+  return { error: error?.message ?? null }
 }

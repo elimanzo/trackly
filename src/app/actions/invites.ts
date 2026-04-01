@@ -1,5 +1,6 @@
 'use server'
 
+import { createClient as createRawClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -73,6 +74,39 @@ export async function sendInviteAction(
   const orgName = (Array.isArray(orgs) ? orgs[0]?.name : orgs?.name) ?? ''
   const next = `/invite/accept?org=${encodeURIComponent(orgName)}`
   const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`
+
+  // Check if an auth user already exists for this email (e.g. they previously had an org
+  // and deleted it, or left). inviteUserByEmail fails for existing users, so send a magic
+  // link instead — they'll sign in and land on the invite accept page.
+  const { data: existingProfile } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (existingProfile) {
+    // Use a raw client with implicit flow so the magic link uses hash tokens
+    // (#access_token=…) instead of a PKCE code. signInWithOtp called server-side
+    // would store the PKCE verifier in the admin's browser — useless when a
+    // different person (the invitee) clicks the link in their own browser.
+    const implicitClient = createRawClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { flowType: 'implicit', persistSession: false } }
+    )
+    const { error: otpError } = await implicitClient.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo },
+    })
+    if (otpError) {
+      await admin
+        .from('invites')
+        .delete()
+        .eq('id', (newInvite as { id: string }).id)
+      return { error: otpError.message }
+    }
+    return { error: null }
+  }
 
   const { error: authError } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo,

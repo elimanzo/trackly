@@ -25,11 +25,14 @@ export default function SetupCompletePage() {
   async function handleComplete() {
     setSaving(true)
     const result = await completeOnboardingSetup({ name, slug }, departments, categories)
-    if (result?.error) {
+    if (result.error) {
       toast.error(result.error)
       setSaving(false)
+      return
     }
-    // On success the server action redirects to /dashboard
+    // Full-page navigation flushes the stale AuthProvider profile (orgId=null)
+    // so settings tabs and org-gated UI reflect the newly created org immediately.
+    window.location.assign('/dashboard')
   }
 
   return (

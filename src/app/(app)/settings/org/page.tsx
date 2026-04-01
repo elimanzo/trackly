@@ -107,6 +107,7 @@ export default function OrgSettingsPage() {
   useEffect(() => {
     if (user && !isOwner && !isAdmin) router.replace('/settings/profile')
   }, [user, isOwner, isAdmin, router])
+
   const dc = org?.dashboardConfig ?? {}
   const tc = org?.assetTableConfig ?? {}
   const rc = org?.reportConfig ?? {}
@@ -184,6 +185,8 @@ export default function OrgSettingsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [org])
+
+  if (!user || (!isOwner && !isAdmin)) return null
 
   async function onSubmit(data: OrgFormInput) {
     const dashboardConfig = {
