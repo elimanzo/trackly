@@ -21,7 +21,7 @@ jobs:
       - name: Dump database
         run: |
           set -o pipefail
-          pg_dump "${{ secrets.BACKUP_DATABASE_URL }}" | gzip > backup-$(date +%Y-%m-%d).sql.gz
+          /usr/lib/postgresql/17/bin/pg_dump "${{ secrets.BACKUP_DATABASE_URL }}" | gzip > backup-$(date +%Y-%m-%d).sql.gz
 
       - name: Clone or init backup repo
         run: |
