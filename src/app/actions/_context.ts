@@ -1,7 +1,7 @@
+import { createPolicy } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/lib/types'
-import { canEdit, canManage } from '@/lib/utils/permissions'
 
 export type ActionContext = {
   userId: string
@@ -43,8 +43,8 @@ export async function getContext(clients?: ActionClients): Promise<ActionContext
     departmentIds,
     admin,
     requireRole(level: 'editor' | 'admin') {
-      const allowed = level === 'admin' ? canManage(role) : canEdit(role)
-      return allowed ? null : { error: 'Not authorised' }
+      const action = level === 'admin' ? 'department:manage' : 'asset:create'
+      return createPolicy({ role, departmentIds }).enforce(action)
     },
   }
 }

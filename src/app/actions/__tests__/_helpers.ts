@@ -1,8 +1,8 @@
 import { vi } from 'vitest'
 
+import { createPolicy } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { UserRole } from '@/lib/types'
-import { canEdit, canManage } from '@/lib/utils/permissions'
 
 import type { ActionClients, ActionContext } from '../_context'
 
@@ -96,8 +96,8 @@ export function makeContext(overrides: Partial<ActionContext> = {}): ActionConte
     departmentIds: [],
     admin: {} as unknown as ReturnType<typeof createAdminClient>,
     requireRole(level: 'editor' | 'admin') {
-      const allowed = level === 'admin' ? canManage(role) : canEdit(role)
-      return allowed ? null : { error: 'Not authorised' }
+      const action = level === 'admin' ? ('department:manage' as const) : ('asset:create' as const)
+      return createPolicy({ role, departmentIds: overrides.departmentIds ?? [] }).enforce(action)
     },
     ...overrides,
   }

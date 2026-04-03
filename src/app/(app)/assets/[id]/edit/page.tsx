@@ -7,7 +7,7 @@ import { use } from 'react'
 import { AssetForm } from '@/components/assets/AssetForm'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useAsset } from '@/lib/hooks/useAssets'
-import { canEdit } from '@/lib/utils/permissions'
+import { createPolicy } from '@/lib/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 
 interface EditAssetPageProps {
@@ -19,7 +19,10 @@ export default function EditAssetPage({ params }: EditAssetPageProps) {
   const { data: asset, isLoading } = useAsset(id)
   const { user } = useAuth()
 
-  if (user && !canEdit(user.role)) {
+  if (
+    user &&
+    !createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
+  ) {
     redirect('/assets')
   }
 

@@ -18,8 +18,8 @@ import { usePathname } from 'next/navigation'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { createPolicy } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
-import { canManage } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -89,7 +89,9 @@ export function Sidebar({ onNavClick }: SidebarProps) {
   const { user } = useAuth()
   const { org } = useOrg()
   const hasOrg = !!user?.orgId
-  const isAdmin = user ? canManage(user.role) : false
+  const isAdmin = user
+    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('department:manage')
+    : false
   const visibleManageItems = isAdmin ? buildNavManage(org?.departmentLabel ?? 'Department') : []
 
   return (

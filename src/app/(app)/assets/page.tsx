@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { PaginationBar } from '@/components/shared/PaginationBar'
 import { Button } from '@/components/ui/button'
 import { type AssetFilters, useAssets } from '@/lib/hooks/useAssets'
-import { canEdit } from '@/lib/utils/permissions'
+import { createPolicy } from '@/lib/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 
 const PAGE_SIZE = 25
@@ -24,7 +24,9 @@ export default function AssetsPage() {
   const [page, setPage] = useState(1)
   const { data: assets, totalCount, isLoading } = useAssets(filters, page, PAGE_SIZE)
   const { user } = useAuth()
-  const canCreate = user ? canEdit(user.role) : false
+  const canCreate = user
+    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
+    : false
 
   function handleFiltersChange(next: AssetFilters) {
     setFilters(next)

@@ -26,10 +26,10 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsset } from '@/lib/hooks/useAssets'
 import { useAssetHistory } from '@/lib/hooks/useAuditLogs'
+import { createPolicy } from '@/lib/permissions'
 import type { AssetAssignment, AuditLog } from '@/lib/types'
 import { computeMaxForEdit } from '@/lib/utils/availability'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/formatters'
-import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -60,7 +60,11 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
     )
   if (!asset) return notFound()
 
-  const canEditAssets = user ? canEdit(user.role) : false
+  const canEditAssets = user
+    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:update', {
+        departmentId: asset.departmentId,
+      })
+    : false
   const canCheckOut = asset.isAvailable
 
   async function handleReturn() {

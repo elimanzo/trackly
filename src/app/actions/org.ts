@@ -2,11 +2,11 @@
 
 import { redirect } from 'next/navigation'
 
+import { createPolicy } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { CreateOrganizationInput, UpdateOrganizationInput } from '@/lib/types'
 import type { UserRole } from '@/lib/types'
-import { canManage } from '@/lib/utils/permissions'
 
 export async function checkOrgAvailability(
   name: string,
@@ -127,7 +127,10 @@ export async function updateOrganization(
     .single()
 
   if (!profile?.org_id) return { error: 'No organisation found' }
-  if (!canManage(profile.role as UserRole)) return { error: 'Not authorised' }
+  const denied = createPolicy({ role: profile.role as UserRole, departmentIds: [] }).enforce(
+    'department:manage'
+  )
+  if (denied) return denied
 
   const isOwner = profile.role === 'owner'
 

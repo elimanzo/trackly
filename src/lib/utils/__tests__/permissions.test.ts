@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { createPolicy } from '@/lib/permissions'
 import type { ProfileWithDepartments, SerializedAsset } from '@/lib/types'
-import {
-  canEdit,
-  canEditAsset,
-  canEditInDepartment,
-  canManage,
-  canViewAsset,
-  canViewDepartment,
-} from '@/lib/utils/permissions'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -80,163 +73,139 @@ function makeAsset(departmentId: string | null = DEPT_A): SerializedAsset {
 }
 
 // ---------------------------------------------------------------------------
-// canManage
+// canManage equivalent — can('department:manage')
 // ---------------------------------------------------------------------------
 
-describe('canManage', () => {
+describe('can department:manage (admin-tier check)', () => {
   it('returns true for owner', () => {
-    expect(canManage('owner')).toBe(true)
+    expect(createPolicy(makeUser('owner')).can('department:manage')).toBe(true)
   })
 
   it('returns true for admin', () => {
-    expect(canManage('admin')).toBe(true)
+    expect(createPolicy(makeUser('admin')).can('department:manage')).toBe(true)
   })
 
   it('returns false for editor', () => {
-    expect(canManage('editor')).toBe(false)
+    expect(createPolicy(makeUser('editor')).can('department:manage')).toBe(false)
   })
 
   it('returns false for viewer', () => {
-    expect(canManage('viewer')).toBe(false)
+    expect(createPolicy(makeUser('viewer')).can('department:manage')).toBe(false)
   })
 })
 
 // ---------------------------------------------------------------------------
-// canEdit
+// canEdit equivalent — can('asset:create') coarse role-tier check
 // ---------------------------------------------------------------------------
 
-describe('canEdit', () => {
+describe('can asset:create (editor-tier check, no resource)', () => {
   it('returns true for owner', () => {
-    expect(canEdit('owner')).toBe(true)
+    expect(createPolicy(makeUser('owner')).can('asset:create')).toBe(true)
   })
 
   it('returns true for admin', () => {
-    expect(canEdit('admin')).toBe(true)
+    expect(createPolicy(makeUser('admin')).can('asset:create')).toBe(true)
   })
 
   it('returns true for editor', () => {
-    expect(canEdit('editor')).toBe(true)
+    expect(createPolicy(makeUser('editor')).can('asset:create')).toBe(true)
   })
 
   it('returns false for viewer', () => {
-    expect(canEdit('viewer')).toBe(false)
+    expect(createPolicy(makeUser('viewer')).can('asset:create')).toBe(false)
   })
 })
 
 // ---------------------------------------------------------------------------
-// canViewDepartment
+// canEditInDepartment equivalent — can('asset:update', { departmentId })
 // ---------------------------------------------------------------------------
 
-describe('canViewDepartment', () => {
-  it('always grants access to owner', () => {
-    expect(canViewDepartment(makeUser('owner'), DEPT_B)).toBe(true)
-  })
-
-  it('always grants access to admin', () => {
-    expect(canViewDepartment(makeUser('admin'), DEPT_B)).toBe(true)
-  })
-
-  it('grants access to editor assigned to that department', () => {
-    expect(canViewDepartment(makeUser('editor', [DEPT_A]), DEPT_A)).toBe(true)
-  })
-
-  it('denies access to editor not assigned to that department', () => {
-    expect(canViewDepartment(makeUser('editor', [DEPT_B]), DEPT_A)).toBe(false)
-  })
-
-  it('grants access to viewer assigned to that department', () => {
-    expect(canViewDepartment(makeUser('viewer', [DEPT_A]), DEPT_A)).toBe(true)
-  })
-
-  it('denies access to viewer not assigned to that department', () => {
-    expect(canViewDepartment(makeUser('viewer', []), DEPT_A)).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// canEditInDepartment
-// ---------------------------------------------------------------------------
-
-describe('canEditInDepartment', () => {
+describe('can asset:update (dept-scoped)', () => {
   it('allows owner regardless of department', () => {
-    expect(canEditInDepartment('owner', [], null)).toBe(true)
-    expect(canEditInDepartment('owner', [], DEPT_A)).toBe(true)
+    expect(createPolicy(makeUser('owner')).can('asset:update', { departmentId: null })).toBe(true)
+    expect(createPolicy(makeUser('owner')).can('asset:update', { departmentId: DEPT_A })).toBe(true)
   })
 
   it('allows admin regardless of department', () => {
-    expect(canEditInDepartment('admin', [], null)).toBe(true)
-    expect(canEditInDepartment('admin', [], DEPT_A)).toBe(true)
+    expect(createPolicy(makeUser('admin')).can('asset:update', { departmentId: null })).toBe(true)
+    expect(createPolicy(makeUser('admin')).can('asset:update', { departmentId: DEPT_A })).toBe(true)
   })
 
   it('allows editor in their assigned department', () => {
-    expect(canEditInDepartment('editor', [DEPT_A], DEPT_A)).toBe(true)
+    expect(
+      createPolicy(makeUser('editor', [DEPT_A])).can('asset:update', { departmentId: DEPT_A })
+    ).toBe(true)
   })
 
   it('denies editor in a different department', () => {
-    expect(canEditInDepartment('editor', [DEPT_B], DEPT_A)).toBe(false)
+    expect(
+      createPolicy(makeUser('editor', [DEPT_B])).can('asset:update', { departmentId: DEPT_A })
+    ).toBe(false)
   })
 
   it('denies editor when asset has no department', () => {
-    expect(canEditInDepartment('editor', [DEPT_A], null)).toBe(false)
+    expect(
+      createPolicy(makeUser('editor', [DEPT_A])).can('asset:update', { departmentId: null })
+    ).toBe(false)
   })
 
   it('denies viewer regardless of department', () => {
-    expect(canEditInDepartment('viewer', [DEPT_A], DEPT_A)).toBe(false)
+    expect(
+      createPolicy(makeUser('viewer', [DEPT_A])).can('asset:update', { departmentId: DEPT_A })
+    ).toBe(false)
   })
 })
 
 // ---------------------------------------------------------------------------
-// canEditAsset
+// canEditAsset equivalent — can('asset:update', { departmentId: asset.departmentId })
 // ---------------------------------------------------------------------------
 
-describe('canEditAsset', () => {
-  it('always grants edit to owner', () => {
-    expect(canEditAsset(makeUser('owner'), makeAsset(DEPT_B))).toBe(true)
+describe('can asset:update for a specific asset', () => {
+  it('always allows owner', () => {
+    expect(
+      createPolicy(makeUser('owner')).can('asset:update', {
+        departmentId: makeAsset(DEPT_B).departmentId,
+      })
+    ).toBe(true)
   })
 
-  it('always grants edit to admin', () => {
-    expect(canEditAsset(makeUser('admin'), makeAsset(DEPT_B))).toBe(true)
+  it('always allows admin', () => {
+    expect(
+      createPolicy(makeUser('admin')).can('asset:update', {
+        departmentId: makeAsset(DEPT_B).departmentId,
+      })
+    ).toBe(true)
   })
 
-  it('grants edit to editor in the same department', () => {
-    expect(canEditAsset(makeUser('editor', [DEPT_A]), makeAsset(DEPT_A))).toBe(true)
+  it('allows editor in the same department', () => {
+    expect(
+      createPolicy(makeUser('editor', [DEPT_A])).can('asset:update', {
+        departmentId: makeAsset(DEPT_A).departmentId,
+      })
+    ).toBe(true)
   })
 
-  it('denies edit to editor in a different department', () => {
-    expect(canEditAsset(makeUser('editor', [DEPT_B]), makeAsset(DEPT_A))).toBe(false)
+  it('denies editor in a different department', () => {
+    expect(
+      createPolicy(makeUser('editor', [DEPT_B])).can('asset:update', {
+        departmentId: makeAsset(DEPT_A).departmentId,
+      })
+    ).toBe(false)
   })
 
-  it('denies edit to editor when asset has no department', () => {
-    expect(canEditAsset(makeUser('editor', [DEPT_A]), makeAsset(null))).toBe(false)
+  it('denies editor when asset has no department', () => {
+    expect(
+      createPolicy(makeUser('editor', [DEPT_A])).can('asset:update', {
+        departmentId: makeAsset(null).departmentId,
+      })
+    ).toBe(false)
   })
 
-  it('denies edit to viewer regardless of department', () => {
-    expect(canEditAsset(makeUser('viewer', [DEPT_A]), makeAsset(DEPT_A))).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// canViewAsset
-// ---------------------------------------------------------------------------
-
-describe('canViewAsset', () => {
-  it('always grants view to owner', () => {
-    expect(canViewAsset(makeUser('owner'), makeAsset(DEPT_B))).toBe(true)
-  })
-
-  it('always grants view to admin', () => {
-    expect(canViewAsset(makeUser('admin'), makeAsset(DEPT_B))).toBe(true)
-  })
-
-  it('grants view to user in the asset department', () => {
-    expect(canViewAsset(makeUser('viewer', [DEPT_A]), makeAsset(DEPT_A))).toBe(true)
-  })
-
-  it('denies view to user not in the asset department', () => {
-    expect(canViewAsset(makeUser('viewer', [DEPT_B]), makeAsset(DEPT_A))).toBe(false)
-  })
-
-  it('denies view when asset has no department and user is not owner/admin', () => {
-    expect(canViewAsset(makeUser('viewer', [DEPT_A]), makeAsset(null))).toBe(false)
+  it('denies viewer regardless of department', () => {
+    expect(
+      createPolicy(makeUser('viewer', [DEPT_A])).can('asset:update', {
+        departmentId: makeAsset(DEPT_A).departmentId,
+      })
+    ).toBe(false)
   })
 })

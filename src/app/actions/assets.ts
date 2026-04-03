@@ -33,7 +33,7 @@ export async function createAsset(
   const ctx = await getContext(clients)
   if (!ctx) return { error: 'Not authenticated' }
 
-  const denied = createPolicy(ctx).enforce('asset:create', input.departmentId ?? null)
+  const denied = createPolicy(ctx).enforce('asset:create', { departmentId: input.departmentId })
   if (denied) return denied
 
   const { data, error } = await ctx.admin
@@ -92,10 +92,9 @@ export async function updateAsset(
     .eq('id', id)
     .maybeSingle()
 
-  const denied = createPolicy(ctx).enforce(
-    'asset:update',
-    (old?.department_id as string | null) ?? null
-  )
+  const denied = createPolicy(ctx).enforce('asset:update', {
+    departmentId: (old?.department_id as string | null) ?? null,
+  })
   if (denied) return denied
 
   const { error } = await ctx.admin
@@ -157,10 +156,9 @@ export async function deleteAsset(
     .eq('id', id)
     .maybeSingle()
 
-  const denied = createPolicy(ctx).enforce(
-    'asset:delete',
-    (asset?.department_id as string | null) ?? null
-  )
+  const denied = createPolicy(ctx).enforce('asset:delete', {
+    departmentId: (asset?.department_id as string | null) ?? null,
+  })
   if (denied) return denied
 
   const { error } = await ctx.admin
@@ -200,10 +198,9 @@ export async function checkoutAsset(
     .eq('id', assetRef.id)
     .single()
 
-  const denied = createPolicy(ctx).enforce(
-    'asset:checkout',
-    (asset?.department_id as string | null) ?? null
-  )
+  const denied = createPolicy(ctx).enforce('asset:checkout', {
+    departmentId: (asset?.department_id as string | null) ?? null,
+  })
   if (denied) return denied
 
   return checkoutAssetDomain(
@@ -226,10 +223,9 @@ export async function returnAsset(assetId: string): Promise<{ error: string } | 
     .eq('id', assetId)
     .maybeSingle()
 
-  const denied = createPolicy(ctx).enforce(
-    'asset:return',
-    (asset?.department_id as string | null) ?? null
-  )
+  const denied = createPolicy(ctx).enforce('asset:return', {
+    departmentId: (asset?.department_id as string | null) ?? null,
+  })
   if (denied) return denied
 
   return returnSerializedAsset(assetId, createSupabaseCheckoutPorts(ctx))
@@ -258,10 +254,9 @@ export async function returnBulkAssignment(
         .single()
     : { data: null }
 
-  const denied = createPolicy(ctx).enforce(
-    'asset:return',
-    (asset?.department_id as string | null) ?? null
-  )
+  const denied = createPolicy(ctx).enforce('asset:return', {
+    departmentId: (asset?.department_id as string | null) ?? null,
+  })
   if (denied) return denied
 
   return returnBulkAssignmentDomain(
@@ -285,10 +280,9 @@ export async function restockAsset(
     .eq('id', assetId)
     .single()
 
-  const denied = createPolicy(ctx).enforce(
-    'asset:restock',
-    (asset?.department_id as string | null) ?? null
-  )
+  const denied = createPolicy(ctx).enforce('asset:restock', {
+    departmentId: (asset?.department_id as string | null) ?? null,
+  })
   if (denied) return denied
 
   const oldQuantity = (asset?.quantity ?? 0) as number
@@ -331,10 +325,9 @@ export async function updateAssignment(
     .eq('id', assetRef.id)
     .maybeSingle()
 
-  const denied = createPolicy(ctx).enforce(
-    'assignment:update',
-    (asset?.department_id as string | null) ?? null
-  )
+  const denied = createPolicy(ctx).enforce('assignment:update', {
+    departmentId: (asset?.department_id as string | null) ?? null,
+  })
   if (denied) return denied
 
   return updateAssignmentDomain(
