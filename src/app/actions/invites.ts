@@ -80,9 +80,17 @@ export async function sendInviteAction(
   // link instead — they'll sign in and land on the invite accept page.
   const { data: existingProfile } = await admin
     .from('profiles')
-    .select('id')
+    .select('id, org_id')
     .eq('email', email)
     .maybeSingle()
+
+  if (existingProfile?.org_id) {
+    await admin
+      .from('invites')
+      .delete()
+      .eq('id', (newInvite as { id: string }).id)
+    return { error: 'This person is already a member of another organization.' }
+  }
 
   if (existingProfile) {
     // Use a raw client with implicit flow so the magic link uses hash tokens
