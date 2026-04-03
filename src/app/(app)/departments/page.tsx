@@ -65,13 +65,14 @@ export default function DepartmentsPage() {
     setDeleteTarget({ id, assetCount: count })
   }
 
-  function onSubmit(data: DepartmentFormInput) {
+  async function onSubmit(data: DepartmentFormInput) {
     if (editing) {
       updateDepartment(editing.id, data)
+      setSheetOpen(false)
     } else {
-      createDepartment(data)
+      const id = await createDepartment(data)
+      if (id) setSheetOpen(false)
     }
-    setSheetOpen(false)
   }
 
   return (

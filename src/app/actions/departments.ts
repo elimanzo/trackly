@@ -16,6 +16,16 @@ export async function createDepartment(
   const ctx = await getAdminCtx()
   if ('error' in ctx) return ctx
 
+  const { data: existing } = await ctx.admin
+    .from('departments')
+    .select('id')
+    .eq('org_id', ctx.orgId)
+    .ilike('name', input.name.trim())
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (existing) return { error: 'A department with that name already exists.' }
+
   const { data, error } = await ctx.admin
     .from('departments')
     .insert({ org_id: ctx.orgId, name: input.name, description: input.description ?? null })

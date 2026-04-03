@@ -32,7 +32,7 @@ export async function checkoutAsset(
   // both pass the pre-check above before either inserts
   const assignment = await ports.repo.insertAssignment({
     assetId,
-    assignedToUserId: input.assignedToUserId,
+    assignedToUserId: input.assignedToUserId ?? null,
     assignedToName: input.assignedToName,
     assignedById: actorId,
     assignedByName,

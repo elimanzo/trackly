@@ -58,13 +58,14 @@ export default function VendorsPage() {
     setSheetOpen(true)
   }
 
-  function onSubmit(data: VendorFormInput) {
+  async function onSubmit(data: VendorFormInput) {
     if (editing) {
       updateVendor(editing.id, data)
+      setSheetOpen(false)
     } else {
-      createVendor(data)
+      const id = await createVendor(data)
+      if (id) setSheetOpen(false)
     }
-    setSheetOpen(false)
   }
 
   return (

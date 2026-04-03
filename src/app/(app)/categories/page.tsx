@@ -62,13 +62,14 @@ export default function CategoriesPage() {
     setDeleteTarget({ id, assetCount: count })
   }
 
-  function onSubmit(data: CategoryFormInput) {
+  async function onSubmit(data: CategoryFormInput) {
     if (editing) {
       updateCategory(editing.id, data)
+      setSheetOpen(false)
     } else {
-      createCategory(data)
+      const id = await createCategory(data)
+      if (id) setSheetOpen(false)
     }
-    setSheetOpen(false)
   }
 
   return (

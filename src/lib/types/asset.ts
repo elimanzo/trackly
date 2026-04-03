@@ -170,11 +170,11 @@ export type AssetFormInput = z.infer<typeof AssetFormSchema>
 // ---------------------------------------------------------------------------
 
 export const CheckoutFormSchema = z.object({
-  assignedToUserId: z.string().uuid().nullable(),
+  assignedToUserId: z.string().uuid().nullish(),
   assignedToName: z.string().min(1, 'Assignee name is required').max(200),
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
-  departmentId: z.string().uuid().nullable(),
-  locationId: z.string().uuid().nullable(),
+  departmentId: z.string().uuid().nullish(),
+  locationId: z.string().uuid().nullish(),
   expectedReturnAt: z.string().nullable(),
   notes: z.string().max(1000).optional(),
 })

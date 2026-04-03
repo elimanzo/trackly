@@ -56,13 +56,14 @@ export default function LocationsPage() {
     setSheetOpen(true)
   }
 
-  function onSubmit(data: LocationFormInput) {
+  async function onSubmit(data: LocationFormInput) {
     if (editing) {
       updateLocation(editing.id, data)
+      setSheetOpen(false)
     } else {
-      createLocation(data)
+      const id = await createLocation(data)
+      if (id) setSheetOpen(false)
     }
-    setSheetOpen(false)
   }
 
   return (
