@@ -37,9 +37,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { createPolicy } from '@/lib/permissions'
 import type { TypedAsset } from '@/lib/types'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
-import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -68,7 +68,9 @@ export function AssetTable({ assets }: AssetTableProps) {
   const showWarrantyExpiry = tc.showWarrantyExpiry ?? false
   const showVendor = tc.showVendor ?? false
 
-  const canEditAssets = user ? canEdit(user.role) : false
+  const canEditAssets = user
+    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
+    : false
 
   // Columns the org allows — only these appear in the toggle dropdown
   const toggleableCols = [

@@ -17,9 +17,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { createPolicy } from '@/lib/permissions'
 import type { TypedAsset } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils/formatters'
-import { canEdit } from '@/lib/utils/permissions'
 import { useAuth } from '@/providers/AuthProvider'
 
 interface AssetCardProps {
@@ -30,7 +30,9 @@ export function AssetCard({ asset }: AssetCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const canEditAssets = user ? canEdit(user.role) : false
+  const canEditAssets = user
+    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
+    : false
 
   return (
     <>

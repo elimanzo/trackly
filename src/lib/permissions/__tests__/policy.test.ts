@@ -6,19 +6,19 @@ const DEPT_A = 'dept-aaaa-0000'
 const DEPT_B = 'dept-bbbb-1111'
 
 // ---------------------------------------------------------------------------
-// enforce
+// enforce — role gate
 // ---------------------------------------------------------------------------
 
 describe('enforce — role gate', () => {
   it('allows owner for any action', () => {
     const policy = createPolicy({ role: 'owner', departmentIds: [] })
-    expect(policy.enforce('asset:create', null)).toBeNull()
+    expect(policy.enforce('asset:create', { departmentId: null })).toBeNull()
     expect(policy.enforce('org:manage')).toBeNull()
   })
 
   it('allows admin for editor-level and admin-level actions', () => {
     const policy = createPolicy({ role: 'admin', departmentIds: [] })
-    expect(policy.enforce('asset:update', DEPT_A)).toBeNull()
+    expect(policy.enforce('asset:update', { departmentId: DEPT_A })).toBeNull()
     expect(policy.enforce('department:manage')).toBeNull()
   })
 
@@ -29,7 +29,9 @@ describe('enforce — role gate', () => {
 
   it('denies viewer for editor-level actions', () => {
     const policy = createPolicy({ role: 'viewer', departmentIds: [DEPT_A] })
-    expect(policy.enforce('asset:create', DEPT_A)).toEqual({ error: 'Not authorised' })
+    expect(policy.enforce('asset:create', { departmentId: DEPT_A })).toEqual({
+      error: 'Not authorised',
+    })
   })
 
   it('denies viewer for admin-level actions', () => {
@@ -41,28 +43,32 @@ describe('enforce — role gate', () => {
 describe('enforce — department scope for editors', () => {
   it('allows editor in their assigned department', () => {
     const policy = createPolicy({ role: 'editor', departmentIds: [DEPT_A] })
-    expect(policy.enforce('asset:update', DEPT_A)).toBeNull()
+    expect(policy.enforce('asset:update', { departmentId: DEPT_A })).toBeNull()
   })
 
   it('denies editor outside their departments', () => {
     const policy = createPolicy({ role: 'editor', departmentIds: [DEPT_B] })
-    expect(policy.enforce('asset:update', DEPT_A)).toEqual({ error: 'Not authorised' })
+    expect(policy.enforce('asset:update', { departmentId: DEPT_A })).toEqual({
+      error: 'Not authorised',
+    })
   })
 
   it('denies editor when asset has no department', () => {
     const policy = createPolicy({ role: 'editor', departmentIds: [DEPT_A] })
-    expect(policy.enforce('asset:update', null)).toEqual({ error: 'Not authorised' })
+    expect(policy.enforce('asset:update', { departmentId: null })).toEqual({
+      error: 'Not authorised',
+    })
   })
 
   it('allows owner regardless of department', () => {
     const policy = createPolicy({ role: 'owner', departmentIds: [] })
-    expect(policy.enforce('asset:delete', null)).toBeNull()
-    expect(policy.enforce('asset:delete', DEPT_A)).toBeNull()
+    expect(policy.enforce('asset:delete', { departmentId: null })).toBeNull()
+    expect(policy.enforce('asset:delete', { departmentId: DEPT_A })).toBeNull()
   })
 
   it('allows admin regardless of department', () => {
     const policy = createPolicy({ role: 'admin', departmentIds: [] })
-    expect(policy.enforce('asset:checkout', DEPT_A)).toBeNull()
+    expect(policy.enforce('asset:checkout', { departmentId: DEPT_A })).toBeNull()
   })
 })
 
@@ -78,7 +84,7 @@ describe('enforce — all asset actions use the same dept-scoped rule', () => {
     'asset:restock',
     'assignment:update',
   ] as const)('%s allows editor in dept', (action) => {
-    expect(editor.enforce(action, DEPT_A)).toBeNull()
+    expect(editor.enforce(action, { departmentId: DEPT_A })).toBeNull()
   })
 
   it.each([
@@ -90,7 +96,65 @@ describe('enforce — all asset actions use the same dept-scoped rule', () => {
     'asset:restock',
     'assignment:update',
   ] as const)('%s denies editor outside dept', (action) => {
-    expect(editor.enforce(action, DEPT_B)).toEqual({ error: 'Not authorised' })
+    expect(editor.enforce(action, { departmentId: DEPT_B })).toEqual({ error: 'Not authorised' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// can — boolean check
+// ---------------------------------------------------------------------------
+
+describe('can — role-tier check (no resource)', () => {
+  it('returns true for owner on any action', () => {
+    const policy = createPolicy({ role: 'owner', departmentIds: [] })
+    expect(policy.can('asset:create')).toBe(true)
+    expect(policy.can('department:manage')).toBe(true)
+    expect(policy.can('org:manage')).toBe(true)
+  })
+
+  it('returns true for admin on editor/admin actions', () => {
+    const policy = createPolicy({ role: 'admin', departmentIds: [] })
+    expect(policy.can('asset:create')).toBe(true)
+    expect(policy.can('department:manage')).toBe(true)
+  })
+
+  it('returns false for admin on owner-only actions', () => {
+    const policy = createPolicy({ role: 'admin', departmentIds: [] })
+    expect(policy.can('org:manage')).toBe(false)
+  })
+
+  it('returns true for editor on editor-level actions (coarse — no dept check)', () => {
+    const policy = createPolicy({ role: 'editor', departmentIds: [] })
+    expect(policy.can('asset:create')).toBe(true)
+    expect(policy.can('asset:update')).toBe(true)
+  })
+
+  it('returns false for editor on admin-level actions', () => {
+    const policy = createPolicy({ role: 'editor', departmentIds: [] })
+    expect(policy.can('department:manage')).toBe(false)
+  })
+
+  it('returns false for viewer on editor-level actions', () => {
+    const policy = createPolicy({ role: 'viewer', departmentIds: [DEPT_A] })
+    expect(policy.can('asset:create')).toBe(false)
+  })
+})
+
+describe('can — dept-scoped check (with resource)', () => {
+  it('allows editor in their department', () => {
+    const policy = createPolicy({ role: 'editor', departmentIds: [DEPT_A] })
+    expect(policy.can('asset:update', { departmentId: DEPT_A })).toBe(true)
+  })
+
+  it('denies editor outside their department', () => {
+    const policy = createPolicy({ role: 'editor', departmentIds: [DEPT_B] })
+    expect(policy.can('asset:update', { departmentId: DEPT_A })).toBe(false)
+  })
+
+  it('allows admin regardless of department', () => {
+    const policy = createPolicy({ role: 'admin', departmentIds: [] })
+    expect(policy.can('asset:update', { departmentId: DEPT_A })).toBe(true)
+    expect(policy.can('asset:update', { departmentId: null })).toBe(true)
   })
 })
 

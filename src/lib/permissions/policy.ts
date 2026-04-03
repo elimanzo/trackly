@@ -22,6 +22,14 @@ export type PermissionPrincipal = {
   departmentIds: string[]
 }
 
+/**
+ * Optional resource context for permission checks.
+ * Extensible: add fields here (e.g. orgId for multi-org) without breaking callsites.
+ */
+export type ResourceContext = {
+  departmentId?: string | null
+}
+
 // ---------------------------------------------------------------------------
 // Internal
 // ---------------------------------------------------------------------------
@@ -55,24 +63,38 @@ function meetsMinRole(role: UserRole, minRole: 'editor' | 'admin' | 'owner'): bo
 export function createPolicy(principal: PermissionPrincipal) {
   const { role, departmentIds } = principal
 
+  function canDo(action: PolicyAction, resource?: ResourceContext): boolean {
+    const rule = ACTION_RULES[action]
+    if (!meetsMinRole(role, rule.minRole)) return false
+    // Dept-scoped check is only applied when a resource is explicitly provided.
+    // Omitting resource gives a coarse role-tier result, useful for UI visibility gates.
+    if (resource !== undefined && rule.deptScoped && role !== 'owner' && role !== 'admin') {
+      if (!resource.departmentId || !departmentIds.includes(resource.departmentId)) {
+        return false
+      }
+    }
+    return true
+  }
+
   return {
+    /**
+     * Boolean check — use in UI components to conditionally render controls.
+     *
+     * @example
+     *   if (policy.can('asset:update', { departmentId: asset.departmentId })) …
+     */
+    can: canDo,
+
     /**
      * Gate check for a single operation. Returns null on success or
      * { error } on denial — same shape as every server action return type.
      *
      * @example
-     *   const denied = createPolicy(ctx).enforce('asset:update', asset.department_id)
+     *   const denied = policy.enforce('asset:update', { departmentId: asset.departmentId })
      *   if (denied) return denied
      */
-    enforce(action: PolicyAction, departmentId?: string | null): { error: string } | null {
-      const rule = ACTION_RULES[action]
-      if (!meetsMinRole(role, rule.minRole)) return { error: 'Not authorised' }
-      if (rule.deptScoped && role !== 'owner' && role !== 'admin') {
-        if (!departmentId || !departmentIds.includes(departmentId)) {
-          return { error: 'Not authorised' }
-        }
-      }
-      return null
+    enforce(action: PolicyAction, resource?: ResourceContext): { error: string } | null {
+      return canDo(action, resource) ? null : { error: 'Not authorised' }
     },
 
     /**
