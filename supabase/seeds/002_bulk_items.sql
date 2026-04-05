@@ -54,9 +54,10 @@ begin
     raise exception 'No organization found with seed 001 departments — run seed 001 first.';
   end if;
 
-  select id, full_name into v_user_id, v_user_name
-    from public.profiles
-    where org_id = v_org_id and role = 'owner'
+  select p.id, p.full_name into v_user_id, v_user_name
+    from public.profiles p
+    join public.user_org_memberships m on m.user_id = p.id
+    where m.org_id = v_org_id and m.role = 'owner'
     limit 1;
 
   -- resolve existing departments and locations by name

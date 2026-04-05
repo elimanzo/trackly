@@ -82,13 +82,13 @@ export async function proxy(request: NextRequest) {
   }
 
   // Authenticated — check org membership via DB (single primary-key lookup)
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: membership } = await supabase
+    .from('user_org_memberships')
     .select('org_id')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
     .maybeSingle()
 
-  const hasOrg = !!profile?.org_id
+  const hasOrg = !!membership?.org_id
 
   // Auth callback must always run — it may replace the current session (invite flow)
   // Public routes (forgot/reset password) are always accessible regardless of auth state
