@@ -52,12 +52,13 @@ export async function completeOnboardingSetup(
     return { error: orgError.message }
   }
 
-  const { error: profileError } = await admin
-    .from('profiles')
-    .update({ org_id: orgData.id, invite_status: 'active' })
-    .eq('id', user.id)
-
-  if (profileError) return { error: profileError.message }
+  const { error: membershipError } = await admin.from('user_org_memberships').insert({
+    user_id: user.id,
+    org_id: orgData.id,
+    role: 'owner',
+    invite_status: 'active',
+  })
+  if (membershipError) return { error: membershipError.message }
 
   if (departments.length > 0) {
     const { error: deptError } = await admin
@@ -73,22 +74,18 @@ export async function completeOnboardingSetup(
     if (catError) return { error: catError.message }
   }
 
-  // Return success — client will do a full-page navigation to flush stale AuthProvider state
   return { error: null }
 }
 
 export async function createOrganization(
   input: CreateOrganizationInput
 ): Promise<{ error: string } | never> {
-  // Auth check via server client (reads session from cookies)
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Use admin client for DB writes — bypasses RLS, safe because we've
-  // already verified the user identity above via getUser()
   const admin = createAdminClient()
 
   const { data: org, error: orgError } = await admin
@@ -104,7 +101,12 @@ export async function createOrganization(
     return { error: orgError.message }
   }
 
-  await admin.from('profiles').update({ org_id: org.id, invite_status: 'active' }).eq('id', user.id)
+  await admin.from('user_org_memberships').insert({
+    user_id: user.id,
+    org_id: org.id,
+    role: 'owner',
+    invite_status: 'active',
+  })
 
   redirect('/setup/departments')
 }
@@ -120,19 +122,19 @@ export async function updateOrganization(
 
   const admin = createAdminClient()
 
-  const { data: profile } = await admin
-    .from('profiles')
+  const { data: membership } = await admin
+    .from('user_org_memberships')
     .select('org_id, role')
-    .eq('id', user.id)
-    .single()
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  if (!profile?.org_id) return { error: 'No organisation found' }
-  const denied = createPolicy({ role: profile.role as UserRole, departmentIds: [] }).enforce(
+  if (!membership?.org_id) return { error: 'No organisation found' }
+  const denied = createPolicy({ role: membership.role as UserRole, departmentIds: [] }).enforce(
     'department:manage'
   )
   if (denied) return denied
 
-  const isOwner = profile.role === 'owner'
+  const isOwner = membership.role === 'owner'
 
   const patch: Record<string, unknown> = {}
   if (isOwner && input.name !== undefined) patch.name = input.name
@@ -142,7 +144,7 @@ export async function updateOrganization(
   if (input.assetTableConfig !== undefined) patch.asset_table_config = input.assetTableConfig
   if (input.reportConfig !== undefined) patch.report_config = input.reportConfig
 
-  const { error } = await admin.from('organizations').update(patch).eq('id', profile.org_id)
+  const { error } = await admin.from('organizations').update(patch).eq('id', membership.org_id)
 
   if (error) {
     if (error.code === '23505') return { error: 'That URL slug is already taken.' }
@@ -165,46 +167,19 @@ export async function deleteOrgAction(): Promise<{ error: string } | { error: nu
 
   const admin = createAdminClient()
 
-  const { data: profile } = await admin
-    .from('profiles')
+  const { data: membership } = await admin
+    .from('user_org_memberships')
     .select('org_id, role')
-    .eq('id', user.id)
-    .single()
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  if (!profile?.org_id) return { error: 'No organisation found' }
-  if (profile.role !== 'owner') return { error: 'Only the organisation owner can delete it' }
+  if (!membership?.org_id) return { error: 'No organisation found' }
+  if (membership.role !== 'owner') return { error: 'Only the organisation owner can delete it' }
 
-  const orgId = profile.org_id as string
-
-  // Detach all members first so their accounts survive the org deletion
-  const { error: detachMembersError } = await admin
-    .from('profiles')
-    .update({
-      org_id: null,
-      role: 'viewer',
-      invite_status: 'pending',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('org_id', orgId)
-    .neq('id', user.id)
-
-  if (detachMembersError) return { error: detachMembersError.message }
-
-  // Clear owner's own profile
-  const { error: detachOwnerError } = await admin
-    .from('profiles')
-    .update({
-      org_id: null,
-      role: 'viewer',
-      invite_status: 'pending',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', user.id)
-
-  if (detachOwnerError) return { error: detachOwnerError.message }
+  const orgId = membership.org_id as string
 
   // Delete the org — cascades departments, categories, locations, vendors,
-  // assets, invites, audit_logs, user_departments
+  // assets, invites, audit_logs, user_departments, user_org_memberships
   const { error } = await admin.from('organizations').delete().eq('id', orgId)
 
   return { error: error?.message ?? null }

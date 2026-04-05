@@ -22,26 +22,48 @@ async function fetchProfile(userId: string): Promise<ProfileWithDepartments | nu
   const supabase = createClient()
   const { data, error } = await supabase
     .from('profiles')
-    .select(`*, user_departments ( department_id, departments ( id, name ) )`)
+    .select(
+      `
+      *,
+      user_org_memberships ( org_id, role, invite_status ),
+      user_departments ( department_id, org_id, departments ( id, name ) )
+    `
+    )
     .eq('id', userId)
     .maybeSingle()
 
   if (error || !data) return null
 
-  type UDRow = { department_id: string; departments: { id: string; name: string } | null }
+  type MembershipRow = { org_id: string; role: string; invite_status: string }
+  type UDRow = {
+    department_id: string
+    org_id: string
+    departments: { id: string; name: string } | null
+  }
+
+  // Phase 1: use the first membership as the active org context.
+  // Phase 2 will replace this with URL-based org selection.
+  const memberships = (data.user_org_memberships as MembershipRow[]) ?? []
+  const activeMembership = memberships[0] ?? null
+
+  const allDepts = (data.user_departments as UDRow[]) ?? []
+  const scopedDepts = activeMembership
+    ? allDepts.filter((ud) => ud.org_id === activeMembership.org_id)
+    : []
 
   return {
     id: data.id as string,
-    orgId: data.org_id as string | null,
+    orgId: activeMembership?.org_id ?? null,
     fullName: data.full_name as string,
     email: data.email as string,
     avatarUrl: (data.avatar_url as string | null) ?? null,
-    role: data.role as ProfileWithDepartments['role'],
-    inviteStatus: data.invite_status as ProfileWithDepartments['inviteStatus'],
+    role: (activeMembership?.role ?? 'viewer') as ProfileWithDepartments['role'],
+    inviteStatus: (activeMembership?.invite_status ??
+      'pending') as ProfileWithDepartments['inviteStatus'],
     createdAt: data.created_at as string,
     updatedAt: data.updated_at as string,
-    departmentIds: (data.user_departments as UDRow[]).map((ud) => ud.department_id),
-    departmentNames: (data.user_departments as UDRow[]).map((ud) => ud.departments?.name ?? ''),
+    departmentIds: scopedDepts.map((ud) => ud.department_id),
+    departmentNames: scopedDepts.map((ud) => ud.departments?.name ?? ''),
   }
 }
 

@@ -19,7 +19,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('googleSignInDestination', () => {
-  it('returns /dashboard when user already has an org', async () => {
+  it('returns /dashboard when user already has a membership', async () => {
     const clients = makeClients(chain)
     chain.maybeSingle.mockResolvedValueOnce({ data: { org_id: 'org-0001' } })
 
@@ -28,9 +28,9 @@ describe('googleSignInDestination', () => {
     expect(result).toEqual({ destination: '/dashboard' })
   })
 
-  it('returns /org/new when user has no org', async () => {
+  it('returns /org/new when user has no membership', async () => {
     const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({ data: { org_id: null } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: null })
 
     const result = await googleSignInDestination('user-001', clients)
 
@@ -52,15 +52,16 @@ const PENDING_INVITE = {
 }
 
 describe('completeInviteForGoogleUser', () => {
-  it('completes the invite and returns /dashboard when user has no org', async () => {
+  it('creates membership and returns /dashboard when invite is valid', async () => {
     const clients = makeClients(chain)
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: PENDING_INVITE }) // invite lookup
-      .mockResolvedValueOnce({ data: { org_id: null } }) // profile lookup
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
 
     const result = await completeInviteForGoogleUser('user-001', 'invited@example.com', clients)
 
     expect(result).toEqual({ destination: '/dashboard' })
+    expect(chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-001', org_id: 'org-0001', role: 'editor' })
+    )
   })
 
   it('returns null destination when no pending invite exists', async () => {
@@ -72,14 +73,13 @@ describe('completeInviteForGoogleUser', () => {
     expect(result).toEqual({ destination: null })
   })
 
-  it('returns /invite/conflict when user already belongs to an org', async () => {
+  it('always accepts the invite even when user is already in another org', async () => {
     const clients = makeClients(chain)
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: PENDING_INVITE }) // invite lookup
-      .mockResolvedValueOnce({ data: { org_id: 'org-other' } }) // profile lookup
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
 
     const result = await completeInviteForGoogleUser('user-001', 'invited@example.com', clients)
 
-    expect(result).toEqual({ destination: '/invite/conflict' })
+    // Multi-org: no conflict redirect — invite is accepted
+    expect(result).toEqual({ destination: '/dashboard' })
   })
 })

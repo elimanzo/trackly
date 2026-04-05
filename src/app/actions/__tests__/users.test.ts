@@ -19,11 +19,14 @@ beforeEach(() => {
 
 // ---------------------------------------------------------------------------
 // updateUserRoleAction
+// Calls getContext() internally, so each test pre-seeds 2 maybeSingle calls
+// (membership + profile name) via seedContext before setting up test-specific mocks.
 // ---------------------------------------------------------------------------
 
 describe('updateUserRoleAction', () => {
-  it('returns error when actor profile has no organisation', async () => {
+  it('returns error when actor has no organisation', async () => {
     const clients = makeClients(chain, { userId: ACTOR_ID })
+    // membership lookup returns null → no org
     chain.maybeSingle.mockResolvedValueOnce({ data: null })
 
     const result = await updateUserRoleAction(TARGET_ID, 'editor', clients)
@@ -32,9 +35,9 @@ describe('updateUserRoleAction', () => {
   })
 
   it('returns error when actor role is not owner or admin', async () => {
-    const clients = makeClients(chain, { userId: ACTOR_ID })
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', role: 'editor', full_name: 'Actor' },
+    const clients = makeClients(chain, {
+      userId: ACTOR_ID,
+      seedContext: { orgId: 'org-0001', role: 'editor', actorName: 'Actor' },
     })
 
     const result = await updateUserRoleAction(TARGET_ID, 'viewer', clients)
@@ -43,9 +46,9 @@ describe('updateUserRoleAction', () => {
   })
 
   it('returns error when actor tries to change their own role', async () => {
-    const clients = makeClients(chain, { userId: ACTOR_ID })
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', role: 'admin', full_name: 'Actor' },
+    const clients = makeClients(chain, {
+      userId: ACTOR_ID,
+      seedContext: { orgId: 'org-0001', role: 'admin', actorName: 'Actor' },
     })
 
     const result = await updateUserRoleAction(ACTOR_ID, 'editor', clients)
@@ -54,11 +57,11 @@ describe('updateUserRoleAction', () => {
   })
 
   it('returns error when target user is not found in the org', async () => {
-    const clients = makeClients(chain, { userId: ACTOR_ID })
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', role: 'admin', full_name: 'Actor' },
+    const clients = makeClients(chain, {
+      userId: ACTOR_ID,
+      seedContext: { orgId: 'org-0001', role: 'admin', actorName: 'Actor' },
     })
-    chain.single.mockResolvedValueOnce({ data: null })
+    chain.maybeSingle.mockResolvedValueOnce({ data: null }) // target membership not found
 
     const result = await updateUserRoleAction(TARGET_ID, 'editor', clients)
 
@@ -66,11 +69,13 @@ describe('updateUserRoleAction', () => {
   })
 
   it('returns error when target user is the org owner', async () => {
-    const clients = makeClients(chain, { userId: ACTOR_ID })
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', role: 'admin', full_name: 'Actor' },
+    const clients = makeClients(chain, {
+      userId: ACTOR_ID,
+      seedContext: { orgId: 'org-0001', role: 'admin', actorName: 'Actor' },
     })
-    chain.single.mockResolvedValueOnce({ data: { role: 'owner', full_name: 'Owner' } })
+    chain.maybeSingle.mockResolvedValueOnce({
+      data: { role: 'owner', profiles: { full_name: 'Owner' } },
+    })
 
     const result = await updateUserRoleAction(TARGET_ID, 'editor', clients)
 
@@ -78,11 +83,13 @@ describe('updateUserRoleAction', () => {
   })
 
   it('returns null error on successful role change', async () => {
-    const clients = makeClients(chain, { userId: ACTOR_ID })
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', role: 'admin', full_name: 'Actor' },
+    const clients = makeClients(chain, {
+      userId: ACTOR_ID,
+      seedContext: { orgId: 'org-0001', role: 'admin', actorName: 'Actor' },
     })
-    chain.single.mockResolvedValueOnce({ data: { role: 'editor', full_name: 'Target User' } })
+    chain.maybeSingle.mockResolvedValueOnce({
+      data: { role: 'editor', profiles: { full_name: 'Target User' } },
+    })
 
     const result = await updateUserRoleAction(TARGET_ID, 'viewer', clients)
 

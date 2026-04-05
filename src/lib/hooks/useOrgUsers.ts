@@ -16,20 +16,45 @@ export const orgUserKeys = {
   all: (orgId: string) => ['orgUsers', orgId] as const,
 }
 
-type Row = Record<string, unknown>
-type UDRow = { department_id: string; departments: { id: string; name: string } | null }
+type MembershipRow = {
+  user_id: string
+  org_id: string
+  role: string
+  invite_status: string
+  profiles: {
+    full_name: string
+    email: string
+    avatar_url: string | null
+    created_at: string
+    updated_at: string
+  } | null
+}
+
+type UDRow = {
+  user_id: string
+  department_id: string
+  departments: { id: string; name: string } | null
+}
+
+type InvRow = Record<string, unknown>
 
 async function fetchOrgUsers(
   orgId: string
 ): Promise<{ users: ProfileWithDepartments[]; pendingInvites: Invite[] }> {
   const supabase = createClient()
-  const [profsResult, invsResult] = await Promise.all([
+  const [membershipsResult, deptsResult, invsResult] = await Promise.all([
     supabase
-      .from('profiles')
-      .select('*, user_departments(department_id, departments(id, name))')
+      .from('user_org_memberships')
+      .select(
+        'user_id, org_id, role, invite_status, profiles(full_name, email, avatar_url, created_at, updated_at)'
+      )
       .eq('org_id', orgId)
       .neq('invite_status', 'deactivated')
-      .order('full_name'),
+      .order('user_id'),
+    supabase
+      .from('user_departments')
+      .select('user_id, department_id, departments(id, name)')
+      .eq('org_id', orgId),
     supabase
       .from('invites')
       .select('*')
@@ -37,26 +62,36 @@ async function fetchOrgUsers(
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString()),
   ])
-  if (profsResult.error) throw new Error(profsResult.error.message)
+  if (membershipsResult.error) throw new Error(membershipsResult.error.message)
+  if (deptsResult.error) throw new Error(deptsResult.error.message)
   if (invsResult.error) throw new Error(invsResult.error.message)
 
-  const users = ((profsResult.data ?? []) as Row[]).map((r) => ({
-    id: r.id as string,
-    orgId: (r.org_id as string | null) ?? null,
-    fullName: r.full_name as string,
-    email: r.email as string,
-    avatarUrl: (r.avatar_url as string | null) ?? null,
-    role: r.role as ProfileWithDepartments['role'],
-    inviteStatus: r.invite_status as ProfileWithDepartments['inviteStatus'],
-    createdAt: r.created_at as string,
-    updatedAt: r.updated_at as string,
-    departmentIds: ((r.user_departments as UDRow[]) ?? []).map((ud) => ud.department_id),
-    departmentNames: ((r.user_departments as UDRow[]) ?? []).map(
-      (ud) => ud.departments?.name ?? ''
-    ),
-  }))
+  const deptsByUser = new Map<string, UDRow[]>()
+  for (const ud of (deptsResult.data ?? []) as unknown as UDRow[]) {
+    const arr = deptsByUser.get(ud.user_id) ?? []
+    arr.push(ud)
+    deptsByUser.set(ud.user_id, arr)
+  }
 
-  const pendingInvites = ((invsResult.data ?? []) as Row[]).map((r) => ({
+  const users = ((membershipsResult.data ?? []) as unknown as MembershipRow[]).map((m) => {
+    const p = m.profiles
+    const depts = deptsByUser.get(m.user_id) ?? []
+    return {
+      id: m.user_id,
+      orgId: m.org_id,
+      fullName: p?.full_name ?? '',
+      email: p?.email ?? '',
+      avatarUrl: p?.avatar_url ?? null,
+      role: m.role as ProfileWithDepartments['role'],
+      inviteStatus: m.invite_status as ProfileWithDepartments['inviteStatus'],
+      createdAt: p?.created_at ?? '',
+      updatedAt: p?.updated_at ?? '',
+      departmentIds: depts.map((ud) => ud.department_id),
+      departmentNames: depts.map((ud) => ud.departments?.name ?? ''),
+    }
+  })
+
+  const pendingInvites = ((invsResult.data ?? []) as InvRow[]).map((r) => ({
     id: r.id as string,
     orgId: r.org_id as string,
     email: r.email as string,

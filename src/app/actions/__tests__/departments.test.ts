@@ -28,10 +28,7 @@ describe('deleteDepartment', () => {
   })
 
   it('returns error when viewer tries to delete a department', async () => {
-    const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'Viewer', role: 'viewer' },
-    })
+    const clients = makeClients(chain, { seedContext: { role: 'viewer' } })
 
     const result = await deleteDepartment(DEPT_ID, clients)
     expect(result).toEqual({ error: 'Not authorised' })
@@ -39,10 +36,8 @@ describe('deleteDepartment', () => {
 
   it('returns error when the rpc call fails', async () => {
     const rpc = vi.fn().mockResolvedValue({ error: { message: 'function failed' } })
-    const clients = makeClients(chain, { rpc })
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', full_name: 'Admin', role: 'admin' } })
-      .mockResolvedValueOnce({ data: { name: 'Engineering' } })
+    const clients = makeClients(chain, { rpc, seedContext: { role: 'admin' } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Engineering' } })
 
     const result = await deleteDepartment(DEPT_ID, clients)
     expect(result).toEqual({ error: 'function failed' })
@@ -50,10 +45,8 @@ describe('deleteDepartment', () => {
 
   it('calls rpc with the correct parameters on success', async () => {
     const rpc = vi.fn().mockResolvedValue({ error: null })
-    const clients = makeClients(chain, { rpc })
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', full_name: 'Admin', role: 'admin' } })
-      .mockResolvedValueOnce({ data: { name: 'Engineering' } })
+    const clients = makeClients(chain, { rpc, seedContext: { orgId: 'org-0001', role: 'admin' } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Engineering' } })
 
     const result = await deleteDepartment(DEPT_ID, clients)
 
@@ -68,10 +61,8 @@ describe('deleteDepartment', () => {
 
   it('still returns null when name fetch finds no row (audit falls back to Unknown)', async () => {
     const rpc = vi.fn().mockResolvedValue({ error: null })
-    const clients = makeClients(chain, { rpc })
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', full_name: 'Admin', role: 'admin' } })
-      .mockResolvedValueOnce({ data: null }) // name row not found
+    const clients = makeClients(chain, { rpc, seedContext: { role: 'admin' } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: null }) // name row not found
 
     const result = await deleteDepartment(DEPT_ID, clients)
     expect(result).toBeNull()

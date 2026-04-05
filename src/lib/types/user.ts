@@ -13,17 +13,28 @@ export const InviteStatusSchema = z.enum(['active', 'pending', 'deactivated'])
 export type InviteStatus = z.infer<typeof InviteStatusSchema>
 
 // ---------------------------------------------------------------------------
-// Profile
+// Org membership (one row per user per org — carries role and invite status)
+// ---------------------------------------------------------------------------
+
+export const OrgMembershipSchema = z.object({
+  userId: z.string().uuid(),
+  orgId: z.string().uuid(),
+  role: UserRoleSchema,
+  inviteStatus: InviteStatusSchema,
+  createdAt: z.string().datetime(),
+})
+
+export type OrgMembership = z.infer<typeof OrgMembershipSchema>
+
+// ---------------------------------------------------------------------------
+// Profile (identity only — role/org live on OrgMembership)
 // ---------------------------------------------------------------------------
 
 export const ProfileSchema = z.object({
   id: z.string().uuid(),
-  orgId: z.string().uuid().nullable(),
   fullName: z.string().min(1).max(100),
   email: z.string().email(),
   avatarUrl: z.string().url().nullable(),
-  role: UserRoleSchema,
-  inviteStatus: InviteStatusSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 })
@@ -36,6 +47,7 @@ export type Profile = z.infer<typeof ProfileSchema>
 
 export const UserDepartmentSchema = z.object({
   userId: z.string().uuid(),
+  orgId: z.string().uuid(),
   departmentId: z.string().uuid(),
   createdAt: z.string().datetime(),
 })
@@ -84,7 +96,13 @@ export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>
 // Profile with department list (for display in tables)
 // ---------------------------------------------------------------------------
 
+// ProfileWithDepartments is the shape returned by AuthProvider to the UI.
+// In Phase 1 it carries the first (active) membership's org/role/inviteStatus
+// for backward compatibility. Phase 2 will replace orgId with memberships[].
 export type ProfileWithDepartments = Profile & {
+  orgId: string | null
+  role: UserRole
+  inviteStatus: InviteStatus
   departmentIds: string[]
   departmentNames: string[]
 }

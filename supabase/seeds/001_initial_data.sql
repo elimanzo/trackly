@@ -65,6 +65,8 @@ begin
   delete from public.invites         where org_id = v_org_id;
   delete from public.user_departments
     where user_id in (u_owner, u_admin, u_editor, u_viewer);
+  delete from public.user_org_memberships
+    where user_id in (u_owner, u_admin, u_editor, u_viewer);
   delete from public.profiles        where id in (u_owner, u_admin, u_editor, u_viewer);
   delete from public.organizations   where id = v_org_id;
   delete from auth.users             where id in (u_owner, u_admin, u_editor, u_viewer);
@@ -101,22 +103,12 @@ begin
   insert into public.organizations (id, name, slug, owner_id)
   values (v_org_id, 'Acme Corp', 'acme-corp', u_owner);
 
-  -- ── PROFILES (update trigger-created rows) ────────────────
-  update public.profiles set
-    org_id = v_org_id, role = 'owner', invite_status = 'active'
-  where id = u_owner;
-
-  update public.profiles set
-    org_id = v_org_id, role = 'admin', invite_status = 'active'
-  where id = u_admin;
-
-  update public.profiles set
-    org_id = v_org_id, role = 'editor', invite_status = 'active'
-  where id = u_editor;
-
-  update public.profiles set
-    org_id = v_org_id, role = 'viewer', invite_status = 'active'
-  where id = u_viewer;
+  -- ── ORG MEMBERSHIPS ───────────────────────────────────────
+  insert into public.user_org_memberships (user_id, org_id, role, invite_status) values
+    (u_owner,  v_org_id, 'owner',  'active'),
+    (u_admin,  v_org_id, 'admin',  'active'),
+    (u_editor, v_org_id, 'editor', 'active'),
+    (u_viewer, v_org_id, 'viewer', 'active');
 
   -- ── DEPARTMENTS ───────────────────────────────────────────
   insert into public.departments (id, org_id, name, description) values
@@ -127,14 +119,14 @@ begin
     (d_mktg,    v_org_id, 'Marketing',       'Brand, campaigns, content, and growth');
 
   -- Editor → IT + Operations
-  insert into public.user_departments (user_id, department_id) values
-    (u_editor, d_it),
-    (u_editor, d_ops);
+  insert into public.user_departments (user_id, department_id, org_id) values
+    (u_editor, d_it,      v_org_id),
+    (u_editor, d_ops,     v_org_id);
 
   -- Viewer → Finance + Human Resources
-  insert into public.user_departments (user_id, department_id) values
-    (u_viewer, d_finance),
-    (u_viewer, d_hr);
+  insert into public.user_departments (user_id, department_id, org_id) values
+    (u_viewer, d_finance, v_org_id),
+    (u_viewer, d_hr,      v_org_id);
 
   -- ── CATEGORIES ────────────────────────────────────────────
   insert into public.categories (id, org_id, name, description) values

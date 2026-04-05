@@ -24,12 +24,15 @@ beforeEach(() => {
 
 // ---------------------------------------------------------------------------
 // sendInviteAction
+// sendInviteAction fetches actor context itself (does not call getContext),
+// so there is no context pre-seeding needed.
 // ---------------------------------------------------------------------------
 
 describe('sendInviteAction', () => {
   it('returns error when actor has no organisation', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
-    chain.single.mockResolvedValueOnce({ data: null })
+    // membership lookup returns null
+    chain.maybeSingle.mockResolvedValueOnce({ data: null })
 
     const result = await sendInviteAction('new@example.com', 'editor', [], clients)
 
@@ -38,10 +41,10 @@ describe('sendInviteAction', () => {
 
   it('returns error when a pending invite already exists for that email', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
-    chain.single.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
-    })
-    chain.maybeSingle.mockResolvedValueOnce({ data: { id: 'invite-existing-001' } })
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
+      .mockResolvedValueOnce({ data: { id: 'invite-existing-001' } }) // duplicate invite exists
 
     const result = await sendInviteAction('already@example.com', 'editor', [], clients)
 
@@ -51,15 +54,14 @@ describe('sendInviteAction', () => {
   it('rolls back the invite row by ID and returns error when auth invite fails', async () => {
     mockInviteUserByEmail.mockResolvedValueOnce({ error: { message: 'SMTP unavailable' } })
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
+      .mockResolvedValueOnce({ data: null }) // no duplicate invite
+      .mockResolvedValueOnce({ data: null }) // no existing profile
     chain.single
-      .mockResolvedValueOnce({
-        data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
-      })
       // insert.select.single — returns the new invite's ID
       .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: null }) // no duplicate invite
-      .mockResolvedValueOnce({ data: null }) // no existing auth user
 
     const result = await sendInviteAction('new@example.com', 'editor', [], clients)
 
@@ -68,37 +70,30 @@ describe('sendInviteAction', () => {
     expect(chain.eq).toHaveBeenCalledWith('id', 'new-invite-001')
   })
 
-  it('keeps invite row and returns success when invitee already has an account', async () => {
+  it('uses OTP and keeps invite row when invitee already has an account', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
-    chain.single
-      .mockResolvedValueOnce({
-        data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
-      })
-      .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
     chain.maybeSingle
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
       .mockResolvedValueOnce({ data: null }) // no duplicate invite
-      .mockResolvedValueOnce({ data: { id: 'existing-user' } }) // profile exists → use OTP
+      .mockResolvedValueOnce({ data: { id: 'existing-user' } }) // profile exists → OTP
+    chain.single.mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
 
     const result = await sendInviteAction('existing@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: null })
-    // inviteUserByEmail must not be called — we used OTP instead
     expect(mockInviteUserByEmail).not.toHaveBeenCalled()
-    // Must NOT have rolled back the invite row
     expect(chain.delete).not.toHaveBeenCalled()
   })
 
   it('returns null error on success', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
-    chain.single
-      .mockResolvedValueOnce({
-        data: { org_id: 'org-0001', full_name: 'Actor', organizations: { name: 'Acme' } },
-      })
-      // insert.select.single
-      .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
     chain.maybeSingle
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
       .mockResolvedValueOnce({ data: null }) // no duplicate invite
-      .mockResolvedValueOnce({ data: null }) // no existing auth user
+      .mockResolvedValueOnce({ data: null }) // no existing profile
+    chain.single.mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
 
     const result = await sendInviteAction('new@example.com', 'viewer', [], clients)
 
@@ -120,13 +115,17 @@ const PENDING_INVITE = {
 }
 
 describe('acceptInviteViaGoogleAction', () => {
-  it('applies org/role/departments and returns null error on success', async () => {
+  it('creates membership row and returns null error on success', async () => {
     const clients = makeClients(chain, { email: 'invited@example.com' })
     chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
 
     const result = await acceptInviteViaGoogleAction('Alex Rivera', clients)
 
     expect(result).toEqual({ error: null })
+    // membership upsert must have been called
+    expect(chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-actor-0001', org_id: 'org-0001', role: 'editor' })
+    )
   })
 
   it('returns error when no pending invite exists', async () => {

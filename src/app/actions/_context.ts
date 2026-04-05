@@ -26,19 +26,34 @@ export async function getContext(clients?: ActionClients): Promise<ActionContext
   if (!user) return null
 
   const admin = clients?.admin ?? createAdminClient()
+
+  // Step 1: resolve the user's active membership (first one in Phase 1;
+  // Phase 2 will select by org slug from the URL)
+  const { data: membership } = await admin
+    .from('user_org_memberships')
+    .select('org_id, role')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!membership?.org_id) return null
+
+  // Step 2: fetch display name + scoped departments in parallel
   const [{ data: profile }, { data: deptRows }] = await Promise.all([
-    admin.from('profiles').select('org_id, full_name, role').eq('id', user.id).maybeSingle(),
-    admin.from('user_departments').select('department_id').eq('user_id', user.id),
+    admin.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+    admin
+      .from('user_departments')
+      .select('department_id')
+      .eq('user_id', user.id)
+      .eq('org_id', membership.org_id),
   ])
 
-  if (!profile?.org_id) return null
-  const role = profile.role as UserRole
+  const role = membership.role as UserRole
   const departmentIds = (deptRows ?? []).map((r: { department_id: string }) => r.department_id)
 
   return {
     userId: user.id,
-    orgId: profile.org_id as string,
-    actorName: (profile.full_name as string) ?? 'Unknown',
+    orgId: membership.org_id as string,
+    actorName: (profile?.full_name as string) ?? 'Unknown',
     role,
     departmentIds,
     admin,

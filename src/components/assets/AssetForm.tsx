@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -52,6 +53,7 @@ interface AssetFormProps {
 
 export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { data: departments } = useDepartments()
   const { org } = useOrg()
   const { create: createDepartment } = useDepartmentMutations()
@@ -166,6 +168,7 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
         form.setError('assetTag', { message: result.error })
         return
       }
+      void queryClient.invalidateQueries({ queryKey: ['assets'] })
       router.push(`/assets/${result.id}`)
     }
   }

@@ -51,20 +51,14 @@ describe('createAsset', () => {
   })
 
   it('returns error when viewer tries to create an asset', async () => {
-    const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'User', role: 'viewer' },
-    })
+    const clients = makeClients(chain, { seedContext: { role: 'viewer' } })
 
     const result = await createAsset(makeInput(), clients)
     expect(result).toEqual({ error: 'Not authorised' })
   })
 
   it('returns friendly error on duplicate asset tag (23505)', async () => {
-    const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'User', role: 'admin' },
-    })
+    const clients = makeClients(chain, { seedContext: { role: 'admin' } })
     chain.single.mockResolvedValueOnce({
       data: null,
       error: { code: '23505', message: 'unique violation' },
@@ -75,10 +69,7 @@ describe('createAsset', () => {
   })
 
   it('returns the new asset id on success', async () => {
-    const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({
-      data: { org_id: 'org-0001', full_name: 'User', role: 'admin' },
-    })
+    const clients = makeClients(chain, { seedContext: { role: 'admin' } })
     chain.single.mockResolvedValueOnce({ data: { id: 'asset-new-001' }, error: null })
 
     const result = await createAsset(makeInput(), clients)
@@ -98,21 +89,16 @@ describe('deleteAsset', () => {
   })
 
   it('returns error when viewer tries to delete an asset', async () => {
-    const clients = makeClients(chain)
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', full_name: 'User', role: 'viewer' } })
-      .mockResolvedValueOnce({ data: { name: 'Test Laptop', department_id: null } })
+    const clients = makeClients(chain, { seedContext: { role: 'viewer' } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Test Laptop', department_id: null } })
 
     const result = await deleteAsset('asset-0001', clients)
     expect(result).toEqual({ error: 'Not authorised' })
   })
 
   it('returns error when the database update fails', async () => {
-    const clients = makeClients(chain)
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', full_name: 'User', role: 'admin' } })
-      .mockResolvedValueOnce({ data: { name: 'Test Laptop', department_id: null } })
-    // getContext runs Promise.all — first `then` is consumed by user_departments query
+    const clients = makeClients(chain, { seedContext: { role: 'admin' } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Test Laptop', department_id: null } })
     chain.then
       .mockImplementationOnce((resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
         Promise.resolve({ data: [], error: null }).then(resolve, reject)
@@ -126,10 +112,8 @@ describe('deleteAsset', () => {
   })
 
   it('returns null on successful soft-delete', async () => {
-    const clients = makeClients(chain)
-    chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', full_name: 'User', role: 'admin' } })
-      .mockResolvedValueOnce({ data: { name: 'Test Laptop', department_id: null } })
+    const clients = makeClients(chain, { seedContext: { role: 'admin' } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Test Laptop', department_id: null } })
 
     const result = await deleteAsset('asset-0001', clients)
     expect(result).toBeNull()
