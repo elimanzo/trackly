@@ -1,6 +1,16 @@
 'use client'
 
-import { Building2, ChevronsUpDown, LogOut, Menu, Moon, Settings, Sun, User } from 'lucide-react'
+import {
+  Building2,
+  Check,
+  ChevronsUpDown,
+  LogOut,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
+  User,
+} from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 
@@ -31,7 +41,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const slug = params.slug ?? ''
   const base = slug ? `/orgs/${slug}` : ''
 
-  const multipleOrgs = (user?.memberships?.length ?? 0) > 1
+  const memberships = user?.memberships ?? []
+  const multipleOrgs = memberships.length > 1
 
   async function handleSignOut() {
     await signOut()
@@ -53,16 +64,33 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
       {/* Org switcher (shown when user has multiple orgs) */}
       {org && multipleOrgs && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground gap-1.5 text-sm font-medium"
-          onClick={() => router.push('/orgs')}
-        >
-          <Building2 className="h-4 w-4" />
-          {org.name}
-          <ChevronsUpDown className="h-3 w-3 opacity-60" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm font-medium">
+              <Building2 className="h-3.5 w-3.5" />
+              {org.name}
+              <ChevronsUpDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+              Switch organization
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {memberships.map((m) => (
+              <DropdownMenuItem
+                key={m.orgId}
+                onClick={() => router.push(`/orgs/${m.orgSlug}/dashboard`)}
+                className="gap-2"
+              >
+                <Check
+                  className={`h-3.5 w-3.5 shrink-0 ${m.orgSlug === slug ? 'opacity-100' : 'opacity-0'}`}
+                />
+                <span className="truncate">{m.orgName}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       {/* Spacer */}
