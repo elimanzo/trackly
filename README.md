@@ -56,12 +56,30 @@ The anon key and service role key are printed by `supabase status` after the sta
 
 All passwords: `Dev1234!`
 
-| Email           | Name           | Role   | Department access |
-| --------------- | -------------- | ------ | ----------------- |
-| owner@acme.dev  | Alex Rivera    | Owner  | All               |
-| admin@acme.dev  | Sarah Mitchell | Admin  | All               |
-| editor@acme.dev | James Thornton | Editor | IT, Operations    |
-| viewer@acme.dev | Maria Chen     | Viewer | Finance, HR       |
+**Acme Corp** (`acme-corp`) — full dataset, 50+ assets across 5 departments
+
+| Email           | Name           | Acme Corp role | Department access |
+| --------------- | -------------- | -------------- | ----------------- |
+| owner@acme.dev  | Alex Rivera    | Owner          | All               |
+| admin@acme.dev  | Sarah Mitchell | Admin          | All               |
+| editor@acme.dev | James Thornton | Editor         | IT, Operations    |
+| viewer@acme.dev | Maria Chen     | Viewer         | Finance, HR       |
+
+**Multi-org memberships** (seed 003 — multi-org edge cases)
+
+| Email           | Name           | TechFlow Inc   | Meridian Labs | Solo Ventures |
+| --------------- | -------------- | -------------- | ------------- | ------------- |
+| owner@acme.dev  | Alex Rivera    | Editor         | —             | —             |
+| admin@acme.dev  | Sarah Mitchell | —              | Owner         | —             |
+| editor@acme.dev | James Thornton | Owner          | Editor        | —             |
+| viewer@acme.dev | Maria Chen     | Pending invite | —             | —             |
+
+**Additional seed accounts**
+
+| Email              | Name       | State                                          |
+| ------------------ | ---------- | ---------------------------------------------- |
+| newuser@dev.test   | Dana Park  | No org — lands on onboarding                   |
+| soleowner@dev.test | Frank Sole | Sole owner of Solo Ventures (no other members) |
 
 ### Local services
 
@@ -101,9 +119,16 @@ Google sign-in is not required to run the app locally — email/password auth wo
 ```
 src/
 ├── app/
-│   ├── (app)/          # Protected app routes (dashboard, assets, settings, etc.)
-│   ├── (onboarding)/   # Org creation wizard
-│   ├── (auth)/         # Login, signup, password reset
+│   ├── (app)/
+│   │   └── orgs/
+│   │       ├── page.tsx          # Org picker (auto-redirects for single-org users)
+│   │       └── [slug]/           # Org-scoped routes — all pages live here
+│   │           ├── dashboard/
+│   │           ├── assets/
+│   │           ├── settings/
+│   │           └── ...
+│   ├── (onboarding)/   # Org creation wizard (/org/new, /setup/*)
+│   ├── (auth)/         # Login, signup, invite accept/confirm, password reset
 │   ├── actions/        # Server actions (all mutations go here)
 │   └── auth/           # OAuth callback handler
 ├── components/         # Shared UI components
@@ -112,11 +137,17 @@ src/
 │   ├── permissions/    # Permission policy (createPolicy, action vocabulary)
 │   ├── supabase/       # Supabase client factories (browser / server / admin)
 │   └── types/          # Zod schemas + TypeScript types
-└── providers/          # React context providers (Auth, Onboarding)
+└── providers/
+    ├── AuthProvider    # Session + user profile (memberships across all orgs)
+    ├── OrgProvider     # Active org context — scoped to the current [slug]
+    └── OnboardingProvider  # Wizard state for org creation flow
 
 supabase/
 ├── migrations/         # Incremental schema migrations (applied in order)
-├── seeds/              # Dev seed data (users, org, assets)
+├── seeds/              # Dev seed data
+│   ├── 001_initial_data.sql  # 4 users, Acme Corp, 50+ assets
+│   ├── 002_bulk_items.sql    # Bulk/consumable assets
+│   └── 003_multi_org.sql     # Multi-org edge cases (3 extra orgs, 6 users)
 └── templates/          # Custom Supabase email templates
 ```
 
@@ -155,7 +186,8 @@ Pre-commit hooks run lint, type-check, and the full test suite automatically.
 ## Git workflow
 
 - `main` — production (auto-deploys to Vercel)
-- `feat/*` — feature branches, PR into `main`
+- `feat/multi-org` — multi-org integration branch; feature branches PR here first
+- `feat/*` — feature branches, PR into `feat/multi-org` or `main`
 
 ---
 
