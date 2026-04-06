@@ -276,7 +276,7 @@ begin
     u_editor,
     'James Thornton',
     now() + interval '7 days',
-    '[]'
+    '{}'
   );
 
   -- 2. Pending invite for a net-new email — unauthenticated (new-user) accept path
@@ -291,7 +291,7 @@ begin
     u_editor,
     'James Thornton',
     now() + interval '7 days',
-    jsonb_build_array(d2_eng)
+    array[d2_eng]
   );
 
   -- 3. Expired invite — tests the "invite not found or has expired" path
@@ -306,7 +306,7 @@ begin
     u_editor,
     'James Thornton',
     now() - interval '30 days',
-    '[]'
+    '{}'
   );
 
 
