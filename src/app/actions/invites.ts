@@ -324,8 +324,12 @@ export async function acceptAuthenticatedInviteAction(
     return { error: 'This invite was sent to a different email address.' }
   }
 
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ?? user.email!.split('@')[0]
+
   const { error: profileError } = await admin.from('profiles').upsert({
     id: user.id,
+    full_name: fullName,
     email: user.email,
     updated_at: new Date().toISOString(),
   })

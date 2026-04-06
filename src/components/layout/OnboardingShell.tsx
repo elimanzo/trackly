@@ -30,7 +30,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
   const currentIndex = STEPS.findIndex((s) => s.path === pathname)
   const { user, signOut } = useAuth()
   const firstSlug = user?.memberships[0]?.orgSlug
-  const settingsHref = firstSlug ? `/orgs/${firstSlug}/settings/profile` : '/orgs'
+  const settingsHref = `/orgs/${firstSlug ?? '_'}/settings/profile`
 
   return (
     <div className="bg-background flex min-h-screen flex-col">
