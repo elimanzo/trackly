@@ -58,6 +58,8 @@ export async function proxy(request: NextRequest) {
   // Org-scoped routes: /orgs (picker) and /orgs/[slug]/...
   const isOrgPickerRoute = pathname === '/orgs'
   const isOrgScopedRoute = pathname.startsWith('/orgs/')
+  // Profile settings are accessible without an org (profile edit + delete account)
+  const isProfileSettingsRoute = /^\/orgs\/[^/]+\/settings\/profile$/.test(pathname)
 
   const isAppRoute =
     !isAuthRoute &&
@@ -129,7 +131,7 @@ export async function proxy(request: NextRequest) {
 
   // No org → must complete onboarding first
   if (!hasOrg) {
-    if (isOnboardingRoute) return supabaseResponse
+    if (isOnboardingRoute || isProfileSettingsRoute) return supabaseResponse
     if (isOrgPickerRoute || isOrgScopedRoute || isAppRoute || isSettingsRoute) {
       const url = request.nextUrl.clone()
       url.pathname = '/org/new'

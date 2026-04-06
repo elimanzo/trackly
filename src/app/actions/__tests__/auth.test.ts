@@ -44,6 +44,7 @@ describe('googleSignInDestination', () => {
 
 const PENDING_INVITE = {
   id: 'invite-001',
+  token: 'tok-abc-123',
   org_id: 'org-0001',
   role: 'editor',
   department_ids: ['dept-001', 'dept-002'],
@@ -52,16 +53,15 @@ const PENDING_INVITE = {
 }
 
 describe('completeInviteForGoogleUser', () => {
-  it('creates membership and returns /dashboard when invite is valid', async () => {
+  it('returns confirm destination when a pending invite exists', async () => {
     const clients = makeClients(chain)
     chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
 
     const result = await completeInviteForGoogleUser('user-001', 'invited@example.com', clients)
 
-    expect(result).toEqual({ destination: '/orgs' })
-    expect(chain.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'user-001', org_id: 'org-0001', role: 'editor' })
-    )
+    expect(result).toEqual({ destination: '/invite/confirm?token=tok-abc-123' })
+    // Should NOT auto-accept — no upsert call
+    expect(chain.upsert).not.toHaveBeenCalled()
   })
 
   it('returns null destination when no pending invite exists', async () => {
@@ -73,13 +73,12 @@ describe('completeInviteForGoogleUser', () => {
     expect(result).toEqual({ destination: null })
   })
 
-  it('always accepts the invite even when user is already in another org', async () => {
+  it('returns confirm destination even when user is already in another org', async () => {
     const clients = makeClients(chain)
     chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
 
     const result = await completeInviteForGoogleUser('user-001', 'invited@example.com', clients)
 
-    // Multi-org: no conflict redirect — invite is accepted
-    expect(result).toEqual({ destination: '/orgs' })
+    expect(result).toEqual({ destination: '/invite/confirm?token=tok-abc-123' })
   })
 })
