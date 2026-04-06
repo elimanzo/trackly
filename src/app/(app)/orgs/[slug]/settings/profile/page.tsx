@@ -20,12 +20,14 @@ import { Input } from '@/components/ui/input'
 import { USER_ROLE_CONFIG } from '@/lib/constants'
 import { UpdateProfileSchema, type UpdateProfileInput } from '@/lib/types'
 import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 import { DangerZone } from './DangerZone'
 
 export default function ProfileSettingsPage() {
   const { user, refreshUser } = useAuth()
-  const hasOrg = !!user?.orgId
+  const { org, role } = useOrg()
+  const hasOrg = !!org
 
   const form = useForm<UpdateProfileInput>({
     resolver: zodResolver(UpdateProfileSchema),
@@ -54,7 +56,7 @@ export default function ProfileSettingsPage() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/org/new">Continue to org setup</Link>
+              <Link href="/orgs/new">Continue to org setup</Link>
             </Button>
           </CardContent>
         </Card>
@@ -88,7 +90,7 @@ export default function ProfileSettingsPage() {
               {hasOrg && (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Input value={user ? USER_ROLE_CONFIG[user.role].label : ''} disabled />
+                  <Input value={role ? USER_ROLE_CONFIG[role].label : ''} disabled />
                 </FormItem>
               )}
               <Button type="submit">Save changes</Button>

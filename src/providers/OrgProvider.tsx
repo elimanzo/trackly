@@ -1,47 +1,43 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
-import type { Organization } from '@/lib/types'
+import type { OrgMembership, Organization, UserRole } from '@/lib/types'
 import { useAuth } from '@/providers/AuthProvider'
 
-const ONBOARDING_KEY = 'trackly-onboarding-completed'
+const LAST_ORG_KEY = 'asset-tracker:active-org-slug'
 
 type OrgContextValue = {
   org: Organization | null
-  onboardingCompleted: boolean
-  setOrg: (org: Organization) => void
-  completeOnboarding: () => void
-  resetOnboarding: () => void
+  membership: OrgMembership | null
+  // Convenience accessors scoped to the active org
+  role: UserRole | null
+  departmentIds: string[]
+  departmentNames: string[]
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
 
-export function OrgProvider({ children }: { children: React.ReactNode }) {
+export function OrgProvider({ slug, children }: { slug: string; children: React.ReactNode }) {
   const { user } = useAuth()
-  const [org, setOrgState] = useState<Organization | null>(null)
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true
-    const stored = localStorage.getItem(ONBOARDING_KEY)
-    return stored === null ? true : stored === 'true'
-  })
+  const [org, setOrg] = useState<Organization | null>(null)
 
+  // Derive the active membership from the user's memberships list
+  const membership = user?.memberships.find((m) => m.orgSlug === slug) ?? null
+
+  // Fetch org data by slug
   useEffect(() => {
-    if (!user?.orgId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOrgState(null)
-      return
-    }
+    if (!slug) return
     const supabase = createClient()
     supabase
       .from('organizations')
       .select('*')
-      .eq('id', user.orgId)
-      .single()
+      .eq('slug', slug)
+      .maybeSingle()
       .then(({ data }: { data: Record<string, unknown> | null }) => {
         if (!data) return
-        setOrgState({
+        setOrg({
           id: data.id as string,
           name: data.name as string,
           slug: data.slug as string,
@@ -56,33 +52,63 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
           updatedAt: data.updated_at as string,
         })
       })
-  }, [user?.orgId])
+  }, [slug])
 
-  const setOrg = useCallback((o: Organization) => {
-    setOrgState(o)
-  }, [])
+  // Fetch department names for the active membership (ids come from user_departments)
+  const [departmentIds, setDepartmentIds] = useState<string[]>([])
+  const [departmentNames, setDepartmentNames] = useState<string[]>([])
 
-  const completeOnboarding = useCallback(() => {
-    localStorage.setItem(ONBOARDING_KEY, 'true')
-    setOnboardingCompleted(true)
-  }, [])
+  useEffect(() => {
+    if (!user?.id || !org?.id) return
+    const supabase = createClient()
+    supabase
+      .from('user_departments')
+      .select('department_id, departments(name)')
+      .eq('user_id', user.id)
+      .eq('org_id', org.id)
+      .then(
+        ({
+          data,
+        }: {
+          data: { department_id: string; departments: { name: string } | null }[] | null
+        }) => {
+          if (!data) return
+          setDepartmentIds(data.map((d) => d.department_id))
+          setDepartmentNames(data.map((d) => d.departments?.name ?? ''))
+        }
+      )
+  }, [user?.id, org?.id])
 
-  const resetOnboarding = useCallback(() => {
-    localStorage.setItem(ONBOARDING_KEY, 'false')
-    setOnboardingCompleted(false)
-  }, [])
+  // Remember last active org in localStorage
+  useEffect(() => {
+    if (slug) localStorage.setItem(LAST_ORG_KEY, slug)
+  }, [slug])
 
   return (
     <OrgContext.Provider
-      value={{ org, onboardingCompleted, setOrg, completeOnboarding, resetOnboarding }}
+      value={{
+        org,
+        membership,
+        role: membership?.role ?? null,
+        departmentIds,
+        departmentNames,
+      }}
     >
       {children}
     </OrgContext.Provider>
   )
 }
 
-export function useOrg(): OrgContextValue {
-  const ctx = useContext(OrgContext)
-  if (!ctx) throw new Error('useOrg must be used within <OrgProvider>')
-  return ctx
+const DEFAULT_ORG_CONTEXT: OrgContextValue = {
+  org: null,
+  membership: null,
+  role: null,
+  departmentIds: [],
+  departmentNames: [],
 }
+
+export function useOrg(): OrgContextValue {
+  return useContext(OrgContext) ?? DEFAULT_ORG_CONTEXT
+}
+
+export { LAST_ORG_KEY }

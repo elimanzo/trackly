@@ -19,8 +19,8 @@ beforeEach(() => {
 
 // ---------------------------------------------------------------------------
 // updateUserRoleAction
-// Calls getContext() internally, so each test pre-seeds 2 maybeSingle calls
-// (membership + profile name) via seedContext before setting up test-specific mocks.
+// Calls getContext() internally, so each test pre-seeds 3 maybeSingle calls
+// (org lookup, membership, profile name) via seedContext before setting up test-specific mocks.
 // ---------------------------------------------------------------------------
 
 describe('updateUserRoleAction', () => {
@@ -29,7 +29,7 @@ describe('updateUserRoleAction', () => {
     // membership lookup returns null → no org
     chain.maybeSingle.mockResolvedValueOnce({ data: null })
 
-    const result = await updateUserRoleAction(TARGET_ID, 'editor', clients)
+    const result = await updateUserRoleAction('acme-corp', TARGET_ID, 'editor', clients)
 
     expect(result).toEqual({ error: 'No organisation found' })
   })
@@ -40,7 +40,7 @@ describe('updateUserRoleAction', () => {
       seedContext: { orgId: 'org-0001', role: 'editor', actorName: 'Actor' },
     })
 
-    const result = await updateUserRoleAction(TARGET_ID, 'viewer', clients)
+    const result = await updateUserRoleAction('acme-corp', TARGET_ID, 'viewer', clients)
 
     expect(result).toEqual({ error: 'Not authorised' })
   })
@@ -51,7 +51,7 @@ describe('updateUserRoleAction', () => {
       seedContext: { orgId: 'org-0001', role: 'admin', actorName: 'Actor' },
     })
 
-    const result = await updateUserRoleAction(ACTOR_ID, 'editor', clients)
+    const result = await updateUserRoleAction('acme-corp', ACTOR_ID, 'editor', clients)
 
     expect(result).toEqual({ error: 'You cannot change your own role' })
   })
@@ -63,7 +63,7 @@ describe('updateUserRoleAction', () => {
     })
     chain.maybeSingle.mockResolvedValueOnce({ data: null }) // target membership not found
 
-    const result = await updateUserRoleAction(TARGET_ID, 'editor', clients)
+    const result = await updateUserRoleAction('acme-corp', TARGET_ID, 'editor', clients)
 
     expect(result).toEqual({ error: 'User not found' })
   })
@@ -77,7 +77,7 @@ describe('updateUserRoleAction', () => {
       data: { role: 'owner', profiles: { full_name: 'Owner' } },
     })
 
-    const result = await updateUserRoleAction(TARGET_ID, 'editor', clients)
+    const result = await updateUserRoleAction('acme-corp', TARGET_ID, 'editor', clients)
 
     expect(result).toEqual({ error: "Cannot change the owner's role" })
   })
@@ -91,7 +91,7 @@ describe('updateUserRoleAction', () => {
       data: { role: 'editor', profiles: { full_name: 'Target User' } },
     })
 
-    const result = await updateUserRoleAction(TARGET_ID, 'viewer', clients)
+    const result = await updateUserRoleAction('acme-corp', TARGET_ID, 'viewer', clients)
 
     expect(result).toEqual({ error: null })
   })

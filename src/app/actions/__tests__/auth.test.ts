@@ -25,7 +25,7 @@ describe('googleSignInDestination', () => {
 
     const result = await googleSignInDestination('user-001', clients)
 
-    expect(result).toEqual({ destination: '/dashboard' })
+    expect(result).toEqual({ destination: '/orgs' })
   })
 
   it('returns /org/new when user has no membership', async () => {
@@ -58,7 +58,7 @@ describe('completeInviteForGoogleUser', () => {
 
     const result = await completeInviteForGoogleUser('user-001', 'invited@example.com', clients)
 
-    expect(result).toEqual({ destination: '/dashboard' })
+    expect(result).toEqual({ destination: '/orgs' })
     expect(chain.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 'user-001', org_id: 'org-0001', role: 'editor' })
     )
@@ -80,6 +80,6 @@ describe('completeInviteForGoogleUser', () => {
     const result = await completeInviteForGoogleUser('user-001', 'invited@example.com', clients)
 
     // Multi-org: no conflict redirect — invite is accepted
-    expect(result).toEqual({ destination: '/dashboard' })
+    expect(result).toEqual({ destination: '/orgs' })
   })
 })

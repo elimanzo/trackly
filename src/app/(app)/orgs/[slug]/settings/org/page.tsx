@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -98,15 +98,16 @@ function ToggleRow({
 }
 
 export default function OrgSettingsPage() {
-  const { org, setOrg } = useOrg()
+  const { org, role } = useOrg()
   const { user } = useAuth()
   const router = useRouter()
-  const isOwner = user?.role === 'owner'
-  const isAdmin = user?.role === 'admin'
+  const { slug } = useParams<{ slug: string }>()
+  const isOwner = role === 'owner'
+  const isAdmin = role === 'admin'
 
   useEffect(() => {
-    if (user && !isOwner && !isAdmin) router.replace('/settings/profile')
-  }, [user, isOwner, isAdmin, router])
+    if (user && !isOwner && !isAdmin) router.replace(`/orgs/${slug}/settings/profile`)
+  }, [user, isOwner, isAdmin, router, slug])
 
   const dc = org?.dashboardConfig ?? {}
   const tc = org?.assetTableConfig ?? {}
@@ -186,7 +187,7 @@ export default function OrgSettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [org])
 
-  if (!user || (!isOwner && !isAdmin)) return null
+  if (!role || (!isOwner && !isAdmin)) return null
 
   async function onSubmit(data: OrgFormInput) {
     const dashboardConfig = {
@@ -222,7 +223,7 @@ export default function OrgSettingsPage() {
       showVendor: data.showRptVendor,
       showNotes: data.showRptNotes,
     }
-    const result = await updateOrganization({
+    const result = await updateOrganization(slug, {
       name: data.name,
       slug: data.slug,
       departmentLabel: data.departmentLabel,
@@ -234,16 +235,7 @@ export default function OrgSettingsPage() {
       toast.error(result.error)
       return
     }
-    if (org)
-      setOrg({
-        ...org,
-        name: data.name,
-        slug: data.slug,
-        departmentLabel: data.departmentLabel,
-        dashboardConfig,
-        assetTableConfig,
-        reportConfig,
-      })
+    router.refresh()
     toast.success('Organisation settings saved')
   }
 

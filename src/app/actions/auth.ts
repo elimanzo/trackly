@@ -53,7 +53,7 @@ export async function completeInviteForGoogleUser(
     .update({ accepted_at: new Date().toISOString() })
     .eq('id', invite.id as string)
 
-  return { destination: '/dashboard' }
+  return { destination: '/orgs' }
 }
 
 // Takes userId directly — called from the auth callback where the session is
@@ -70,5 +70,5 @@ export async function googleSignInDestination(
     .eq('user_id', userId)
     .maybeSingle()
 
-  return { destination: membership?.org_id ? '/dashboard' : '/org/new' }
+  return { destination: membership?.org_id ? '/orgs' : '/org/new' }
 }

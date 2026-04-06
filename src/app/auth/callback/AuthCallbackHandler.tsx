@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 export function AuthCallbackHandler() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = searchParams.get('next') ?? '/orgs'
 
   useEffect(() => {
     const supabase = createClient()

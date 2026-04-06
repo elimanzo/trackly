@@ -11,11 +11,12 @@ import type { ActionClients } from './_context'
 import { getContext } from './_context'
 
 export async function updateUserRoleAction(
+  orgSlug: string,
   userId: string,
   role: Exclude<UserRole, 'owner'>,
   clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'No organisation found' }
 
   const denied = ctx.requireRole('admin')
@@ -58,11 +59,12 @@ export async function updateUserRoleAction(
 }
 
 export async function updateUserDepartmentsAction(
+  orgSlug: string,
   userId: string,
   departmentIds: string[],
   clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'No organisation found' }
 
   const denied = ctx.requireRole('admin')
@@ -92,10 +94,11 @@ export async function updateUserDepartmentsAction(
 }
 
 export async function revokeInviteAction(
+  orgSlug: string,
   inviteId: string,
   clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'No organisation found' }
 
   const denied = ctx.requireRole('admin')
@@ -142,10 +145,11 @@ export async function revokeInviteAction(
 }
 
 export async function removeUserAction(
+  orgSlug: string,
   userId: string,
   clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'No organisation found' }
 
   const denied = ctx.requireRole('admin')

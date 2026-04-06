@@ -24,13 +24,14 @@ import type { ActionClients } from './_context'
 import { getContext } from './_context'
 
 export async function createAsset(
+  orgSlug: string,
   input: AssetFormInput,
   clients?: ActionClients
 ): Promise<{ error: string } | { id: string }> {
   const parsed = AssetFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
 
   const denied = createPolicy(ctx).enforce('asset:create', { departmentId: input.departmentId })
@@ -75,6 +76,7 @@ export async function createAsset(
 }
 
 export async function updateAsset(
+  orgSlug: string,
   id: string,
   input: AssetFormInput,
   clients?: ActionClients
@@ -82,7 +84,7 @@ export async function updateAsset(
   const parsed = AssetFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
 
   // Fetch old values for change tracking and permission check
@@ -144,10 +146,11 @@ export async function updateAsset(
 }
 
 export async function deleteAsset(
+  orgSlug: string,
   id: string,
   clients?: ActionClients
 ): Promise<{ error: string } | null> {
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data: asset } = await ctx.admin
@@ -181,6 +184,7 @@ export async function deleteAsset(
 }
 
 export async function checkoutAsset(
+  orgSlug: string,
   assetRef: Pick<TypedAsset, 'id' | 'isBulk'>,
   input: CheckoutFormInput,
   assignedByName: string,
@@ -189,7 +193,7 @@ export async function checkoutAsset(
   const parsed = CheckoutFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data: asset } = await ctx.admin
@@ -213,8 +217,11 @@ export async function checkoutAsset(
 }
 
 /** Return a serialized (non-bulk) asset entirely */
-export async function returnAsset(assetId: string): Promise<{ error: string } | null> {
-  const ctx = await getContext()
+export async function returnAsset(
+  orgSlug: string,
+  assetId: string
+): Promise<{ error: string } | null> {
+  const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data: asset } = await ctx.admin
@@ -233,10 +240,11 @@ export async function returnAsset(assetId: string): Promise<{ error: string } | 
 
 /** Partially or fully return a bulk assignment */
 export async function returnBulkAssignment(
+  orgSlug: string,
   assignmentId: string,
   quantityToReturn: number
 ): Promise<{ error: string } | null> {
-  const ctx = await getContext()
+  const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }
 
   // Fetch asset_id → department_id for permission check
@@ -268,10 +276,11 @@ export async function returnBulkAssignment(
 
 /** Increase total stock quantity for a bulk asset */
 export async function restockAsset(
+  orgSlug: string,
   assetId: string,
   additionalQuantity: number
 ): Promise<{ error: string } | null> {
-  const ctx = await getContext()
+  const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data: asset } = await ctx.admin
@@ -309,6 +318,7 @@ export async function restockAsset(
 
 /** Edit an existing checkout assignment */
 export async function updateAssignment(
+  orgSlug: string,
   assignmentId: string,
   assetRef: Pick<TypedAsset, 'id' | 'isBulk'>,
   input: CheckoutFormInput
@@ -316,7 +326,7 @@ export async function updateAssignment(
   const parsed = CheckoutFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getContext()
+  const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }
 
   const { data: asset } = await ctx.admin
@@ -340,8 +350,8 @@ export async function updateAssignment(
 }
 
 /** Return distinct tag prefixes used in the org (everything before the last '-') */
-export async function getTagPrefixes(): Promise<string[]> {
-  const ctx = await getContext()
+export async function getTagPrefixes(orgSlug: string): Promise<string[]> {
+  const ctx = await getContext(orgSlug)
   if (!ctx) return []
 
   const { data } = await ctx.admin
@@ -362,11 +372,11 @@ export async function getTagPrefixes(): Promise<string[]> {
 }
 
 /** Return the next tag for a given prefix (e.g. "LAPTOP" → "LAPTOP-0001") */
-export async function getNextTagForPrefix(prefix: string): Promise<string> {
+export async function getNextTagForPrefix(orgSlug: string, prefix: string): Promise<string> {
   const sanitized = sanitizePrefix(prefix)
   if (!sanitized) return `${prefix}-0001`
 
-  const ctx = await getContext()
+  const ctx = await getContext(orgSlug)
   if (!ctx) return `${sanitized}-0001`
 
   const { data } = await ctx.admin

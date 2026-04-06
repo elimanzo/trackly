@@ -23,14 +23,14 @@ beforeEach(() => {
 describe('deleteCategory', () => {
   it('returns error when user is not authenticated', async () => {
     const clients = makeUnauthenticatedClients(chain)
-    const result = await deleteCategory(CATEGORY_ID, clients)
+    const result = await deleteCategory('acme-corp', CATEGORY_ID, clients)
     expect(result).toEqual({ error: 'Not authenticated' })
   })
 
   it('returns error when viewer tries to delete a category', async () => {
     const clients = makeClients(chain, { seedContext: { role: 'viewer' } })
 
-    const result = await deleteCategory(CATEGORY_ID, clients)
+    const result = await deleteCategory('acme-corp', CATEGORY_ID, clients)
     expect(result).toEqual({ error: 'Not authorised' })
   })
 
@@ -39,7 +39,7 @@ describe('deleteCategory', () => {
     const clients = makeClients(chain, { rpc, seedContext: { role: 'admin' } })
     chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Electronics' } })
 
-    const result = await deleteCategory(CATEGORY_ID, clients)
+    const result = await deleteCategory('acme-corp', CATEGORY_ID, clients)
     expect(result).toEqual({ error: 'function failed' })
   })
 
@@ -48,7 +48,7 @@ describe('deleteCategory', () => {
     const clients = makeClients(chain, { rpc, seedContext: { orgId: 'org-0001', role: 'admin' } })
     chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Electronics' } })
 
-    const result = await deleteCategory(CATEGORY_ID, clients)
+    const result = await deleteCategory('acme-corp', CATEGORY_ID, clients)
 
     expect(result).toBeNull()
     expect(rpc).toHaveBeenCalledWith('soft_delete_with_cascade', {
@@ -64,7 +64,7 @@ describe('deleteCategory', () => {
     const clients = makeClients(chain, { rpc, seedContext: { role: 'admin' } })
     chain.maybeSingle.mockResolvedValueOnce({ data: null }) // name row not found
 
-    const result = await deleteCategory(CATEGORY_ID, clients)
+    const result = await deleteCategory('acme-corp', CATEGORY_ID, clients)
     expect(result).toBeNull()
   })
 })

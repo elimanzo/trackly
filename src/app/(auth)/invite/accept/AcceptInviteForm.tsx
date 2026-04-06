@@ -84,7 +84,7 @@ export function AcceptInviteForm() {
       return
     }
     toast.success('Welcome! Your account is ready.')
-    window.location.assign('/dashboard')
+    window.location.assign('/orgs')
   }
 
   return (

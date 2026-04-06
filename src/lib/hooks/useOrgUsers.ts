@@ -9,8 +9,8 @@ import {
   updateUserRoleAction,
 } from '@/app/actions/users'
 import { createClient } from '@/lib/supabase/client'
-import type { Invite, ProfileWithDepartments, UserRole } from '@/lib/types'
-import { useAuth } from '@/providers/AuthProvider'
+import type { Invite, OrgMember, UserRole } from '@/lib/types'
+import { useOrg } from '@/providers/OrgProvider'
 
 export const orgUserKeys = {
   all: (orgId: string) => ['orgUsers', orgId] as const,
@@ -40,7 +40,7 @@ type InvRow = Record<string, unknown>
 
 async function fetchOrgUsers(
   orgId: string
-): Promise<{ users: ProfileWithDepartments[]; pendingInvites: Invite[] }> {
+): Promise<{ users: OrgMember[]; pendingInvites: Invite[] }> {
   const supabase = createClient()
   const [membershipsResult, deptsResult, invsResult] = await Promise.all([
     supabase
@@ -82,8 +82,8 @@ async function fetchOrgUsers(
       fullName: p?.full_name ?? '',
       email: p?.email ?? '',
       avatarUrl: p?.avatar_url ?? null,
-      role: m.role as ProfileWithDepartments['role'],
-      inviteStatus: m.invite_status as ProfileWithDepartments['inviteStatus'],
+      role: m.role as OrgMember['role'],
+      inviteStatus: m.invite_status,
       createdAt: p?.created_at ?? '',
       updatedAt: p?.updated_at ?? '',
       departmentIds: depts.map((ud) => ud.department_id),
@@ -108,8 +108,8 @@ async function fetchOrgUsers(
 }
 
 export function useOrgUsers() {
-  const { user } = useAuth()
-  const orgId = user?.orgId ?? ''
+  const { org } = useOrg()
+  const orgId = org?.id ?? ''
   const query = useQuery({
     queryKey: orgUserKeys.all(orgId),
     queryFn: () => fetchOrgUsers(orgId),
@@ -124,8 +124,9 @@ export function useOrgUsers() {
 }
 
 export function useOrgUserMutations() {
-  const { user } = useAuth()
-  const orgId = user?.orgId ?? ''
+  const { org, membership } = useOrg()
+  const orgId = org?.id ?? ''
+  const orgSlug = membership?.orgSlug ?? ''
   const queryClient = useQueryClient()
   const invalidate = () => {
     if (orgId) void queryClient.invalidateQueries({ queryKey: orgUserKeys.all(orgId) })
@@ -154,7 +155,7 @@ export function useOrgUserMutations() {
 
   const revokeInviteMut = useMutation({
     mutationFn: async (id: string) => {
-      const result = await revokeInviteAction(id)
+      const result = await revokeInviteAction(orgSlug, id)
       if (result.error) throw new Error(result.error)
     },
     onSuccess: () => {
@@ -166,7 +167,7 @@ export function useOrgUserMutations() {
 
   const removeUserMut = useMutation({
     mutationFn: async (id: string) => {
-      const result = await removeUserAction(id)
+      const result = await removeUserAction(orgSlug, id)
       if (result.error) throw new Error(result.error)
     },
     onSuccess: () => {
@@ -178,7 +179,7 @@ export function useOrgUserMutations() {
 
   const updateRoleMut = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: Exclude<UserRole, 'owner'> }) => {
-      const result = await updateUserRoleAction(id, role)
+      const result = await updateUserRoleAction(orgSlug, id, role)
       if (result?.error) throw new Error(result.error)
     },
     onSuccess: () => {
@@ -190,7 +191,7 @@ export function useOrgUserMutations() {
 
   const updateDeptsMut = useMutation({
     mutationFn: async ({ id, departmentIds }: { id: string; departmentIds: string[] }) => {
-      const result = await updateUserDepartmentsAction(id, departmentIds)
+      const result = await updateUserDepartmentsAction(orgSlug, id, departmentIds)
       if (result?.error) throw new Error(result.error)
     },
     onSuccess: () => {

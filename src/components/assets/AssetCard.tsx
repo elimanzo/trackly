@@ -20,7 +20,7 @@ import {
 import { createPolicy } from '@/lib/permissions'
 import type { TypedAsset } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils/formatters'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface AssetCardProps {
   asset: TypedAsset
@@ -28,18 +28,18 @@ interface AssetCardProps {
 
 export function AssetCard({ asset }: AssetCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const { user } = useAuth()
+  const { role, departmentIds, membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
   const queryClient = useQueryClient()
-  const canEditAssets = user
-    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
-    : false
+  const canEditAssets =
+    role != null ? createPolicy({ role, departmentIds }).can('asset:create') : false
 
   return (
     <>
       <Card className="group shadow-sm transition-shadow hover:shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
-            <Link href={`/assets/${asset.id}`} className="min-w-0 flex-1">
+            <Link href={`/orgs/${orgSlug}/assets/${asset.id}`} className="min-w-0 flex-1">
               <p className="text-foreground truncate font-semibold hover:underline">{asset.name}</p>
               <p className="text-muted-foreground font-mono text-xs">{asset.assetTag}</p>
             </Link>
@@ -57,7 +57,7 @@ export function AssetCard({ asset }: AssetCardProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href={`/assets/${asset.id}/edit`}>
+                    <Link href={`/orgs/${orgSlug}/assets/${asset.id}/edit`}>
                       <Pencil className="mr-2 h-3.5 w-3.5" />
                       Edit
                     </Link>
@@ -109,7 +109,7 @@ export function AssetCard({ asset }: AssetCardProps) {
         confirmLabel="Delete"
         destructive
         onConfirm={async () => {
-          await deleteAsset(asset.id)
+          await deleteAsset(orgSlug, asset.id)
           queryClient.invalidateQueries({ queryKey: ['assets'] })
           setConfirmDelete(false)
         }}

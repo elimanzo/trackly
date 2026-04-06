@@ -1,20 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { user } = useAuth()
-  const hasOrg = !!user?.orgId
-  const canAccessOrgSettings = hasOrg && (user?.role === 'owner' || user?.role === 'admin')
+  const { slug } = useParams<{ slug: string }>()
+  const { org, role } = useOrg()
+  const canAccessOrgSettings = !!org && (role === 'owner' || role === 'admin')
 
   const nav = [
-    ...(canAccessOrgSettings ? [{ label: 'Organisation', href: '/settings/org' }] : []),
-    { label: 'Profile', href: '/settings/profile' },
+    ...(canAccessOrgSettings
+      ? [{ label: 'Organisation', href: `/orgs/${slug}/settings/org` }]
+      : []),
+    { label: 'Profile', href: `/orgs/${slug}/settings/profile` },
   ]
 
   return (

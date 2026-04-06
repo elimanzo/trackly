@@ -1,7 +1,17 @@
 'use client'
 
-import { LogOut, Menu, Moon, Settings, Sun, User } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import {
+  Building2,
+  Check,
+  ChevronsUpDown,
+  LogOut,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
+  User,
+} from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -16,6 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { getInitials } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface TopbarProps {
   onMenuClick: () => void
@@ -23,8 +34,15 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { user, signOut } = useAuth()
+  const { org } = useOrg()
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
+  const params = useParams<{ slug?: string }>()
+  const slug = params.slug ?? ''
+  const base = slug ? `/orgs/${slug}` : ''
+
+  const memberships = user?.memberships ?? []
+  const multipleOrgs = memberships.length > 1
 
   async function handleSignOut() {
     await signOut()
@@ -43,6 +61,37 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       >
         <Menu className="h-5 w-5" />
       </Button>
+
+      {/* Org switcher (shown when user has multiple orgs) */}
+      {org && multipleOrgs && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm font-medium">
+              <Building2 className="h-3.5 w-3.5" />
+              {org.name}
+              <ChevronsUpDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+              Switch organization
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {memberships.map((m) => (
+              <DropdownMenuItem
+                key={m.orgId}
+                onClick={() => router.push(`/orgs/${m.orgSlug}/dashboard`)}
+                className="gap-2"
+              >
+                <Check
+                  className={`h-3.5 w-3.5 shrink-0 ${m.orgSlug === slug ? 'opacity-100' : 'opacity-0'}`}
+                />
+                <span className="truncate">{m.orgName}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />
@@ -81,11 +130,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <p className="text-muted-foreground truncate text-xs">{user.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/settings/profile')}>
+            <DropdownMenuItem onClick={() => router.push(`${base}/settings/profile`)}>
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/settings/org')}>
+            <DropdownMenuItem onClick={() => router.push(`${base}/settings/org`)}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>

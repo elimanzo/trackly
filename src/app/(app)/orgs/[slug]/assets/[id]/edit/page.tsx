@@ -1,14 +1,15 @@
 'use client'
 
 import { Loader2 } from 'lucide-react'
-import { notFound, redirect } from 'next/navigation'
+import { notFound, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { use } from 'react'
 
 import { AssetForm } from '@/components/assets/AssetForm'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useAsset } from '@/lib/hooks/useAssets'
 import { createPolicy } from '@/lib/permissions'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface EditAssetPageProps {
   params: Promise<{ id: string }>
@@ -16,14 +17,14 @@ interface EditAssetPageProps {
 
 export default function EditAssetPage({ params }: EditAssetPageProps) {
   const { id } = use(params)
+  const { slug } = useParams<{ slug: string }>()
+  const router = useRouter()
   const { data: asset, isLoading } = useAsset(id)
-  const { user } = useAuth()
+  const { role, departmentIds } = useOrg()
 
-  if (
-    user &&
-    !createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
-  ) {
-    redirect('/assets')
+  if (role && !createPolicy({ role, departmentIds }).can('asset:create')) {
+    router.replace(`/orgs/${slug}/assets`)
+    return null
   }
 
   if (isLoading) {

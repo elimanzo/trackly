@@ -52,7 +52,7 @@ export function ResetPasswordForm() {
     supabase.auth
       .getSession()
       .then(({ data }: { data: { session: { access_token: string } | null } }) => {
-        router.replace(data.session ? '/dashboard' : '/login')
+        router.replace(data.session ? '/orgs' : '/login')
       })
   }, [isRecovery, router])
 

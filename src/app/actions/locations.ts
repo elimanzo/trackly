@@ -6,12 +6,13 @@ import { logAudit } from './_audit'
 import { getAdminCtx } from './_context'
 
 export async function createLocation(
+  orgSlug: string,
   input: LocationFormInput
 ): Promise<{ id: string } | { error: string }> {
   const parsed = LocationFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { data: existing } = await ctx.admin
@@ -43,13 +44,14 @@ export async function createLocation(
 }
 
 export async function updateLocation(
+  orgSlug: string,
   id: string,
   input: LocationFormInput
 ): Promise<{ error: string } | null> {
   const parsed = LocationFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
@@ -70,8 +72,11 @@ export async function updateLocation(
   return null
 }
 
-export async function deleteLocation(id: string): Promise<{ error: string } | null> {
-  const ctx = await getAdminCtx()
+export async function deleteLocation(
+  orgSlug: string,
+  id: string
+): Promise<{ error: string } | null> {
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { data: loc } = await ctx.admin.from('locations').select('name').eq('id', id).maybeSingle()

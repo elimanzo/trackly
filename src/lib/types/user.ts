@@ -19,6 +19,8 @@ export type InviteStatus = z.infer<typeof InviteStatusSchema>
 export const OrgMembershipSchema = z.object({
   userId: z.string().uuid(),
   orgId: z.string().uuid(),
+  orgSlug: z.string(),
+  orgName: z.string(),
   role: UserRoleSchema,
   inviteStatus: InviteStatusSchema,
   createdAt: z.string().datetime(),
@@ -97,12 +99,19 @@ export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>
 // ---------------------------------------------------------------------------
 
 // ProfileWithDepartments is the shape returned by AuthProvider to the UI.
-// In Phase 1 it carries the first (active) membership's org/role/inviteStatus
-// for backward compatibility. Phase 2 will replace orgId with memberships[].
+// memberships contains all the user's org memberships with org name/slug embedded
+// so the topbar switcher and org picker can render without extra fetches.
 export type ProfileWithDepartments = Profile & {
-  orgId: string | null
+  memberships: OrgMembership[]
+}
+
+// OrgMember is the shape used when displaying org members in the users table.
+// It combines profile identity with the membership role and department assignments
+// for a specific org.
+export type OrgMember = Profile & {
+  orgId: string
   role: UserRole
-  inviteStatus: InviteStatus
+  inviteStatus: string
   departmentIds: string[]
   departmentNames: string[]
 }

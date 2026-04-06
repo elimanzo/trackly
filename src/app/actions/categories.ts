@@ -8,12 +8,13 @@ import type { ActionClients } from './_context'
 import { getAdminCtx, getContext } from './_context'
 
 export async function createCategory(
+  orgSlug: string,
   input: CategoryFormInput
 ): Promise<{ id: string } | { error: string }> {
   const parsed = CategoryFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { data: existing } = await ctx.admin
@@ -50,13 +51,14 @@ export async function createCategory(
 }
 
 export async function updateCategory(
+  orgSlug: string,
   id: string,
   input: CategoryFormInput
 ): Promise<{ error: string } | null> {
   const parsed = CategoryFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
@@ -77,8 +79,8 @@ export async function updateCategory(
   return null
 }
 
-export async function countAssetsInCategory(id: string): Promise<number> {
-  const ctx = await getContext()
+export async function countAssetsInCategory(orgSlug: string, id: string): Promise<number> {
+  const ctx = await getContext(orgSlug)
   if (!ctx) return 0
 
   const { count } = await ctx.admin
@@ -92,10 +94,11 @@ export async function countAssetsInCategory(id: string): Promise<number> {
 }
 
 export async function deleteCategory(
+  orgSlug: string,
   id: string,
   clients?: ActionClients
 ): Promise<{ error: string } | null> {
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
   const permission = ctx.requireRole('admin')
   if (permission) return permission

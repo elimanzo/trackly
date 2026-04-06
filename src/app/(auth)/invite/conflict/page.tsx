@@ -16,7 +16,7 @@ export default function InviteConflictPage() {
           to switch organizations, please contact your administrator or reach out to support.
         </p>
         <Button asChild className="w-full">
-          <Link href="/dashboard">Go to your dashboard</Link>
+          <Link href="/orgs">Go to your dashboard</Link>
         </Button>
         <Button asChild variant="outline" className="w-full">
           <Link href="/login">Sign in with a different account</Link>
