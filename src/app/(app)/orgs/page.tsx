@@ -29,6 +29,13 @@ export default function OrgPickerPage() {
 
   if (!user) return null
 
+  // Single org: redirect is already firing in useEffect — don't flash the picker
+  if (memberships.length === 1) return null
+
+  // Remembered org: also redirecting
+  const remembered = typeof window !== 'undefined' ? localStorage.getItem(LAST_ORG_KEY) : null
+  if (remembered && memberships.some((m) => m.orgSlug === remembered)) return null
+
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6">
       <div className="text-center">
