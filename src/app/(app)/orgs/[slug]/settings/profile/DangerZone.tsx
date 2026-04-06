@@ -1,5 +1,6 @@
 'use client'
 
+import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -27,7 +28,7 @@ import { useOrg } from '@/providers/OrgProvider'
 // ---------------------------------------------------------------------------
 
 function LeaveOrgDialog() {
-  const { signOut } = useAuth()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function handleLeave() {
@@ -38,7 +39,7 @@ function LeaveOrgDialog() {
       setLoading(false)
       return
     }
-    await signOut()
+    router.push('/orgs')
   }
 
   return (
@@ -79,19 +80,20 @@ function LeaveOrgDialog() {
 // ---------------------------------------------------------------------------
 
 function DeleteOrgDialog({ orgName }: { orgName: string }) {
-  const { signOut } = useAuth()
+  const router = useRouter()
+  const { slug } = useParams<{ slug: string }>()
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleDelete() {
     setLoading(true)
-    const result = await deleteOrgAction()
+    const result = await deleteOrgAction(slug)
     if (result.error) {
       toast.error(result.error)
       setLoading(false)
       return
     }
-    await signOut()
+    router.push('/orgs')
   }
 
   return (
@@ -185,12 +187,12 @@ function DeleteAccountDialog() {
 
 export function DangerZone() {
   const { user } = useAuth()
-  const { org } = useOrg()
+  const { org, role } = useOrg()
 
   if (!user) return null
 
-  const isOwner = user.role === 'owner'
-  const hasOrg = !!user.orgId
+  const isOwner = role === 'owner'
+  const hasOrg = !!org?.id
 
   return (
     <Card className="border-destructive/40 shadow-sm">

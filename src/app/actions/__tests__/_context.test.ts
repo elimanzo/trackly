@@ -14,10 +14,11 @@ describe('getContext', () => {
   it('returns context with correct orgId and role for a user with a membership', async () => {
     const clients = makeClients(chain, { userId: 'user-001' })
     chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', role: 'admin' } }) // membership
+      .mockResolvedValueOnce({ data: { id: 'org-0001' } }) // org by slug
+      .mockResolvedValueOnce({ data: { role: 'admin' } }) // membership
       .mockResolvedValueOnce({ data: { full_name: 'Alice' } }) // profile name
 
-    const ctx = await getContext(clients)
+    const ctx = await getContext('acme-corp', clients)
 
     expect(ctx).not.toBeNull()
     expect(ctx?.orgId).toBe('org-0001')
@@ -28,9 +29,9 @@ describe('getContext', () => {
 
   it('returns null when user has no membership', async () => {
     const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({ data: null }) // no membership
+    chain.maybeSingle.mockResolvedValueOnce({ data: null }) // no org found
 
-    const ctx = await getContext(clients)
+    const ctx = await getContext('acme-corp', clients)
 
     expect(ctx).toBeNull()
   })
@@ -38,7 +39,7 @@ describe('getContext', () => {
   it('returns null when user is not authenticated', async () => {
     const clients = makeUnauthenticatedClients(chain)
 
-    const ctx = await getContext(clients)
+    const ctx = await getContext('acme-corp', clients)
 
     expect(ctx).toBeNull()
   })
@@ -46,8 +47,9 @@ describe('getContext', () => {
   it('includes departmentIds scoped to the active org', async () => {
     const clients = makeClients(chain, { userId: 'user-001' })
     chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', role: 'editor' } })
-      .mockResolvedValueOnce({ data: { full_name: 'Bob' } })
+      .mockResolvedValueOnce({ data: { id: 'org-0001' } }) // org by slug
+      .mockResolvedValueOnce({ data: { role: 'editor' } }) // membership
+      .mockResolvedValueOnce({ data: { full_name: 'Bob' } }) // profile name
     // user_departments returns two rows for org-0001
     chain.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
       Promise.resolve({
@@ -56,7 +58,7 @@ describe('getContext', () => {
       }).then(resolve)
     )
 
-    const ctx = await getContext(clients)
+    const ctx = await getContext('acme-corp', clients)
 
     expect(ctx?.departmentIds).toEqual(['dept-001', 'dept-002'])
   })

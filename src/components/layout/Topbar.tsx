@@ -1,7 +1,7 @@
 'use client'
 
-import { LogOut, Menu, Moon, Settings, Sun, User } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Building2, ChevronsUpDown, LogOut, Menu, Moon, Settings, Sun, User } from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { getInitials } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 interface TopbarProps {
   onMenuClick: () => void
@@ -23,8 +24,14 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { user, signOut } = useAuth()
+  const { org } = useOrg()
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
+  const params = useParams<{ slug?: string }>()
+  const slug = params.slug ?? ''
+  const base = slug ? `/orgs/${slug}` : ''
+
+  const multipleOrgs = (user?.memberships?.length ?? 0) > 1
 
   async function handleSignOut() {
     await signOut()
@@ -43,6 +50,20 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       >
         <Menu className="h-5 w-5" />
       </Button>
+
+      {/* Org switcher (shown when user has multiple orgs) */}
+      {org && multipleOrgs && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground gap-1.5 text-sm font-medium"
+          onClick={() => router.push('/orgs')}
+        >
+          <Building2 className="h-4 w-4" />
+          {org.name}
+          <ChevronsUpDown className="h-3 w-3 opacity-60" />
+        </Button>
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />
@@ -81,11 +102,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <p className="text-muted-foreground truncate text-xs">{user.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/settings/profile')}>
+            <DropdownMenuItem onClick={() => router.push(`${base}/settings/profile`)}>
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/settings/org')}>
+            <DropdownMenuItem onClick={() => router.push(`${base}/settings/org`)}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>

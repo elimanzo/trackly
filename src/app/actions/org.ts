@@ -27,7 +27,7 @@ export async function completeOnboardingSetup(
   org: { name: string; slug: string },
   departments: string[],
   categories: string[]
-): Promise<{ error: string } | { error: null }> {
+): Promise<{ error: string } | { error: null; slug: string }> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -74,7 +74,7 @@ export async function completeOnboardingSetup(
     if (catError) return { error: catError.message }
   }
 
-  return { error: null }
+  return { error: null, slug: org.slug }
 }
 
 export async function createOrganization(
@@ -112,6 +112,7 @@ export async function createOrganization(
 }
 
 export async function updateOrganization(
+  orgSlug: string,
   input: UpdateOrganizationInput
 ): Promise<{ error: string } | { error: null }> {
   const supabase = await createClient()
@@ -122,13 +123,22 @@ export async function updateOrganization(
 
   const admin = createAdminClient()
 
-  const { data: membership } = await admin
-    .from('user_org_memberships')
-    .select('org_id, role')
-    .eq('user_id', user.id)
+  const { data: org } = await admin
+    .from('organizations')
+    .select('id')
+    .eq('slug', orgSlug)
     .maybeSingle()
 
-  if (!membership?.org_id) return { error: 'No organisation found' }
+  if (!org?.id) return { error: 'No organisation found' }
+
+  const { data: membership } = await admin
+    .from('user_org_memberships')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('org_id', org.id)
+    .maybeSingle()
+
+  if (!membership) return { error: 'No organisation found' }
   const denied = createPolicy({ role: membership.role as UserRole, departmentIds: [] }).enforce(
     'department:manage'
   )
@@ -144,7 +154,7 @@ export async function updateOrganization(
   if (input.assetTableConfig !== undefined) patch.asset_table_config = input.assetTableConfig
   if (input.reportConfig !== undefined) patch.report_config = input.reportConfig
 
-  const { error } = await admin.from('organizations').update(patch).eq('id', membership.org_id)
+  const { error } = await admin.from('organizations').update(patch).eq('id', org.id)
 
   if (error) {
     if (error.code === '23505') return { error: 'That URL slug is already taken.' }
@@ -158,7 +168,9 @@ export async function updateOrganization(
 // deleteOrgAction
 // ---------------------------------------------------------------------------
 
-export async function deleteOrgAction(): Promise<{ error: string } | { error: null }> {
+export async function deleteOrgAction(
+  orgSlug: string
+): Promise<{ error: string } | { error: null }> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -167,20 +179,27 @@ export async function deleteOrgAction(): Promise<{ error: string } | { error: nu
 
   const admin = createAdminClient()
 
-  const { data: membership } = await admin
-    .from('user_org_memberships')
-    .select('org_id, role')
-    .eq('user_id', user.id)
+  const { data: org } = await admin
+    .from('organizations')
+    .select('id')
+    .eq('slug', orgSlug)
     .maybeSingle()
 
-  if (!membership?.org_id) return { error: 'No organisation found' }
-  if (membership.role !== 'owner') return { error: 'Only the organisation owner can delete it' }
+  if (!org?.id) return { error: 'No organisation found' }
 
-  const orgId = membership.org_id as string
+  const { data: membership } = await admin
+    .from('user_org_memberships')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('org_id', org.id)
+    .maybeSingle()
+
+  if (!membership) return { error: 'No organisation found' }
+  if (membership.role !== 'owner') return { error: 'Only the organisation owner can delete it' }
 
   // Delete the org — cascades departments, categories, locations, vendors,
   // assets, invites, audit_logs, user_departments, user_org_memberships
-  const { error } = await admin.from('organizations').delete().eq('id', orgId)
+  const { error } = await admin.from('organizations').delete().eq('id', org.id)
 
   return { error: error?.message ?? null }
 }

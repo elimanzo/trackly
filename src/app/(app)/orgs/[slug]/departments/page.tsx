@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
@@ -28,6 +29,7 @@ import { DepartmentFormSchema, type Department, type DepartmentFormInput } from 
 import { useOrg } from '@/providers/OrgProvider'
 
 export default function DepartmentsPage() {
+  const { slug } = useParams<{ slug: string }>()
   const { data: departments, isLoading } = useDepartments()
   const {
     create: createDepartment,
@@ -61,7 +63,7 @@ export default function DepartmentsPage() {
   }
 
   async function openDelete(id: string) {
-    const count = await countAssetsInDepartment(id)
+    const count = await countAssetsInDepartment(slug, id)
     setDeleteTarget({ id, assetCount: count })
   }
 

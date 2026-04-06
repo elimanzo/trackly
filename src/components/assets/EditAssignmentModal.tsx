@@ -57,7 +57,8 @@ export function EditAssignmentModal({
   onOpenChange,
   onSuccess,
 }: EditAssignmentModalProps) {
-  const { org } = useOrg()
+  const { org, membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
   const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: departments } = useDepartments()
   const { create: createDepartment } = useDepartmentMutations()
@@ -96,7 +97,7 @@ export function EditAssignmentModal({
   }, [assignment.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onSubmit(data: CheckoutFormInput) {
-    const result = await updateAssignment(assignment.id, { id: assetId, isBulk }, data)
+    const result = await updateAssignment(orgSlug, assignment.id, { id: assetId, isBulk }, data)
     if (result?.error) {
       form.setError('assignedToName', { message: result.error })
       return

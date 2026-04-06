@@ -6,12 +6,13 @@ import { logAudit } from './_audit'
 import { getAdminCtx } from './_context'
 
 export async function createVendor(
+  orgSlug: string,
   input: VendorFormInput
 ): Promise<{ id: string } | { error: string }> {
   const parsed = VendorFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { data: existing } = await ctx.admin
@@ -50,13 +51,14 @@ export async function createVendor(
 }
 
 export async function updateVendor(
+  orgSlug: string,
   id: string,
   input: VendorFormInput
 ): Promise<{ error: string } | null> {
   const parsed = VendorFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
@@ -83,8 +85,8 @@ export async function updateVendor(
   return null
 }
 
-export async function deleteVendor(id: string): Promise<{ error: string } | null> {
-  const ctx = await getAdminCtx()
+export async function deleteVendor(orgSlug: string, id: string): Promise<{ error: string } | null> {
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { data: vendor } = await ctx.admin.from('vendors').select('name').eq('id', id).maybeSingle()

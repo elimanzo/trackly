@@ -55,7 +55,8 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: departments } = useDepartments()
-  const { org } = useOrg()
+  const { org, membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
   const { create: createDepartment } = useDepartmentMutations()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: categories } = useCategories()
@@ -84,20 +85,21 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
 
   // Fetch prefix suggestions once on mount
   useEffect(() => {
-    getTagPrefixes()
+    if (!orgSlug) return
+    getTagPrefixes(orgSlug)
       .then(setPrefixSuggestions)
       .catch(() => {})
-  }, [])
+  }, [orgSlug])
 
   // Fetch next suffix when prefix changes (debounced)
   useEffect(() => {
     if (isEdit) return
     const trimmed = prefix.trim()
-    if (!trimmed) return
+    if (!trimmed || !orgSlug) return
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      getNextTagForPrefix(trimmed)
+      getNextTagForPrefix(orgSlug, trimmed)
         .then((tag) => {
           const idx = tag.lastIndexOf('-')
           if (idx > 0) setTagSuffix(tag.slice(idx + 1))
@@ -156,20 +158,20 @@ export function AssetForm({ asset, defaultAssetTag }: AssetFormProps) {
 
   async function onSubmit(data: AssetFormInput) {
     if (isEdit && asset) {
-      const result = await updateAsset(asset.id, data)
+      const result = await updateAsset(orgSlug, asset.id, data)
       if (result?.error) {
         form.setError('assetTag', { message: result.error })
         return
       }
-      router.push(`/assets/${asset.id}`)
+      router.push(`/orgs/${orgSlug}/assets/${asset.id}`)
     } else {
-      const result = await createAsset(data)
+      const result = await createAsset(orgSlug, data)
       if ('error' in result) {
         form.setError('assetTag', { message: result.error })
         return
       }
       void queryClient.invalidateQueries({ queryKey: ['assets'] })
-      router.push(`/assets/${result.id}`)
+      router.push(`/orgs/${orgSlug}/assets/${result.id}`)
     }
   }
 

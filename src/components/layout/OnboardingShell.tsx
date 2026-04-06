@@ -29,6 +29,8 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const currentIndex = STEPS.findIndex((s) => s.path === pathname)
   const { user, signOut } = useAuth()
+  const firstSlug = user?.memberships[0]?.orgSlug
+  const settingsHref = firstSlug ? `/orgs/${firstSlug}/settings/profile` : '/orgs'
 
   return (
     <div className="bg-background flex min-h-screen flex-col">
@@ -44,7 +46,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
         {user && (
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-              <Link href="/settings/profile">
+              <Link href={settingsHref}>
                 <Settings className="mr-1.5 h-4 w-4" />
                 Settings
               </Link>

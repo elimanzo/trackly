@@ -23,14 +23,14 @@ beforeEach(() => {
 describe('deleteDepartment', () => {
   it('returns error when user is not authenticated', async () => {
     const clients = makeUnauthenticatedClients(chain)
-    const result = await deleteDepartment(DEPT_ID, clients)
+    const result = await deleteDepartment('acme-corp', DEPT_ID, clients)
     expect(result).toEqual({ error: 'Not authenticated' })
   })
 
   it('returns error when viewer tries to delete a department', async () => {
     const clients = makeClients(chain, { seedContext: { role: 'viewer' } })
 
-    const result = await deleteDepartment(DEPT_ID, clients)
+    const result = await deleteDepartment('acme-corp', DEPT_ID, clients)
     expect(result).toEqual({ error: 'Not authorised' })
   })
 
@@ -39,7 +39,7 @@ describe('deleteDepartment', () => {
     const clients = makeClients(chain, { rpc, seedContext: { role: 'admin' } })
     chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Engineering' } })
 
-    const result = await deleteDepartment(DEPT_ID, clients)
+    const result = await deleteDepartment('acme-corp', DEPT_ID, clients)
     expect(result).toEqual({ error: 'function failed' })
   })
 
@@ -48,7 +48,7 @@ describe('deleteDepartment', () => {
     const clients = makeClients(chain, { rpc, seedContext: { orgId: 'org-0001', role: 'admin' } })
     chain.maybeSingle.mockResolvedValueOnce({ data: { name: 'Engineering' } })
 
-    const result = await deleteDepartment(DEPT_ID, clients)
+    const result = await deleteDepartment('acme-corp', DEPT_ID, clients)
 
     expect(result).toBeNull()
     expect(rpc).toHaveBeenCalledWith('soft_delete_with_cascade', {
@@ -64,7 +64,7 @@ describe('deleteDepartment', () => {
     const clients = makeClients(chain, { rpc, seedContext: { role: 'admin' } })
     chain.maybeSingle.mockResolvedValueOnce({ data: null }) // name row not found
 
-    const result = await deleteDepartment(DEPT_ID, clients)
+    const result = await deleteDepartment('acme-corp', DEPT_ID, clients)
     expect(result).toBeNull()
   })
 })

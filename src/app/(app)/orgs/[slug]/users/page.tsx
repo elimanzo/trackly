@@ -56,7 +56,7 @@ import {
 import { USER_ROLE_CONFIG } from '@/lib/constants'
 import { useDepartments } from '@/lib/hooks/useDepartments'
 import { useOrgUserMutations, useOrgUsers } from '@/lib/hooks/useOrgUsers'
-import type { ProfileWithDepartments } from '@/lib/types'
+import type { OrgMember } from '@/lib/types'
 import { UserRoleSchema } from '@/lib/types'
 import { formatRelativeTime } from '@/lib/utils/formatters'
 import { getInitials } from '@/lib/utils/formatters'
@@ -82,9 +82,8 @@ export default function UsersPage() {
   const [inviteDeptIds, setInviteDeptIds] = useState<string[]>([])
   const [removeId, setRemoveId] = useState<string | null>(null)
   const [revokeId, setRevokeId] = useState<string | null>(null)
-  const [editingUser, setEditingUser] = useState<ProfileWithDepartments | null>(null)
-  const [editRole, setEditRole] =
-    useState<Exclude<ProfileWithDepartments['role'], 'owner'>>('viewer')
+  const [editingUser, setEditingUser] = useState<OrgMember | null>(null)
+  const [editRole, setEditRole] = useState<Exclude<OrgMember['role'], 'owner'>>('viewer')
   const [editDeptIds, setEditDeptIds] = useState<string[]>([])
 
   const form = useForm<InviteFormInput>({
@@ -94,7 +93,7 @@ export default function UsersPage() {
 
   if (isLoading) return <PageLoader />
 
-  function openEdit(u: ProfileWithDepartments) {
+  function openEdit(u: OrgMember) {
     setEditingUser(u)
     setEditRole(u.role === 'owner' ? 'admin' : u.role)
     setEditDeptIds(u.departmentIds)

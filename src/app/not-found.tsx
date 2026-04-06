@@ -9,7 +9,7 @@ export default function NotFound() {
         The page you&apos;re looking for doesn&apos;t exist or has been moved.
       </p>
       <Link
-        href="/dashboard"
+        href="/orgs"
         className="text-primary mt-2 text-sm font-medium underline-offset-4 hover:underline"
       >
         Back to dashboard

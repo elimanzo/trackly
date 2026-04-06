@@ -2,7 +2,7 @@
 
 import { ArrowLeft, LogIn, LogOut, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { notFound, useRouter } from 'next/navigation'
+import { notFound, useParams, useRouter } from 'next/navigation'
 import { use, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -30,7 +30,6 @@ import { createPolicy } from '@/lib/permissions'
 import type { AssetAssignment, AuditLog } from '@/lib/types'
 import { computeMaxForEdit } from '@/lib/utils/availability'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/formatters'
-import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
 interface AssetDetailPageProps {
@@ -39,10 +38,10 @@ interface AssetDetailPageProps {
 
 export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { id } = use(params)
+  const { slug } = useParams<{ slug: string }>()
   const { data: asset, isLoading, refresh } = useAsset(id)
   const { data: history, isLoading: historyLoading } = useAssetHistory(id)
-  const { user } = useAuth()
-  const { org } = useOrg()
+  const { org, role, departmentIds } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const router = useRouter()
   const [checkoutOpen, setCheckoutOpen] = useState(false)
@@ -60,21 +59,21 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
     )
   if (!asset) return notFound()
 
-  const canEditAssets = user
-    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:update', {
+  const canEditAssets = role
+    ? createPolicy({ role, departmentIds }).can('asset:update', {
         departmentId: asset.departmentId,
       })
     : false
   const canCheckOut = asset.isAvailable
 
   async function handleReturn() {
-    await returnAsset(asset!.id)
+    await returnAsset(slug, asset!.id)
     refresh()
   }
 
   async function handleDelete() {
-    await deleteAsset(asset!.id)
-    router.push('/assets')
+    await deleteAsset(slug, asset!.id)
+    router.push(`/orgs/${slug}/assets`)
   }
 
   return (
@@ -83,7 +82,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
         {/* Back + actions */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/assets">
+            <Link href={`/orgs/${slug}/assets`}>
               <ArrowLeft className="mr-1 h-4 w-4" />
               Assets
             </Link>
@@ -110,7 +109,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
             {canEditAssets && (
               <>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/assets/${asset.id}/edit`}>
+                  <Link href={`/orgs/${slug}/assets/${asset.id}/edit`}>
                     <Pencil className="mr-1.5 h-4 w-4" />
                     Edit
                   </Link>
@@ -368,7 +367,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
           open={restockOpen}
           onOpenChange={setRestockOpen}
           onConfirm={async (qty) => {
-            const result = await restockAsset(asset.id, qty)
+            const result = await restockAsset(slug, asset.id, qty)
             if (result?.error) {
               toast.error(result.error)
             } else {
@@ -409,7 +408,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
             if (!open) setReturnAssignment(null)
           }}
           onConfirm={async (qty) => {
-            const result = await returnBulkAssignment(returnAssignment.id, qty)
+            const result = await returnBulkAssignment(slug, returnAssignment.id, qty)
             if (result?.error) {
               toast.error(result.error)
             } else {

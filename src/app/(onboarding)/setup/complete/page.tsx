@@ -30,9 +30,9 @@ export default function SetupCompletePage() {
       setSaving(false)
       return
     }
-    // Full-page navigation flushes the stale AuthProvider profile (orgId=null)
-    // so settings tabs and org-gated UI reflect the newly created org immediately.
-    window.location.assign('/dashboard')
+    // Full-page navigation flushes the stale AuthProvider profile so the newly
+    // created org membership is reflected immediately.
+    window.location.assign(`/orgs/${'slug' in result ? result.slug : slug}/dashboard`)
   }
 
   return (

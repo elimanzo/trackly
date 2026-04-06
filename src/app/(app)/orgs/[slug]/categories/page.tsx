@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
@@ -27,6 +28,7 @@ import { useCategoryMutations, useCategories } from '@/lib/hooks/useCategories'
 import { CategoryFormSchema, type Category, type CategoryFormInput } from '@/lib/types'
 
 export default function CategoriesPage() {
+  const { slug } = useParams<{ slug: string }>()
   const { data: categories, isLoading } = useCategories()
   const {
     create: createCategory,
@@ -58,7 +60,7 @@ export default function CategoriesPage() {
   }
 
   async function openDelete(id: string) {
-    const count = await countAssetsInCategory(id)
+    const count = await countAssetsInCategory(slug, id)
     setDeleteTarget({ id, assetCount: count })
   }
 

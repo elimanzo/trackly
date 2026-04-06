@@ -18,7 +18,10 @@ export type ActionClients = {
   admin?: ReturnType<typeof createAdminClient>
 }
 
-export async function getContext(clients?: ActionClients): Promise<ActionContext | null> {
+export async function getContext(
+  orgSlug: string,
+  clients?: ActionClients
+): Promise<ActionContext | null> {
   const supabase = clients?.supabase ?? (await createClient())
   const {
     data: { user },
@@ -27,24 +30,33 @@ export async function getContext(clients?: ActionClients): Promise<ActionContext
 
   const admin = clients?.admin ?? createAdminClient()
 
-  // Step 1: resolve the user's active membership (first one in Phase 1;
-  // Phase 2 will select by org slug from the URL)
-  const { data: membership } = await admin
-    .from('user_org_memberships')
-    .select('org_id, role')
-    .eq('user_id', user.id)
+  // Step 1: resolve org_id from slug
+  const { data: org } = await admin
+    .from('organizations')
+    .select('id')
+    .eq('slug', orgSlug)
     .maybeSingle()
 
-  if (!membership?.org_id) return null
+  if (!org?.id) return null
 
-  // Step 2: fetch display name + scoped departments in parallel
+  // Step 2: verify user has a membership in this org
+  const { data: membership } = await admin
+    .from('user_org_memberships')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('org_id', org.id)
+    .maybeSingle()
+
+  if (!membership) return null
+
+  // Step 3: fetch display name + scoped departments in parallel
   const [{ data: profile }, { data: deptRows }] = await Promise.all([
     admin.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
     admin
       .from('user_departments')
       .select('department_id')
       .eq('user_id', user.id)
-      .eq('org_id', membership.org_id),
+      .eq('org_id', org.id),
   ])
 
   const role = membership.role as UserRole
@@ -52,7 +64,7 @@ export async function getContext(clients?: ActionClients): Promise<ActionContext
 
   return {
     userId: user.id,
-    orgId: membership.org_id as string,
+    orgId: org.id as string,
     actorName: (profile?.full_name as string) ?? 'Unknown',
     role,
     departmentIds,
@@ -65,8 +77,11 @@ export async function getContext(clients?: ActionClients): Promise<ActionContext
 }
 
 /** Get context and assert admin role in one call. Returns the context or an error object. */
-export async function getAdminCtx(): Promise<ActionContext | { error: string }> {
-  const ctx = await getContext()
+export async function getAdminCtx(
+  orgSlug: string,
+  clients?: ActionClients
+): Promise<ActionContext | { error: string }> {
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
   return ctx.requireRole('admin') ?? ctx
 }

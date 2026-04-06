@@ -44,11 +44,11 @@ export function makeClients(
     inviteUserByEmail?: ReturnType<typeof vi.fn>
     rpc?: ReturnType<typeof vi.fn>
     /**
-     * Pre-seed the membership + profile-name maybeSingle calls that getContext()
-     * makes internally. Set to false if the action under test does not call
-     * getContext() (e.g. sendInviteAction, acceptInviteViaGoogleAction).
+     * Pre-seed the org-lookup, membership, and profile-name maybeSingle calls that
+     * getContext() makes internally. Set to false if the action under test does not
+     * call getContext() (e.g. sendInviteAction, acceptInviteViaGoogleAction).
      */
-    seedContext?: { orgId?: string; role?: string; actorName?: string } | false
+    seedContext?: { orgSlug?: string; orgId?: string; role?: string; actorName?: string } | false
   } = {}
 ): ActionClients {
   const {
@@ -62,7 +62,8 @@ export function makeClients(
   if (seedContext !== false) {
     const { orgId = 'org-0001', role = 'admin', actorName = 'Actor' } = seedContext
     chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: orgId, role } }) // membership
+      .mockResolvedValueOnce({ data: { id: orgId } }) // org by slug
+      .mockResolvedValueOnce({ data: { role } }) // membership
       .mockResolvedValueOnce({ data: { full_name: actorName } }) // profile name
   }
 

@@ -7,7 +7,7 @@ import type {
   StatusBreakdown,
   WarrantyAlert,
 } from '@/lib/types'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 const EMPTY: DashboardStats = {
   totalAssets: 0,
@@ -19,14 +19,14 @@ const EMPTY: DashboardStats = {
 }
 
 export function useDashboardStats(): { data: DashboardStats; isLoading: boolean } {
-  const { user } = useAuth()
+  const { org } = useOrg()
+  const orgId = org?.id ?? ''
 
   const { data = EMPTY, isLoading } = useQuery({
-    queryKey: ['dashboardStats', user?.orgId],
-    enabled: !!user?.orgId,
+    queryKey: ['dashboardStats', orgId],
+    enabled: !!orgId,
     queryFn: async () => {
       const supabase = createClient()
-      const orgId = user!.orgId!
       const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
       const [aggregates, warrantyRows, activityCount] = await Promise.all([

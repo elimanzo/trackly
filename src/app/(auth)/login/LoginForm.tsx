@@ -44,7 +44,7 @@ export function LoginForm() {
       toast.error(error)
       return
     }
-    window.location.assign('/dashboard')
+    window.location.assign('/orgs')
   }
 
   return (

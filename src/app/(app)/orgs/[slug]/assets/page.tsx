@@ -14,7 +14,7 @@ import { PaginationBar } from '@/components/shared/PaginationBar'
 import { Button } from '@/components/ui/button'
 import { type AssetFilters, useAssets } from '@/lib/hooks/useAssets'
 import { createPolicy } from '@/lib/permissions'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 const PAGE_SIZE = 25
 
@@ -23,10 +23,9 @@ export default function AssetsPage() {
   const [filters, setFilters] = useState<AssetFilters>({})
   const [page, setPage] = useState(1)
   const { data: assets, totalCount, isLoading } = useAssets(filters, page, PAGE_SIZE)
-  const { user } = useAuth()
-  const canCreate = user
-    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
-    : false
+  const { role, departmentIds, membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
+  const canCreate = role ? createPolicy({ role, departmentIds }).can('asset:create') : false
 
   function handleFiltersChange(next: AssetFilters) {
     setFilters(next)
@@ -41,7 +40,7 @@ export default function AssetsPage() {
         action={
           canCreate ? (
             <Button asChild>
-              <Link href="/assets/new">
+              <Link href={`/orgs/${orgSlug}/assets/new`}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add asset
               </Link>
@@ -90,7 +89,7 @@ export default function AssetsPage() {
           action={
             canCreate ? (
               <Button asChild size="sm">
-                <Link href="/assets/new">
+                <Link href={`/orgs/${orgSlug}/assets/new`}>
                   <Plus className="mr-2 h-3.5 w-3.5" />
                   Add asset
                 </Link>
