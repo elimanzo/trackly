@@ -186,8 +186,7 @@ Pre-commit hooks run lint, type-check, and the full test suite automatically.
 ## Git workflow
 
 - `main` — production (auto-deploys to Vercel)
-- `feat/multi-org` — multi-org integration branch; feature branches PR here first
-- `feat/*` — feature branches, PR into `feat/multi-org` or `main`
+- `feat/*` — feature branches, PR into `main`
 
 ---
 
