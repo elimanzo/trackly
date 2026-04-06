@@ -13,7 +13,7 @@ export async function completeInviteForGoogleUser(
 
   const { data: invite } = await admin
     .from('invites')
-    .select('*')
+    .select('token')
     .eq('email', email.toLowerCase())
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
@@ -21,39 +21,8 @@ export async function completeInviteForGoogleUser(
 
   if (!invite) return { destination: null }
 
-  // Multi-org: always accept the invite — users can belong to multiple orgs
-  const { error: profileError } = await admin.from('profiles').upsert({
-    id: userId,
-    updated_at: new Date().toISOString(),
-  })
-  if (profileError) return { error: profileError.message }
-
-  const { error: membershipError } = await admin.from('user_org_memberships').upsert({
-    user_id: userId,
-    org_id: invite.org_id,
-    role: invite.role as string,
-    invite_status: 'active',
-  })
-  if (membershipError) return { error: membershipError.message }
-
-  const deptIds = (invite.department_ids as string[] | null) ?? []
-  if (deptIds.length > 0) {
-    const { error: deptError } = await admin.from('user_departments').insert(
-      deptIds.map((department_id: string) => ({
-        user_id: userId,
-        department_id,
-        org_id: invite.org_id,
-      }))
-    )
-    if (deptError) return { error: deptError.message }
-  }
-
-  await admin
-    .from('invites')
-    .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id as string)
-
-  return { destination: '/orgs' }
+  // Send to the in-app confirmation page so the user can consciously accept
+  return { destination: `/invite/confirm?token=${invite.token as string}` }
 }
 
 // Takes userId directly — called from the auth callback where the session is

@@ -70,17 +70,18 @@ export async function sendInviteAction(
       expires_at: expiresAt,
       department_ids: departmentIds,
     })
-    .select('id')
+    .select('id, token')
     .single()
 
   if (insertError) return { error: insertError.message }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const next = `/invite/accept?org=${encodeURIComponent(orgName)}`
-  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`
+  const invite = newInvite as { id: string; token: string }
 
   // Check whether an auth user already exists for this email. If so, send a
   // magic link instead of inviteUserByEmail (which fails for existing users).
+  // Existing users land on the in-app confirmation page; new users go through
+  // the password-setup flow at /invite/accept.
   const { data: existingProfile } = await admin
     .from('profiles')
     .select('id')
@@ -88,6 +89,8 @@ export async function sendInviteAction(
     .maybeSingle()
 
   if (existingProfile) {
+    const confirmNext = `/invite/confirm?token=${invite.token}`
+    const confirmRedirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(confirmNext)}`
     const implicitClient = createRawClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -95,18 +98,17 @@ export async function sendInviteAction(
     )
     const { error: otpError } = await implicitClient.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo },
+      options: { emailRedirectTo: confirmRedirectTo },
     })
     if (otpError) {
-      await admin
-        .from('invites')
-        .delete()
-        .eq('id', (newInvite as { id: string }).id)
+      await admin.from('invites').delete().eq('id', invite.id)
       return { error: otpError.message }
     }
     return { error: null }
   }
 
+  const newNext = `/invite/accept?org=${encodeURIComponent(orgName)}`
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(newNext)}`
   const { error: authError } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo,
     data: { org_name: orgName, invited_by_name: actorName },
@@ -119,10 +121,7 @@ export async function sendInviteAction(
       authError.message.toLowerCase().includes('user already exists')
 
     if (!alreadyExists) {
-      await admin
-        .from('invites')
-        .delete()
-        .eq('id', (newInvite as { id: string }).id)
+      await admin.from('invites').delete().eq('id', invite.id)
       return { error: authError.message }
     }
   }
@@ -255,4 +254,109 @@ export async function acceptInviteAction(
     .eq('id', invite.id as string)
 
   return { error: null, email: user.email!.toLowerCase() }
+}
+
+// ---------------------------------------------------------------------------
+// getInviteByTokenAction — fetch invite details for the confirmation page
+// ---------------------------------------------------------------------------
+
+export async function getInviteByTokenAction(
+  token: string,
+  clients?: ActionClients
+): Promise<{ error: string } | { orgName: string; orgSlug: string; role: string }> {
+  const supabase = clients?.supabase ?? (await createClient())
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const admin = clients?.admin ?? createAdminClient()
+
+  const { data: invite } = await admin
+    .from('invites')
+    .select('role, email, organizations(name, slug)')
+    .eq('token', token)
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+
+  if (!invite) return { error: 'Invite not found or has expired. Ask your admin to resend it.' }
+
+  if ((invite.email as string).toLowerCase() !== user.email!.toLowerCase()) {
+    return { error: 'This invite was sent to a different email address.' }
+  }
+
+  const orgs = invite.organizations as
+    | { name: string; slug: string }[]
+    | { name: string; slug: string }
+    | null
+  const org = Array.isArray(orgs) ? orgs[0] : orgs
+  return { orgName: org?.name ?? '', orgSlug: org?.slug ?? '', role: invite.role as string }
+}
+
+// ---------------------------------------------------------------------------
+// acceptAuthenticatedInviteAction — accept invite for an already-signed-in user
+// ---------------------------------------------------------------------------
+
+export async function acceptAuthenticatedInviteAction(
+  token: string,
+  clients?: ActionClients
+): Promise<{ error: string } | { orgSlug: string }> {
+  const supabase = clients?.supabase ?? (await createClient())
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Session expired. Please sign in again.' }
+
+  const admin = clients?.admin ?? createAdminClient()
+
+  const { data: invite } = await admin
+    .from('invites')
+    .select('*, organizations(slug)')
+    .eq('token', token)
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+
+  if (!invite) return { error: 'Invite not found or has expired. Ask your admin to resend it.' }
+
+  if ((invite.email as string).toLowerCase() !== user.email!.toLowerCase()) {
+    return { error: 'This invite was sent to a different email address.' }
+  }
+
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id: user.id,
+    email: user.email,
+    updated_at: new Date().toISOString(),
+  })
+  if (profileError) return { error: profileError.message }
+
+  const { error: membershipError } = await admin.from('user_org_memberships').upsert({
+    user_id: user.id,
+    org_id: invite.org_id,
+    role: invite.role as string,
+    invite_status: 'active',
+  })
+  if (membershipError) return { error: membershipError.message }
+
+  const deptIds = (invite.department_ids as string[] | null) ?? []
+  if (deptIds.length > 0) {
+    const { error: deptError } = await admin.from('user_departments').insert(
+      deptIds.map((department_id: string) => ({
+        user_id: user.id,
+        department_id,
+        org_id: invite.org_id,
+      }))
+    )
+    if (deptError) return { error: deptError.message }
+  }
+
+  await admin
+    .from('invites')
+    .update({ accepted_at: new Date().toISOString() })
+    .eq('id', invite.id as string)
+
+  const orgs = invite.organizations as { slug: string }[] | { slug: string } | null
+  const orgSlug = (Array.isArray(orgs) ? orgs[0]?.slug : orgs?.slug) ?? ''
+  return { orgSlug }
 }
