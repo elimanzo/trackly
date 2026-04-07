@@ -56,30 +56,14 @@ The anon key and service role key are printed by `supabase status` after the sta
 
 All passwords: `Dev1234!`
 
-**Acme Corp** (`acme-corp`) — full dataset, 50+ assets across 5 departments
-
-| Email           | Name           | Acme Corp role | Department access |
-| --------------- | -------------- | -------------- | ----------------- |
-| owner@acme.dev  | Alex Rivera    | Owner          | All               |
-| admin@acme.dev  | Sarah Mitchell | Admin          | All               |
-| editor@acme.dev | James Thornton | Editor         | IT, Operations    |
-| viewer@acme.dev | Maria Chen     | Viewer         | Finance, HR       |
-
-**Multi-org memberships** (seed 003 — multi-org edge cases)
-
-| Email           | Name           | TechFlow Inc   | Meridian Labs | Solo Ventures |
-| --------------- | -------------- | -------------- | ------------- | ------------- |
-| owner@acme.dev  | Alex Rivera    | Editor         | —             | —             |
-| admin@acme.dev  | Sarah Mitchell | —              | Owner         | —             |
-| editor@acme.dev | James Thornton | Owner          | Editor        | —             |
-| viewer@acme.dev | Maria Chen     | Pending invite | —             | —             |
-
-**Additional seed accounts**
-
-| Email              | Name       | State                                          |
-| ------------------ | ---------- | ---------------------------------------------- |
-| newuser@dev.test   | Dana Park  | No org — lands on onboarding                   |
-| soleowner@dev.test | Frank Sole | Sole owner of Solo Ventures (no other members) |
+| Email              | Name           | Acme Corp | TechFlow Inc   | Meridian Labs | Solo Ventures |
+| ------------------ | -------------- | --------- | -------------- | ------------- | ------------- |
+| owner@acme.dev     | Alex Rivera    | Owner     | Editor         | —             | —             |
+| admin@acme.dev     | Sarah Mitchell | Admin     | —              | Owner         | —             |
+| editor@acme.dev    | James Thornton | Editor    | Owner          | Editor        | —             |
+| viewer@acme.dev    | Maria Chen     | Viewer    | Pending invite | —             | —             |
+| newuser@dev.test   | Dana Park      | —         | —              | —             | —             |
+| soleowner@dev.test | Frank Sole     | —         | —              | —             | Owner         |
 
 ### Local services
 

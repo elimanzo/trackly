@@ -20,7 +20,7 @@
 -- ├────────────────────────┬─────────────────────────────────────────────┤
 -- │  acme-corp  (Org 1)    │  Full dataset — created by seed 001          │
 -- │  techflow-inc (Org 2)  │  Partial dataset, overlapping users          │
--- │  meridian-labs (Org 3) │  Empty org — no assets                       │
+-- │  meridian-labs (Org 3) │  Small dataset — verifies cross-org isolation │
 -- │  solo-ventures (Org 4) │  Sole-owner org — User F only                │
 -- └────────────────────────┴─────────────────────────────────────────────┘
 --
@@ -71,6 +71,15 @@ declare
   v2_lenovo  uuid := gen_random_uuid();
   v2_lg      uuid := gen_random_uuid();
 
+  -- ── Org 3 departments / categories / locations / vendors ───
+  d3_research uuid := gen_random_uuid();
+  d3_ops      uuid := gen_random_uuid();
+  c3_laptops  uuid := gen_random_uuid();
+  c3_lab      uuid := gen_random_uuid();
+  l3_lab      uuid := gen_random_uuid();
+  v3_apple    uuid := gen_random_uuid();
+  v3_dell     uuid := gen_random_uuid();
+
 begin
 
   -- ── CLEANUP (bottom-up) ───────────────────────────────────
@@ -88,7 +97,14 @@ begin
   delete from public.user_org_memberships where org_id = v_org2;
   delete from public.organizations   where id = v_org2;
 
-  -- Org 3 (no assets)
+  -- Org 3
+  delete from public.asset_assignments
+    where asset_id in (select id from public.assets where org_id = v_org3);
+  delete from public.assets          where org_id = v_org3;
+  delete from public.departments     where org_id = v_org3;
+  delete from public.categories      where org_id = v_org3;
+  delete from public.locations       where org_id = v_org3;
+  delete from public.vendors         where org_id = v_org3;
   delete from public.invites         where org_id = v_org3;
   delete from public.user_departments where org_id = v_org3;
   delete from public.user_org_memberships where org_id = v_org3;
@@ -129,7 +145,7 @@ begin
   insert into public.organizations (id, name, slug, owner_id)
   values (v_org2, 'TechFlow Inc', 'techflow-inc', u_editor); -- James is owner
 
-  -- Org 3: Meridian Labs — empty org (no assets), Sarah owns it
+  -- Org 3: Meridian Labs — small dataset for cross-org isolation testing
   insert into public.organizations (id, name, slug, owner_id)
   values (v_org3, 'Meridian Labs', 'meridian-labs', u_admin);
 
@@ -262,6 +278,60 @@ begin
   from public.assets where asset_tag = 'TF-0002' and org_id = v_org2;
 
 
+  -- ── ORG 3 — MERIDIAN LABS ─────────────────────────────────
+  -- Small dataset so cross-org asset isolation can be verified
+
+  insert into public.departments (id, org_id, name, description) values
+    (d3_research, v_org3, 'Research',   'Lab research and scientific computing'),
+    (d3_ops,      v_org3, 'Operations', 'Facilities and lab operations');
+
+  insert into public.user_departments (user_id, department_id, org_id) values
+    (u_admin,  d3_research, v_org3), -- Sarah
+    (u_editor, d3_ops,      v_org3); -- James
+
+  insert into public.categories (id, org_id, name, description) values
+    (c3_laptops, v_org3, 'Laptops',        'Researcher and staff workstations'),
+    (c3_lab,     v_org3, 'Lab Equipment',  'Specialised scientific instruments and hardware');
+
+  insert into public.locations (id, org_id, name, description) values
+    (l3_lab, v_org3, 'Lab — Building A', 'Primary research laboratory');
+
+  insert into public.vendors (id, org_id, name, contact_email, website) values
+    (v3_apple, v_org3, 'Apple', 'business@apple.com', 'apple.com/business'),
+    (v3_dell,  v_org3, 'Dell',  'sales@dell.com',     'dell.com/business');
+
+  insert into public.assets (
+    org_id, asset_tag, name,
+    category_id, department_id, location_id, vendor_id,
+    status, purchase_date, purchase_cost, warranty_expiry,
+    notes, created_by
+  ) values
+    (v_org3, 'ML-0001', 'MacBook Pro 16" (M3 Max)',
+      c3_laptops, d3_research, l3_lab, v3_apple,
+      'active', '2024-01-15', 3499.00, '2027-01-15',
+      'Primary research workstation', u_admin),
+
+    (v_org3, 'ML-0002', 'MacBook Pro 14" (M3 Pro)',
+      c3_laptops, d3_ops, l3_lab, v3_apple,
+      'active', '2024-01-15', 1999.00, '2027-01-15',
+      null, u_admin),
+
+    (v_org3, 'ML-0003', 'Dell Precision 5680 Workstation',
+      c3_laptops, d3_research, l3_lab, v3_dell,
+      'active', '2023-08-01', 2799.00, '2026-08-01',
+      'High-performance compute node', u_admin),
+
+    (v_org3, 'ML-0004', 'Dell Precision 5680 Workstation',
+      c3_laptops, d3_research, l3_lab, v3_dell,
+      'under_maintenance', '2023-08-01', 2799.00, '2026-08-01',
+      'GPU fan replacement', u_admin),
+
+    (v_org3, 'ML-0005', 'Oscilloscope Rigol DS1054Z',
+      c3_lab, d3_research, l3_lab, null,
+      'active', '2022-03-10', 399.00, null,
+      '50MHz 4-channel — bench testing', u_admin);
+
+
   -- ── INVITES ───────────────────────────────────────────────
 
   -- 1. Pending invite for Maria Chen (User E) to Org 2 — authenticated accept path
@@ -310,5 +380,5 @@ begin
   );
 
 
-  raise notice 'Seed 003 complete — 2 new users, 3 new orgs, 10 Org2 assets, 3 invites.';
+  raise notice 'Seed 003 complete — 2 new users, 3 new orgs, 10 Org2 assets, 5 Org3 assets, 3 invites.';
 end $$;
