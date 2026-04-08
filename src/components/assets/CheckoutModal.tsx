@@ -49,7 +49,8 @@ interface CheckoutModalProps {
 
 export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: CheckoutModalProps) {
   const { user } = useAuth()
-  const { org } = useOrg()
+  const { org, membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
   const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: departments } = useDepartments()
   const { create: createDepartment } = useDepartmentMutations()
@@ -72,7 +73,7 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
 
   async function onSubmit(data: CheckoutFormInput) {
     if (!user) return
-    const result = await checkoutAsset(asset, data, user.fullName)
+    const result = await checkoutAsset(orgSlug, asset, data, user.fullName)
     if (result?.error) {
       form.setError('assignedToName', { message: result.error })
       return

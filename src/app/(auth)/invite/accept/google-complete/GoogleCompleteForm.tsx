@@ -42,7 +42,7 @@ export function GoogleCompleteForm({
       toast.error(result.error)
       return
     }
-    window.location.assign('/dashboard')
+    window.location.assign('/orgs')
   }
 
   return (

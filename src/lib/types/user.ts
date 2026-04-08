@@ -13,17 +13,30 @@ export const InviteStatusSchema = z.enum(['active', 'pending', 'deactivated'])
 export type InviteStatus = z.infer<typeof InviteStatusSchema>
 
 // ---------------------------------------------------------------------------
-// Profile
+// Org membership (one row per user per org — carries role and invite status)
+// ---------------------------------------------------------------------------
+
+export const OrgMembershipSchema = z.object({
+  userId: z.string().uuid(),
+  orgId: z.string().uuid(),
+  orgSlug: z.string(),
+  orgName: z.string(),
+  role: UserRoleSchema,
+  inviteStatus: InviteStatusSchema,
+  createdAt: z.string().datetime(),
+})
+
+export type OrgMembership = z.infer<typeof OrgMembershipSchema>
+
+// ---------------------------------------------------------------------------
+// Profile (identity only — role/org live on OrgMembership)
 // ---------------------------------------------------------------------------
 
 export const ProfileSchema = z.object({
   id: z.string().uuid(),
-  orgId: z.string().uuid().nullable(),
   fullName: z.string().min(1).max(100),
   email: z.string().email(),
   avatarUrl: z.string().url().nullable(),
-  role: UserRoleSchema,
-  inviteStatus: InviteStatusSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 })
@@ -36,6 +49,7 @@ export type Profile = z.infer<typeof ProfileSchema>
 
 export const UserDepartmentSchema = z.object({
   userId: z.string().uuid(),
+  orgId: z.string().uuid(),
   departmentId: z.string().uuid(),
   createdAt: z.string().datetime(),
 })
@@ -84,7 +98,20 @@ export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>
 // Profile with department list (for display in tables)
 // ---------------------------------------------------------------------------
 
+// ProfileWithDepartments is the shape returned by AuthProvider to the UI.
+// memberships contains all the user's org memberships with org name/slug embedded
+// so the topbar switcher and org picker can render without extra fetches.
 export type ProfileWithDepartments = Profile & {
+  memberships: OrgMembership[]
+}
+
+// OrgMember is the shape used when displaying org members in the users table.
+// It combines profile identity with the membership role and department assignments
+// for a specific org.
+export type OrgMember = Profile & {
+  orgId: string
+  role: UserRole
+  inviteStatus: string
   departmentIds: string[]
   departmentNames: string[]
 }

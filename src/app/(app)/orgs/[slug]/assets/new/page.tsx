@@ -1,22 +1,22 @@
 'use client'
 
-import { redirect } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 
 import { AssetForm } from '@/components/assets/AssetForm'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useNextAssetTag } from '@/lib/hooks/useAssets'
 import { createPolicy } from '@/lib/permissions'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 export default function NewAssetPage() {
-  const { user } = useAuth()
+  const { slug } = useParams<{ slug: string }>()
+  const router = useRouter()
   const nextTag = useNextAssetTag()
+  const { role, departmentIds } = useOrg()
 
-  if (
-    user &&
-    !createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
-  ) {
-    redirect('/assets')
+  if (role && !createPolicy({ role, departmentIds }).can('asset:create')) {
+    router.replace(`/orgs/${slug}/assets`)
+    return null
   }
 
   return (

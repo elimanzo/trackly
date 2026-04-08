@@ -15,6 +15,7 @@ import type {
 import { ASSET_STATUS_LABELS } from '@/lib/types/asset'
 import { computeAvailable } from '@/lib/utils/availability'
 import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 export type AssetFilters = {
   search?: string
@@ -178,14 +179,15 @@ export type PaginatedAssets = {
 }
 
 export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): PaginatedAssets {
-  const { user } = useAuth()
+  const { org, role, departmentIds } = useOrg()
+  const orgId = org?.id ?? ''
   const queryClient = useQueryClient()
 
   const queryKey = [
     'assets',
-    user?.orgId,
-    user?.role,
-    JSON.stringify(user?.departmentIds),
+    orgId,
+    role,
+    JSON.stringify(departmentIds),
     filters.search,
     filters.status,
     filters.departmentId,
@@ -196,20 +198,20 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
 
   const { data, isLoading } = useQuery({
     queryKey,
-    enabled: !!user?.orgId,
+    enabled: !!orgId,
     queryFn: async () => {
       const supabase = createClient()
 
       let query = supabase
         .from('assets')
         .select(ASSET_SELECT, { count: 'exact' })
-        .eq('org_id', user!.orgId!)
+        .eq('org_id', orgId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
       if (filters.search) {
         const { data: ids } = await supabase.rpc('search_asset_ids', {
-          p_org_id: user!.orgId!,
+          p_org_id: orgId,
           p_search: filters.search,
         })
         if (!ids || ids.length === 0) return { rows: [], count: 0 }
@@ -220,7 +222,10 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
       if (filters.departmentId) query = query.eq('department_id', filters.departmentId)
       if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
 
-      query = applyDepartmentConstraint(query, createPolicy(user!).queryConstraint())
+      query = applyDepartmentConstraint(
+        query,
+        createPolicy({ role: role ?? 'viewer', departmentIds }).queryConstraint()
+      )
 
       const from = (page - 1) * pageSize
       const to = from + pageSize - 1
@@ -293,9 +298,12 @@ export function useAsset(id: string): {
 // ---------------------------------------------------------------------------
 
 export function useNextAssetTag(): string {
+  const { membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
   const { data: tag = 'AST-0001' } = useQuery({
-    queryKey: ['nextAssetTag'],
-    queryFn: () => getNextTagForPrefix(ASSET_TAG_PREFIX),
+    queryKey: ['nextAssetTag', orgSlug],
+    queryFn: () => getNextTagForPrefix(orgSlug, ASSET_TAG_PREFIX),
+    enabled: !!orgSlug,
     staleTime: 0, // Always fresh — tag must not be stale
   })
 

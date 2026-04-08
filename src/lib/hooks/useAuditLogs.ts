@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { createClient } from '@/lib/supabase/client'
 import type { AuditLog } from '@/lib/types'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 function mapLog(r: Record<string, unknown>): AuditLog {
   return {
@@ -20,16 +20,17 @@ function mapLog(r: Record<string, unknown>): AuditLog {
 }
 
 export function useRecentActivity(limit = 10): { data: AuditLog[]; isLoading: boolean } {
-  const { user } = useAuth()
+  const { org } = useOrg()
+  const orgId = org?.id ?? ''
 
   const { data = [], isLoading } = useQuery({
-    queryKey: ['recentActivity', user?.orgId, limit],
-    enabled: !!user?.orgId,
+    queryKey: ['recentActivity', orgId, limit],
+    enabled: !!orgId,
     queryFn: async () => {
       const { data: rows } = await createClient()
         .from('audit_logs')
         .select('*')
-        .eq('org_id', user!.orgId!)
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false })
         .limit(limit)
       return (rows ?? []).map(mapLog)
@@ -44,16 +45,17 @@ export function useAssetHistory(assetId: string): {
   data: AuditLog[]
   isLoading: boolean
 } {
-  const { user } = useAuth()
+  const { org } = useOrg()
+  const orgId = org?.id ?? ''
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['assetHistory', assetId],
-    enabled: !!user?.orgId && !!assetId,
+    enabled: !!orgId && !!assetId,
     queryFn: async () => {
       const { data: rows } = await createClient()
         .from('audit_logs')
         .select('*')
-        .eq('org_id', user!.orgId!)
+        .eq('org_id', orgId)
         .eq('entity_id', assetId)
         .order('created_at', { ascending: false })
       return (rows ?? []).map(mapLog)

@@ -9,7 +9,10 @@ import type { ProfileWithDepartments } from '@/lib/types'
 type AuthContextValue = {
   user: ProfileWithDepartments | null
   isLoading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ error: string | null; userId: string | null }>
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<{ error: string | null }>
@@ -22,26 +25,44 @@ async function fetchProfile(userId: string): Promise<ProfileWithDepartments | nu
   const supabase = createClient()
   const { data, error } = await supabase
     .from('profiles')
-    .select(`*, user_departments ( department_id, departments ( id, name ) )`)
+    .select(
+      `
+      *,
+      user_org_memberships ( org_id, role, invite_status, created_at, organizations ( slug, name ) )
+    `
+    )
     .eq('id', userId)
     .maybeSingle()
 
   if (error || !data) return null
 
-  type UDRow = { department_id: string; departments: { id: string; name: string } | null }
+  type MembershipRow = {
+    org_id: string
+    role: string
+    invite_status: string
+    created_at: string
+    organizations: { slug: string; name: string } | null
+  }
+
+  const rawMemberships = (data.user_org_memberships as MembershipRow[]) ?? []
 
   return {
     id: data.id as string,
-    orgId: data.org_id as string | null,
     fullName: data.full_name as string,
     email: data.email as string,
     avatarUrl: (data.avatar_url as string | null) ?? null,
-    role: data.role as ProfileWithDepartments['role'],
-    inviteStatus: data.invite_status as ProfileWithDepartments['inviteStatus'],
     createdAt: data.created_at as string,
     updatedAt: data.updated_at as string,
-    departmentIds: (data.user_departments as UDRow[]).map((ud) => ud.department_id),
-    departmentNames: (data.user_departments as UDRow[]).map((ud) => ud.departments?.name ?? ''),
+    memberships: rawMemberships.map((m) => ({
+      userId,
+      orgId: m.org_id,
+      orgSlug: m.organizations?.slug ?? '',
+      orgName: m.organizations?.name ?? '',
+      role: m.role as ProfileWithDepartments['memberships'][number]['role'],
+      inviteStatus:
+        m.invite_status as ProfileWithDepartments['memberships'][number]['inviteStatus'],
+      createdAt: m.created_at,
+    })),
   }
 }
 
@@ -97,8 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error?.message ?? null }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    return { error: error?.message ?? null, userId: data.user?.id ?? null }
   }
 
   async function signUp(email: string, password: string, fullName: string) {

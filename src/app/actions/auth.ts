@@ -11,10 +11,9 @@ export async function completeInviteForGoogleUser(
 ): Promise<{ destination: string | null } | { error: string }> {
   const admin = clients?.admin ?? createAdminClient()
 
-  // Look up a pending, non-expired invite for this email
   const { data: invite } = await admin
     .from('invites')
-    .select('*')
+    .select('token')
     .eq('email', email.toLowerCase())
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
@@ -22,39 +21,8 @@ export async function completeInviteForGoogleUser(
 
   if (!invite) return { destination: null }
 
-  // Check if the user already belongs to an org
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('org_id')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (profile?.org_id) return { destination: '/invite/conflict' }
-
-  // Apply invite: upsert profile, assign departments, mark accepted
-  const { error: profileError } = await admin.from('profiles').upsert({
-    id: userId,
-    org_id: invite.org_id,
-    role: invite.role as string,
-    invite_status: 'active',
-    updated_at: new Date().toISOString(),
-  })
-  if (profileError) return { error: profileError.message }
-
-  const deptIds = (invite.department_ids as string[] | null) ?? []
-  if (deptIds.length > 0) {
-    const { error: deptError } = await admin
-      .from('user_departments')
-      .insert(deptIds.map((department_id: string) => ({ user_id: userId, department_id })))
-    if (deptError) return { error: deptError.message }
-  }
-
-  await admin
-    .from('invites')
-    .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id as string)
-
-  return { destination: '/dashboard' }
+  // Send to the in-app confirmation page so the user can consciously accept
+  return { destination: `/invite/confirm?token=${invite.token as string}` }
 }
 
 // Takes userId directly — called from the auth callback where the session is
@@ -65,11 +33,19 @@ export async function googleSignInDestination(
   clients?: ActionClients
 ): Promise<{ destination: string }> {
   const admin = clients?.admin ?? createAdminClient()
-  const { data: profile } = await admin
-    .from('profiles')
+  const { data: memberships } = await admin
+    .from('user_org_memberships')
     .select('org_id')
-    .eq('id', userId)
-    .maybeSingle()
+    .eq('user_id', userId)
 
-  return { destination: profile?.org_id ? '/dashboard' : '/org/new' }
+  if (!memberships?.length) return { destination: '/org/new' }
+  if (memberships.length === 1) {
+    const { data: org } = await admin
+      .from('organizations')
+      .select('slug')
+      .eq('id', memberships[0].org_id)
+      .maybeSingle()
+    if (org?.slug) return { destination: `/orgs/${org.slug as string}/dashboard` }
+  }
+  return { destination: '/orgs' }
 }

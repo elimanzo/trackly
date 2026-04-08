@@ -28,8 +28,6 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Detect password-recovery session by inspecting the AMR claim in the JWT.
-  // Recovery sessions have amr: [{method: "recovery"}]. After updateUser()
-  // succeeds the session is refreshed and the recovery method is gone.
   let isRecoverySession = false
   if (user) {
     const {
@@ -49,18 +47,20 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // login/signup — redirect authenticated users away to dashboard
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
-  // public routes — accessible by anyone, no redirects in either direction
   const isPublicRoute =
     pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')
-  const isOnboardingRoute = pathname.startsWith('/org') || pathname.startsWith('/setup')
-  // Auth callback must be reachable without a session — it's what establishes one
+  const isOnboardingRoute =
+    (pathname.startsWith('/org') && !pathname.startsWith('/orgs')) || pathname.startsWith('/setup')
   const isAuthCallback = pathname.startsWith('/auth')
-  // Invite accept requires a session but must skip the "no org" redirect
   const isInviteAccept = pathname.startsWith('/invite')
-  // Settings are accessible without an org (profile view + delete account)
   const isSettingsRoute = pathname.startsWith('/settings')
+  // Org-scoped routes: /orgs (picker) and /orgs/[slug]/...
+  const isOrgPickerRoute = pathname === '/orgs'
+  const isOrgScopedRoute = pathname.startsWith('/orgs/')
+  const isAccessDeniedRoute = pathname === '/orgs/access-denied'
+  const isAccountRoute = pathname.startsWith('/account')
+
   const isAppRoute =
     !isAuthRoute &&
     !isPublicRoute &&
@@ -68,12 +68,21 @@ export async function proxy(request: NextRequest) {
     !isAuthCallback &&
     !isInviteAccept &&
     !isSettingsRoute &&
+    !isOrgPickerRoute &&
+    !isOrgScopedRoute &&
     pathname !== '/' &&
     !pathname.startsWith('/_next')
 
   if (!user) {
     if (isAuthCallback || isPublicRoute) return supabaseResponse
-    if (isAppRoute || isOnboardingRoute || isInviteAccept || isSettingsRoute) {
+    if (
+      isAppRoute ||
+      isOnboardingRoute ||
+      isInviteAccept ||
+      isSettingsRoute ||
+      isOrgPickerRoute ||
+      isOrgScopedRoute
+    ) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
@@ -81,22 +90,19 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Authenticated — check org membership via DB (single primary-key lookup)
-  const { data: profile } = await supabase
-    .from('profiles')
+  // Authenticated — check org membership via DB (any active membership = has org)
+  const { data: membership } = await supabase
+    .from('user_org_memberships')
     .select('org_id')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
+    .neq('invite_status', 'deactivated')
+    .limit(1)
     .maybeSingle()
 
-  const hasOrg = !!profile?.org_id
+  const hasOrg = !!membership?.org_id
 
-  // Auth callback must always run — it may replace the current session (invite flow)
-  // Public routes (forgot/reset password) are always accessible regardless of auth state
   if (isAuthCallback || isPublicRoute) return supabaseResponse
 
-  // Unconfirmed email — session exists but email not yet verified.
-  // Invite users have email_confirmed_at set when they claim their invite link,
-  // so this only blocks self-signup accounts that haven't clicked the confirmation email.
   if (!user.email_confirmed_at) {
     if (isAuthRoute) return supabaseResponse
     const url = request.nextUrl.clone()
@@ -105,11 +111,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Recovery session — block access to the app until password is set.
-  // Auth routes (login/signup) are let through so the user can abandon the flow.
   if (isRecoverySession) {
     if (isAuthRoute) return supabaseResponse
-    if (isAppRoute || isOnboardingRoute || isInviteAccept) {
+    if (isAppRoute || isOnboardingRoute || isInviteAccept || isOrgScopedRoute) {
       const url = request.nextUrl.clone()
       url.pathname = '/reset-password'
       url.search = '?recovery=1'
@@ -117,29 +121,77 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Already logged in → don't show auth pages
-  if (isAuthRoute) {
+  // Already logged in → don't show auth pages.
+  // Server actions POST to the current page URL with a Next-Action header —
+  // let those through so they can return a flight response instead of a redirect.
+  if (isAuthRoute && !request.headers.has('next-action')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = '/orgs'
     return NextResponse.redirect(url)
   }
 
-  // Invite accept: authenticated user, skip org check (page validates the invite)
-  if (isInviteAccept) {
+  if (isInviteAccept) return supabaseResponse
+
+  // Let the access-denied page through — it's a valid authenticated destination
+  if (isAccessDeniedRoute) return supabaseResponse
+
+  // Account settings are user-scoped — accessible regardless of org membership
+  if (isAccountRoute) return supabaseResponse
+
+  // For org-scoped routes, verify the user is a member of the specific org in the URL.
+  if (isOrgScopedRoute) {
+    const slugMatch = pathname.match(/^\/orgs\/([^/]+)/)
+    const routeSlug = slugMatch?.[1]
+
+    if (routeSlug) {
+      const { data: orgRow } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', routeSlug)
+        .maybeSingle()
+
+      let isMember = false
+      if (orgRow?.id) {
+        const { data: orgMembership } = await supabase
+          .from('user_org_memberships')
+          .select('org_id')
+          .eq('user_id', user.id)
+          .eq('org_id', orgRow.id)
+          .neq('invite_status', 'deactivated')
+          .maybeSingle()
+        isMember = !!orgMembership
+      }
+
+      if (!isMember) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/orgs/access-denied'
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
+  // No org → must complete onboarding first
+  if (!hasOrg) {
+    if (isOnboardingRoute) return supabaseResponse
+    if (isOrgPickerRoute || isOrgScopedRoute || isAppRoute || isSettingsRoute) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/org/new'
+      return NextResponse.redirect(url)
+    }
     return supabaseResponse
   }
 
-  // Has org → onboarding is done, redirect away from all onboarding routes
+  // Has org → redirect away from onboarding
   if (hasOrg && isOnboardingRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname = '/orgs'
     return NextResponse.redirect(url)
   }
 
-  // No org yet → must complete onboarding first
-  if (!hasOrg && isAppRoute) {
+  // Old bare app routes (e.g. /dashboard, /assets) → redirect to org picker
+  if (isAppRoute || isSettingsRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/org/new'
+    url.pathname = '/orgs'
     return NextResponse.redirect(url)
   }
 

@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -27,29 +27,26 @@ type NavItem = {
   label: string
   href: string
   icon: React.ElementType
-  adminOnly?: boolean
   activePrefix?: string
 }
 
-const NAV_MAIN: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Assets', href: '/assets', icon: Package },
-  { label: 'Reports', href: '/reports', icon: BarChart3 },
-]
-
-function buildNavManage(deptLabel: string): NavItem[] {
+function buildNavMain(base: string): NavItem[] {
   return [
-    { label: `${deptLabel}s`, href: '/departments', icon: Building2, adminOnly: true },
-    { label: 'Categories', href: '/categories', icon: Tag, adminOnly: true },
-    { label: 'Locations', href: '/locations', icon: MapPin, adminOnly: true },
-    { label: 'Vendors', href: '/vendors', icon: Truck, adminOnly: true },
-    { label: 'Users', href: '/users', icon: Users, adminOnly: true },
+    { label: 'Dashboard', href: `${base}/dashboard`, icon: LayoutDashboard },
+    { label: 'Assets', href: `${base}/assets`, icon: Package },
+    { label: 'Reports', href: `${base}/reports`, icon: BarChart3 },
   ]
 }
 
-const NAV_SETTINGS: NavItem[] = [
-  { label: 'Settings', href: '/settings/org', icon: Settings, activePrefix: '/settings' },
-]
+function buildNavManage(base: string, deptLabel: string): NavItem[] {
+  return [
+    { label: `${deptLabel}s`, href: `${base}/departments`, icon: Building2 },
+    { label: 'Categories', href: `${base}/categories`, icon: Tag },
+    { label: 'Locations', href: `${base}/locations`, icon: MapPin },
+    { label: 'Vendors', href: `${base}/vendors`, icon: Truck },
+    { label: 'Users', href: `${base}/users`, icon: Users },
+  ]
+}
 
 interface NavLinkProps {
   item: NavItem
@@ -87,12 +84,17 @@ interface SidebarProps {
 export function Sidebar({ onNavClick }: SidebarProps) {
   const pathname = usePathname()
   const { user } = useAuth()
-  const { org } = useOrg()
-  const hasOrg = !!user?.orgId
-  const isAdmin = user
-    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('department:manage')
-    : false
-  const visibleManageItems = isAdmin ? buildNavManage(org?.departmentLabel ?? 'Department') : []
+  const { org, role, departmentIds } = useOrg()
+  const params = useParams<{ slug?: string }>()
+  const slug = params.slug ?? ''
+  const base = slug ? `/orgs/${slug}` : ''
+
+  const hasOrg = !!org
+  const isAdmin =
+    role != null ? createPolicy({ role, departmentIds }).can('department:manage') : false
+  const visibleManageItems = isAdmin
+    ? buildNavManage(base, org?.departmentLabel ?? 'Department')
+    : []
 
   return (
     <div className="bg-sidebar flex h-full flex-col">
@@ -111,7 +113,7 @@ export function Sidebar({ onNavClick }: SidebarProps) {
       <ScrollArea className="flex-1 px-3 py-3">
         {hasOrg && (
           <nav className="space-y-1">
-            {NAV_MAIN.map((item) => (
+            {buildNavMain(base).map((item) => (
               <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
             ))}
           </nav>
@@ -131,14 +133,23 @@ export function Sidebar({ onNavClick }: SidebarProps) {
           </>
         )}
 
-        {(hasOrg || visibleManageItems.length > 0) && (
-          <Separator className="bg-sidebar-border my-3" />
+        {isAdmin && base && (
+          <>
+            <Separator className="bg-sidebar-border my-3" />
+            <nav className="space-y-1">
+              <NavLink
+                item={{
+                  label: 'Settings',
+                  href: `${base}/settings/org`,
+                  icon: Settings,
+                  activePrefix: `${base}/settings`,
+                }}
+                pathname={pathname}
+                onNavClick={onNavClick}
+              />
+            </nav>
+          </>
         )}
-        <nav className="space-y-1">
-          {NAV_SETTINGS.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
-          ))}
-        </nav>
       </ScrollArea>
 
       {/* User info */}
@@ -157,7 +168,7 @@ export function Sidebar({ onNavClick }: SidebarProps) {
               <p className="text-sidebar-foreground truncate text-xs font-medium">
                 {user.fullName}
               </p>
-              <RoleBadge role={user.role} className="mt-0.5 text-[10px]" />
+              {role && <RoleBadge role={role} className="mt-0.5 text-[10px]" />}
             </div>
           </div>
         </div>

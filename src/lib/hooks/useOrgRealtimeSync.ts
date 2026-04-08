@@ -1,14 +1,16 @@
+'use client'
+
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 import { invalidateForTable, type AppTable } from './queryInvalidation'
 
 export function OrgRealtimeSync() {
-  const { user } = useAuth()
-  const orgId = user?.orgId ?? null
+  const { org } = useOrg()
+  const orgId = org?.id ?? null
   const queryClient = useQueryClient()
 
   useEffect(() => {

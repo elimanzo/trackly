@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { createPolicy } from '@/lib/permissions'
-import type { ProfileWithDepartments, SerializedAsset } from '@/lib/types'
+import { createPolicy, type PermissionPrincipal } from '@/lib/permissions'
+import type { SerializedAsset } from '@/lib/types'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -11,22 +11,10 @@ const DEPT_A = 'dept-aaaa-0000'
 const DEPT_B = 'dept-bbbb-1111'
 
 function makeUser(
-  role: ProfileWithDepartments['role'],
+  role: PermissionPrincipal['role'],
   departmentIds: string[] = []
-): ProfileWithDepartments {
-  return {
-    id: 'user-0001',
-    orgId: 'org-0001',
-    fullName: 'Test User',
-    email: 'test@example.com',
-    avatarUrl: null,
-    role,
-    inviteStatus: 'active',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    departmentIds,
-    departmentNames: [],
-  }
+): PermissionPrincipal {
+  return { role, departmentIds }
 }
 
 function makeAsset(departmentId: string | null = DEPT_A): SerializedAsset {

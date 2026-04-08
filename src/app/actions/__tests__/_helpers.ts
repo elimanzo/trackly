@@ -17,13 +17,14 @@ export function makeChain() {
     update: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    neq: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(),
     not: vi.fn().mockReturnThis(),
     gt: vi.fn().mockReturnThis(),
     ilike: vi.fn().mockReturnThis(),
     upsert: vi.fn().mockReturnThis(),
-    single: vi.fn(),
-    maybeSingle: vi.fn(),
+    single: vi.fn().mockResolvedValue({ data: null, error: null }),
+    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     then: vi
       .fn()
       .mockImplementation((resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
@@ -43,6 +44,12 @@ export function makeClients(
     email?: string
     inviteUserByEmail?: ReturnType<typeof vi.fn>
     rpc?: ReturnType<typeof vi.fn>
+    /**
+     * Pre-seed the org-lookup, membership, and profile-name maybeSingle calls that
+     * getContext() makes internally. Set to false if the action under test does not
+     * call getContext() (e.g. sendInviteAction, acceptInviteViaGoogleAction).
+     */
+    seedContext?: { orgSlug?: string; orgId?: string; role?: string; actorName?: string } | false
   } = {}
 ): ActionClients {
   const {
@@ -50,7 +57,16 @@ export function makeClients(
     email = 'actor@example.com',
     inviteUserByEmail = vi.fn().mockResolvedValue({ error: null }),
     rpc = vi.fn().mockResolvedValue({ error: null }),
+    seedContext = false,
   } = opts
+
+  if (seedContext !== false) {
+    const { orgId = 'org-0001', role = 'admin', actorName = 'Actor' } = seedContext
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: { id: orgId } }) // org by slug
+      .mockResolvedValueOnce({ data: { role } }) // membership
+      .mockResolvedValueOnce({ data: { full_name: actorName } }) // profile name
+  }
 
   return {
     supabase: {

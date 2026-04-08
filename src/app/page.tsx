@@ -7,7 +7,7 @@ export default function RootPage() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace('/dashboard')
+    router.replace('/orgs')
   }, [router])
 
   return null

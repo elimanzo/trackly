@@ -40,7 +40,6 @@ import {
 import { createPolicy } from '@/lib/permissions'
 import type { TypedAsset } from '@/lib/types'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
-import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
 const LS_KEY = 'asset-table-cols'
@@ -52,8 +51,8 @@ interface AssetTableProps {
 export function AssetTable({ assets }: AssetTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const { user } = useAuth()
-  const { org } = useOrg()
+  const { org, role, departmentIds, membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
   const queryClient = useQueryClient()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const tc = org?.assetTableConfig ?? {}
@@ -68,9 +67,8 @@ export function AssetTable({ assets }: AssetTableProps) {
   const showWarrantyExpiry = tc.showWarrantyExpiry ?? false
   const showVendor = tc.showVendor ?? false
 
-  const canEditAssets = user
-    ? createPolicy({ role: user.role, departmentIds: user.departmentIds }).can('asset:create')
-    : false
+  const canEditAssets =
+    role != null ? createPolicy({ role, departmentIds }).can('asset:create') : false
 
   // Columns the org allows — only these appear in the toggle dropdown
   const toggleableCols = [
@@ -120,7 +118,7 @@ export function AssetTable({ assets }: AssetTableProps) {
       ),
       cell: ({ row }) => (
         <Link
-          href={`/assets/${row.original.id}`}
+          href={`/orgs/${orgSlug}/assets/${row.original.id}`}
           className="text-primary font-mono text-xs hover:underline"
         >
           {row.getValue('assetTag')}
@@ -142,7 +140,7 @@ export function AssetTable({ assets }: AssetTableProps) {
       ),
       cell: ({ row }) => (
         <Link
-          href={`/assets/${row.original.id}`}
+          href={`/orgs/${orgSlug}/assets/${row.original.id}`}
           className="text-foreground font-medium hover:underline"
         >
           {row.getValue('name')}
@@ -260,10 +258,10 @@ export function AssetTable({ assets }: AssetTableProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/assets/${row.original.id}`}>View details</Link>
+                <Link href={`/orgs/${orgSlug}/assets/${row.original.id}`}>View details</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/assets/${row.original.id}/edit`}>
+                <Link href={`/orgs/${orgSlug}/assets/${row.original.id}/edit`}>
                   <Pencil className="mr-2 h-3.5 w-3.5" />
                   Edit
                 </Link>
@@ -374,7 +372,7 @@ export function AssetTable({ assets }: AssetTableProps) {
         destructive
         onConfirm={async () => {
           if (deleteId) {
-            await deleteAsset(deleteId)
+            await deleteAsset(orgSlug, deleteId)
             queryClient.invalidateQueries({ queryKey: ['assets'] })
           }
           setDeleteId(null)

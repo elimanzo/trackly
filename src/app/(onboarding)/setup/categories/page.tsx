@@ -66,13 +66,14 @@ export default function SetupCategoriesPage() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
           {SUGGESTED_CATEGORIES.map(({ name }) => (
-            <label
+            <div
               key={name}
+              onClick={() => toggle(name)}
               className="border-border hover:bg-accent flex cursor-pointer items-center gap-2 rounded-lg border p-3 transition-colors"
             >
               <Checkbox checked={selected.has(name)} onCheckedChange={() => toggle(name)} />
               <span className="text-sm font-medium">{name}</span>
-            </label>
+            </div>
           ))}
         </div>
 

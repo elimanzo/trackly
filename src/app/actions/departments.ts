@@ -8,12 +8,13 @@ import type { ActionClients } from './_context'
 import { getAdminCtx, getContext } from './_context'
 
 export async function createDepartment(
+  orgSlug: string,
   input: DepartmentFormInput
 ): Promise<{ id: string } | { error: string }> {
   const parsed = DepartmentFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { data: existing } = await ctx.admin
@@ -45,13 +46,14 @@ export async function createDepartment(
 }
 
 export async function updateDepartment(
+  orgSlug: string,
   id: string,
   input: DepartmentFormInput
 ): Promise<{ error: string } | null> {
   const parsed = DepartmentFormSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const ctx = await getAdminCtx()
+  const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
   const { error } = await ctx.admin
@@ -72,8 +74,8 @@ export async function updateDepartment(
   return null
 }
 
-export async function countAssetsInDepartment(id: string): Promise<number> {
-  const ctx = await getContext()
+export async function countAssetsInDepartment(orgSlug: string, id: string): Promise<number> {
+  const ctx = await getContext(orgSlug)
   if (!ctx) return 0
 
   const { count } = await ctx.admin
@@ -87,10 +89,11 @@ export async function countAssetsInDepartment(id: string): Promise<number> {
 }
 
 export async function deleteDepartment(
+  orgSlug: string,
   id: string,
   clients?: ActionClients
 ): Promise<{ error: string } | null> {
-  const ctx = await getContext(clients)
+  const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
   const permission = ctx.requireRole('admin')
   if (permission) return permission

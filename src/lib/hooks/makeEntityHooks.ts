@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { createClient } from '@/lib/supabase/client'
-import { useAuth } from '@/providers/AuthProvider'
+import { useOrg } from '@/providers/OrgProvider'
 
 type Row = Record<string, unknown>
 
@@ -12,9 +12,9 @@ export type EntityHookConfig<TEntity, TFormInput> = {
   label: string
   mapRow: (r: Row) => TEntity
   actions: {
-    create: (input: TFormInput) => Promise<{ id: string } | { error: string }>
-    update: (id: string, input: TFormInput) => Promise<{ error: string } | null>
-    delete: (id: string) => Promise<{ error: string } | null>
+    create: (orgSlug: string, input: TFormInput) => Promise<{ id: string } | { error: string }>
+    update: (orgSlug: string, id: string, input: TFormInput) => Promise<{ error: string } | null>
+    delete: (orgSlug: string, id: string) => Promise<{ error: string } | null>
   }
   onDeleteSuccess?: (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => void
 }
@@ -41,8 +41,8 @@ export function makeEntityHooks<TEntity, TFormInput>(
   }
 
   function useList() {
-    const { user } = useAuth()
-    const orgId = user?.orgId ?? ''
+    const { org } = useOrg()
+    const orgId = org?.id ?? ''
     const query = useQuery({
       queryKey: keys.all(orgId),
       queryFn: () => fetchEntities(orgId),
@@ -53,8 +53,9 @@ export function makeEntityHooks<TEntity, TFormInput>(
   }
 
   function useMutations() {
-    const { user } = useAuth()
-    const orgId = user?.orgId ?? ''
+    const { org, membership } = useOrg()
+    const orgId = org?.id ?? ''
+    const orgSlug = membership?.orgSlug ?? ''
     const queryClient = useQueryClient()
     const invalidate = () => {
       if (orgId) void queryClient.invalidateQueries({ queryKey: keys.all(orgId) })
@@ -62,7 +63,7 @@ export function makeEntityHooks<TEntity, TFormInput>(
 
     const createMut = useMutation({
       mutationFn: async (input: TFormInput) => {
-        const result = await actions.create(input)
+        const result = await actions.create(orgSlug, input)
         if ('error' in result) throw new Error(result.error)
         return result.id
       },
@@ -75,7 +76,7 @@ export function makeEntityHooks<TEntity, TFormInput>(
 
     const updateMut = useMutation({
       mutationFn: async ({ id, input }: { id: string; input: TFormInput }) => {
-        const result = await actions.update(id, input)
+        const result = await actions.update(orgSlug, id, input)
         if (result?.error) throw new Error(result.error)
       },
       onSuccess: () => {
@@ -87,7 +88,7 @@ export function makeEntityHooks<TEntity, TFormInput>(
 
     const deleteMut = useMutation({
       mutationFn: async (id: string) => {
-        const result = await actions.delete(id)
+        const result = await actions.delete(orgSlug, id)
         if (result?.error) throw new Error(result.error)
       },
       onSuccess: () => {
