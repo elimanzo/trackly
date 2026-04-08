@@ -592,8 +592,12 @@ export default function OrgSettingsPage() {
         </form>
       </Form>
 
-      {isOwner && <TransferOwnershipCard slug={slug} />}
-      {isOwner && <DeleteOrgCard slug={slug} orgName={org?.name ?? ''} />}
+      {isOwner && (
+        <>
+          <TransferOwnershipCard slug={slug} />
+          <DeleteOrgCard slug={slug} orgName={org?.name ?? ''} />
+        </>
+      )}
 
       {form.formState.isDirty && (
         <div className="bg-card fixed right-0 bottom-0 left-0 z-50 border-t p-4 shadow-lg lg:left-60">
