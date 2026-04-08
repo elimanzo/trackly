@@ -142,7 +142,7 @@ export function useOrgUserMutations() {
       role: Invite['role']
       departmentIds: string[]
     }) => {
-      const result = await sendInviteAction(email, role, departmentIds)
+      const result = await sendInviteAction(orgSlug, email, role, departmentIds)
       if (result?.error) throw new Error(result.error)
       return email
     },

@@ -17,6 +17,7 @@ export function makeChain() {
     update: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    neq: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(),
     not: vi.fn().mockReturnThis(),
     gt: vi.fn().mockReturnThis(),

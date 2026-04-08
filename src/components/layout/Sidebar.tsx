@@ -48,17 +48,6 @@ function buildNavManage(base: string, deptLabel: string): NavItem[] {
   ]
 }
 
-function buildNavSettings(base: string): NavItem[] {
-  return [
-    {
-      label: 'Settings',
-      href: `${base}/settings/org`,
-      icon: Settings,
-      activePrefix: `${base}/settings`,
-    },
-  ]
-}
-
 interface NavLinkProps {
   item: NavItem
   pathname: string
@@ -144,15 +133,22 @@ export function Sidebar({ onNavClick }: SidebarProps) {
           </>
         )}
 
-        {(hasOrg || visibleManageItems.length > 0) && (
-          <Separator className="bg-sidebar-border my-3" />
-        )}
-        {hasOrg && (
-          <nav className="space-y-1">
-            {buildNavSettings(base).map((item) => (
-              <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
-            ))}
-          </nav>
+        {isAdmin && base && (
+          <>
+            <Separator className="bg-sidebar-border my-3" />
+            <nav className="space-y-1">
+              <NavLink
+                item={{
+                  label: 'Settings',
+                  href: `${base}/settings/org`,
+                  icon: Settings,
+                  activePrefix: `${base}/settings`,
+                }}
+                pathname={pathname}
+                onNavClick={onNavClick}
+              />
+            </nav>
+          </>
         )}
       </ScrollArea>
 

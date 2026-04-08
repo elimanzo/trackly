@@ -58,8 +58,8 @@ export async function proxy(request: NextRequest) {
   // Org-scoped routes: /orgs (picker) and /orgs/[slug]/...
   const isOrgPickerRoute = pathname === '/orgs'
   const isOrgScopedRoute = pathname.startsWith('/orgs/')
-  // Profile settings are accessible without an org (profile edit + delete account)
-  const isProfileSettingsRoute = /^\/orgs\/[^/]+\/settings\/profile$/.test(pathname)
+  const isAccessDeniedRoute = pathname === '/orgs/access-denied'
+  const isAccountRoute = pathname.startsWith('/account')
 
   const isAppRoute =
     !isAuthRoute &&
@@ -90,11 +90,12 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Authenticated — check org membership via DB (any membership = has org)
+  // Authenticated — check org membership via DB (any active membership = has org)
   const { data: membership } = await supabase
     .from('user_org_memberships')
     .select('org_id')
     .eq('user_id', user.id)
+    .neq('invite_status', 'deactivated')
     .limit(1)
     .maybeSingle()
 
@@ -120,8 +121,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Already logged in → don't show auth pages
-  if (isAuthRoute) {
+  // Already logged in → don't show auth pages.
+  // Server actions POST to the current page URL with a Next-Action header —
+  // let those through so they can return a flight response instead of a redirect.
+  if (isAuthRoute && !request.headers.has('next-action')) {
     const url = request.nextUrl.clone()
     url.pathname = '/orgs'
     return NextResponse.redirect(url)
@@ -129,9 +132,47 @@ export async function proxy(request: NextRequest) {
 
   if (isInviteAccept) return supabaseResponse
 
+  // Let the access-denied page through — it's a valid authenticated destination
+  if (isAccessDeniedRoute) return supabaseResponse
+
+  // Account settings are user-scoped — accessible regardless of org membership
+  if (isAccountRoute) return supabaseResponse
+
+  // For org-scoped routes, verify the user is a member of the specific org in the URL.
+  if (isOrgScopedRoute) {
+    const slugMatch = pathname.match(/^\/orgs\/([^/]+)/)
+    const routeSlug = slugMatch?.[1]
+
+    if (routeSlug) {
+      const { data: orgRow } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('slug', routeSlug)
+        .maybeSingle()
+
+      let isMember = false
+      if (orgRow?.id) {
+        const { data: orgMembership } = await supabase
+          .from('user_org_memberships')
+          .select('org_id')
+          .eq('user_id', user.id)
+          .eq('org_id', orgRow.id)
+          .neq('invite_status', 'deactivated')
+          .maybeSingle()
+        isMember = !!orgMembership
+      }
+
+      if (!isMember) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/orgs/access-denied'
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   // No org → must complete onboarding first
   if (!hasOrg) {
-    if (isOnboardingRoute || isProfileSettingsRoute) return supabaseResponse
+    if (isOnboardingRoute) return supabaseResponse
     if (isOrgPickerRoute || isOrgScopedRoute || isAppRoute || isSettingsRoute) {
       const url = request.nextUrl.clone()
       url.pathname = '/org/new'

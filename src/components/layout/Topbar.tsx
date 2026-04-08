@@ -1,16 +1,6 @@
 'use client'
 
-import {
-  Building2,
-  Check,
-  ChevronsUpDown,
-  LogOut,
-  Menu,
-  Moon,
-  Settings,
-  Sun,
-  User,
-} from 'lucide-react'
+import { Building2, Check, ChevronsUpDown, LogOut, Menu, Moon, Sun, User } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 
@@ -39,7 +29,6 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const params = useParams<{ slug?: string }>()
   const slug = params.slug ?? ''
-  const base = slug ? `/orgs/${slug}` : ''
 
   const memberships = user?.memberships ?? []
   const multipleOrgs = memberships.length > 1
@@ -130,13 +119,9 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <p className="text-muted-foreground truncate text-xs">{user.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push(`${base}/settings/profile`)}>
+            <DropdownMenuItem onClick={() => router.push('/account/profile')}>
               <User className="mr-2 h-4 w-4" />
               Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`${base}/settings/org`)}>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive">

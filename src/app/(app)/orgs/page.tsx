@@ -7,34 +7,22 @@ import { useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/providers/AuthProvider'
-import { LAST_ORG_KEY } from '@/providers/OrgProvider'
 
 export default function OrgPickerPage() {
   const { user } = useAuth()
   const router = useRouter()
   const memberships = user?.memberships ?? []
 
-  // Auto-redirect if only one org or a remembered slug matches
+  // Auto-redirect only if the user belongs to exactly one org
   useEffect(() => {
-    if (!user) return
-    if (memberships.length === 1) {
-      router.replace(`/orgs/${memberships[0].orgSlug}/dashboard`)
-      return
-    }
-    const remembered = typeof window !== 'undefined' ? localStorage.getItem(LAST_ORG_KEY) : null
-    if (remembered && memberships.some((m) => m.orgSlug === remembered)) {
-      router.replace(`/orgs/${remembered}/dashboard`)
-    }
+    if (!user || memberships.length !== 1) return
+    router.replace(`/orgs/${memberships[0].orgSlug}/dashboard`)
   }, [user, memberships, router])
 
   if (!user) return null
 
   // Single org: redirect is already firing in useEffect — don't flash the picker
   if (memberships.length === 1) return null
-
-  // Remembered org: also redirecting
-  const remembered = typeof window !== 'undefined' ? localStorage.getItem(LAST_ORG_KEY) : null
-  if (remembered && memberships.some((m) => m.orgSlug === remembered)) return null
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6">

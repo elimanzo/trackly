@@ -65,13 +65,14 @@ export default function SetupDepartmentsPage() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-2">
           {SUGGESTED_DEPARTMENTS.map((dept) => (
-            <label
+            <div
               key={dept}
+              onClick={() => toggle(dept)}
               className="border-border hover:bg-accent flex cursor-pointer items-center gap-2 rounded-lg border p-3 transition-colors"
             >
               <Checkbox checked={selected.has(dept)} onCheckedChange={() => toggle(dept)} />
               <span className="text-sm font-medium">{dept}</span>
-            </label>
+            </div>
           ))}
         </div>
 

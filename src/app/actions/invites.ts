@@ -14,6 +14,7 @@ import type { ActionClients } from './_context'
 // ---------------------------------------------------------------------------
 
 export async function sendInviteAction(
+  orgSlug: string,
   email: string,
   role: Invite['role'],
   departmentIds: string[] = [],
@@ -28,21 +29,26 @@ export async function sendInviteAction(
 
   const admin = clients?.admin ?? createAdminClient()
 
-  // Fetch actor's active membership and display name in parallel
-  const [{ data: actorMembership }, { data: actorProfile }] = await Promise.all([
-    admin
-      .from('user_org_memberships')
-      .select('org_id, organizations(name)')
-      .eq('user_id', user.id)
-      .maybeSingle(),
+  // Resolve org and actor display name in parallel
+  const [{ data: org }, { data: actorProfile }] = await Promise.all([
+    admin.from('organizations').select('id, name').eq('slug', orgSlug).maybeSingle(),
     admin.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
   ])
 
-  if (!actorMembership?.org_id) return { error: 'No organisation found' }
+  if (!org?.id) return { error: 'No organisation found' }
 
-  const orgId = actorMembership.org_id as string
-  const orgs = actorMembership.organizations as { name: string }[] | { name: string } | null
-  const orgName = (Array.isArray(orgs) ? orgs[0]?.name : orgs?.name) ?? ''
+  // Verify the actor is a member of this specific org
+  const { data: membership } = await admin
+    .from('user_org_memberships')
+    .select('org_id')
+    .eq('user_id', user.id)
+    .eq('org_id', org.id)
+    .maybeSingle()
+
+  if (!membership) return { error: 'No organisation found' }
+
+  const orgId = org.id as string
+  const orgName = (org.name as string) ?? ''
   const actorName = (actorProfile?.full_name as string) ?? 'Your team'
 
   // Prevent duplicate pending invites
