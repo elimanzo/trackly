@@ -19,9 +19,28 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('googleSignInDestination', () => {
-  it('returns /dashboard when user already has a membership', async () => {
+  it('returns org dashboard when user has exactly one membership', async () => {
     const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({ data: { org_id: 'org-0001' } })
+    // membership list query resolves via then (array result)
+    chain.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+      Promise.resolve({ data: [{ org_id: 'org-0001' }], error: null }).then(resolve)
+    )
+    // slug lookup for the single org
+    chain.maybeSingle.mockResolvedValueOnce({ data: { slug: 'acme' } })
+
+    const result = await googleSignInDestination('user-001', clients)
+
+    expect(result).toEqual({ destination: '/orgs/acme/dashboard' })
+  })
+
+  it('returns /orgs picker when user has multiple memberships', async () => {
+    const clients = makeClients(chain)
+    chain.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+      Promise.resolve({
+        data: [{ org_id: 'org-0001' }, { org_id: 'org-0002' }],
+        error: null,
+      }).then(resolve)
+    )
 
     const result = await googleSignInDestination('user-001', clients)
 
@@ -30,7 +49,9 @@ describe('googleSignInDestination', () => {
 
   it('returns /org/new when user has no membership', async () => {
     const clients = makeClients(chain)
-    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+    chain.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+      Promise.resolve({ data: [], error: null }).then(resolve)
+    )
 
     const result = await googleSignInDestination('user-001', clients)
 

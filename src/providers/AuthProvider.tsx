@@ -9,7 +9,10 @@ import type { ProfileWithDepartments } from '@/lib/types'
 type AuthContextValue = {
   user: ProfileWithDepartments | null
   isLoading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ error: string | null; userId: string | null }>
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<{ error: string | null }>
@@ -115,8 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error?.message ?? null }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    return { error: error?.message ?? null, userId: data.user?.id ?? null }
   }
 
   async function signUp(email: string, password: string, fullName: string) {

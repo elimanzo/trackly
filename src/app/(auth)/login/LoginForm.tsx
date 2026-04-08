@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { googleSignInDestination } from '@/app/actions/auth'
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,12 +40,15 @@ export function LoginForm() {
   })
 
   async function onSubmit(data: LoginInput) {
-    const { error } = await signIn(data.email, data.password)
+    const { error, userId } = await signIn(data.email, data.password)
     if (error) {
       toast.error(error)
       return
     }
-    window.location.assign('/orgs')
+    const { destination } = userId
+      ? await googleSignInDestination(userId)
+      : { destination: '/orgs' }
+    window.location.assign(destination)
   }
 
   return (

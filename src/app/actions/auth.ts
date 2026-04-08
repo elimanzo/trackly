@@ -33,11 +33,19 @@ export async function googleSignInDestination(
   clients?: ActionClients
 ): Promise<{ destination: string }> {
   const admin = clients?.admin ?? createAdminClient()
-  const { data: membership } = await admin
+  const { data: memberships } = await admin
     .from('user_org_memberships')
     .select('org_id')
     .eq('user_id', userId)
-    .maybeSingle()
 
-  return { destination: membership?.org_id ? '/orgs' : '/org/new' }
+  if (!memberships?.length) return { destination: '/org/new' }
+  if (memberships.length === 1) {
+    const { data: org } = await admin
+      .from('organizations')
+      .select('slug')
+      .eq('id', memberships[0].org_id)
+      .maybeSingle()
+    if (org?.slug) return { destination: `/orgs/${org.slug as string}/dashboard` }
+  }
+  return { destination: '/orgs' }
 }

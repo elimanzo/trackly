@@ -122,8 +122,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Already logged in → don't show auth pages
-  if (isAuthRoute) {
+  // Already logged in → don't show auth pages.
+  // Server actions POST to the current page URL with a Next-Action header —
+  // let those through so they can return a flight response instead of a redirect.
+  if (isAuthRoute && !request.headers.has('next-action')) {
     const url = request.nextUrl.clone()
     url.pathname = '/orgs'
     return NextResponse.redirect(url)

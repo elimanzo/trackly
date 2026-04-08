@@ -33,12 +33,26 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('sendInviteAction', () => {
-  it('returns error when actor has no organisation', async () => {
+  it('returns error when org slug is not found', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
-    // membership lookup returns null
-    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+    // org lookup returns null (parallel with profile, so two maybeSingle calls)
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: null }) // org not found
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
 
-    const result = await sendInviteAction('new@example.com', 'editor', [], clients)
+    const result = await sendInviteAction('acme', 'new@example.com', 'editor', [], clients)
+
+    expect(result).toEqual({ error: 'No organisation found' })
+  })
+
+  it('returns error when actor is not a member of the org', async () => {
+    const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: { id: 'org-0001', name: 'Acme' } }) // org found
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
+      .mockResolvedValueOnce({ data: null }) // membership not found
+
+    const result = await sendInviteAction('acme', 'new@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: 'No organisation found' })
   })
@@ -46,11 +60,12 @@ describe('sendInviteAction', () => {
   it('returns error when a pending invite already exists for that email', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
     chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
-      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
+      .mockResolvedValueOnce({ data: { id: 'org-0001', name: 'Acme' } }) // org found
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001' } }) // membership verified
       .mockResolvedValueOnce({ data: { id: 'invite-existing-001' } }) // duplicate invite exists
 
-    const result = await sendInviteAction('already@example.com', 'editor', [], clients)
+    const result = await sendInviteAction('acme', 'already@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: 'A pending invite already exists for this email' })
   })
@@ -59,15 +74,16 @@ describe('sendInviteAction', () => {
     mockInviteUserByEmail.mockResolvedValueOnce({ error: { message: 'SMTP unavailable' } })
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
     chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
-      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
+      .mockResolvedValueOnce({ data: { id: 'org-0001', name: 'Acme' } }) // org found
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001' } }) // membership verified
       .mockResolvedValueOnce({ data: null }) // no duplicate invite
       .mockResolvedValueOnce({ data: null }) // no existing profile
     chain.single
       // insert.select.single — returns the new invite's ID
       .mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
 
-    const result = await sendInviteAction('new@example.com', 'editor', [], clients)
+    const result = await sendInviteAction('acme', 'new@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: 'SMTP unavailable' })
     // Rollback should target the specific invite ID, not email+org
@@ -77,13 +93,14 @@ describe('sendInviteAction', () => {
   it('uses OTP and keeps invite row when invitee already has an account', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
     chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
-      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
+      .mockResolvedValueOnce({ data: { id: 'org-0001', name: 'Acme' } }) // org found
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001' } }) // membership verified
       .mockResolvedValueOnce({ data: null }) // no duplicate invite
       .mockResolvedValueOnce({ data: { id: 'existing-user' } }) // profile exists → OTP
     chain.single.mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
 
-    const result = await sendInviteAction('existing@example.com', 'editor', [], clients)
+    const result = await sendInviteAction('acme', 'existing@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: null })
     expect(mockInviteUserByEmail).not.toHaveBeenCalled()
@@ -93,13 +110,14 @@ describe('sendInviteAction', () => {
   it('returns null error on success', async () => {
     const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
     chain.maybeSingle
-      .mockResolvedValueOnce({ data: { org_id: 'org-0001', organizations: { name: 'Acme' } } }) // actor membership
-      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile name
+      .mockResolvedValueOnce({ data: { id: 'org-0001', name: 'Acme' } }) // org found
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001' } }) // membership verified
       .mockResolvedValueOnce({ data: null }) // no duplicate invite
       .mockResolvedValueOnce({ data: null }) // no existing profile
     chain.single.mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
 
-    const result = await sendInviteAction('new@example.com', 'viewer', [], clients)
+    const result = await sendInviteAction('acme', 'new@example.com', 'viewer', [], clients)
 
     expect(result).toEqual({ error: null })
   })
