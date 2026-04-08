@@ -78,7 +78,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
 
       {/* Stepper */}
       <div className="border-border bg-card border-b px-6 py-4">
-        <div className="mx-auto flex max-w-2xl items-center gap-0">
+        <div className="mx-auto flex max-w-lg items-center gap-0">
           {STEPS.map((step, i) => {
             const isDone = i < currentIndex
             const isCurrent = i === currentIndex
