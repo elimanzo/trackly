@@ -184,36 +184,29 @@ export async function removeUserAction(
 // leaveOrgAction
 // ---------------------------------------------------------------------------
 
-export async function leaveOrgAction(): Promise<{ error: string } | { error: null }> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
+export async function leaveOrgAction(
+  orgSlug: string,
+  clients?: ActionClients
+): Promise<{ error: string } | { error: null }> {
+  const ctx = await getContext(orgSlug, clients)
+  if (!ctx) return { error: 'Not authenticated' }
 
-  const admin = createAdminClient()
-
-  const { data: membership } = await admin
-    .from('user_org_memberships')
-    .select('org_id, role')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (!membership?.org_id) return { error: 'You are not in an organisation' }
-  if (membership.role === 'owner')
+  if (ctx.role === 'owner')
     return { error: 'Owners cannot leave — transfer ownership or delete the organisation first' }
 
-  await admin
+  const { error: deptError } = await ctx.admin
     .from('user_departments')
     .delete()
-    .eq('user_id', user.id)
-    .eq('org_id', membership.org_id)
+    .eq('user_id', ctx.userId)
+    .eq('org_id', ctx.orgId)
 
-  const { error } = await admin
+  if (deptError) return { error: deptError.message }
+
+  const { error } = await ctx.admin
     .from('user_org_memberships')
     .delete()
-    .eq('user_id', user.id)
-    .eq('org_id', membership.org_id)
+    .eq('user_id', ctx.userId)
+    .eq('org_id', ctx.orgId)
 
   return { error: error?.message ?? null }
 }
@@ -222,27 +215,104 @@ export async function leaveOrgAction(): Promise<{ error: string } | { error: nul
 // deleteAccountAction
 // ---------------------------------------------------------------------------
 
-export async function deleteAccountAction(): Promise<{ error: string } | { error: null }> {
-  const supabase = await createClient()
+export async function deleteAccountAction(
+  clients?: ActionClients
+): Promise<{ error: string } | { error: null }> {
+  const supabase = clients?.supabase ?? (await createClient())
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const admin = createAdminClient()
+  const admin = clients?.admin ?? createAdminClient()
 
-  const { data: membership } = await admin
+  const { data: memberships } = await admin
     .from('user_org_memberships')
-    .select('org_id')
+    .select('org_id, role')
     .eq('user_id', user.id)
-    .maybeSingle()
+    .neq('invite_status', 'deactivated')
 
-  if (membership?.org_id)
-    return { error: 'Leave or delete your organisation before deleting your account' }
+  if (memberships && memberships.length > 0)
+    return { error: 'Leave or delete all your organisations before deleting your account' }
 
   const { error } = await admin.auth.admin.deleteUser(user.id)
 
   return { error: error?.message ?? null }
+}
+
+// ---------------------------------------------------------------------------
+// transferOwnershipAction
+// ---------------------------------------------------------------------------
+
+export async function transferOwnershipAction(
+  orgSlug: string,
+  targetUserId: string,
+  clients?: ActionClients
+): Promise<{ error: string } | { error: null }> {
+  const ctx = await getContext(orgSlug, clients)
+  if (!ctx) return { error: 'Not authenticated' }
+
+  if (ctx.role !== 'owner') return { error: 'Only the organisation owner can transfer ownership' }
+  if (targetUserId === ctx.userId) return { error: 'You are already the owner' }
+
+  const { data: target } = await ctx.admin
+    .from('user_org_memberships')
+    .select('role, profiles(full_name)')
+    .eq('user_id', targetUserId)
+    .eq('org_id', ctx.orgId)
+    .maybeSingle()
+
+  if (!target) return { error: 'User not found' }
+  if (target.role !== 'admin') return { error: 'Target user must be an admin to receive ownership' }
+
+  // Promote target to owner
+  const { error: promoteError } = await ctx.admin
+    .from('user_org_memberships')
+    .update({ role: 'owner' })
+    .eq('user_id', targetUserId)
+    .eq('org_id', ctx.orgId)
+
+  if (promoteError) return { error: promoteError.message }
+
+  // Demote current owner to admin
+  const { error: demoteError } = await ctx.admin
+    .from('user_org_memberships')
+    .update({ role: 'admin' })
+    .eq('user_id', ctx.userId)
+    .eq('org_id', ctx.orgId)
+
+  if (demoteError) {
+    // Roll back the promotion
+    await ctx.admin
+      .from('user_org_memberships')
+      .update({ role: 'admin' })
+      .eq('user_id', targetUserId)
+      .eq('org_id', ctx.orgId)
+    return { error: demoteError.message }
+  }
+
+  // Update organizations.owner_id
+  const { error: orgError } = await ctx.admin
+    .from('organizations')
+    .update({ owner_id: targetUserId })
+    .eq('id', ctx.orgId)
+
+  if (orgError) return { error: orgError.message }
+
+  const profileData = target.profiles as { full_name: string } | { full_name: string }[] | null
+  const targetName =
+    (Array.isArray(profileData) ? profileData[0]?.full_name : profileData?.full_name) ??
+    'Unknown user'
+
+  await logAudit(ctx, {
+    entityType: 'user',
+    entityId: targetUserId,
+    entityName: targetName,
+    action: 'role_changed',
+    changes: { role: { old: 'admin', new: 'owner' } },
+  })
+
+  return { error: null }
 }
 
 // ---------------------------------------------------------------------------

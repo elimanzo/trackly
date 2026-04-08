@@ -29,16 +29,19 @@ import { useOrg } from '@/providers/OrgProvider'
 
 function LeaveOrgDialog() {
   const router = useRouter()
+  const { slug } = useParams<{ slug: string }>()
+  const { refreshUser } = useAuth()
   const [loading, setLoading] = useState(false)
 
   async function handleLeave() {
     setLoading(true)
-    const result = await leaveOrgAction()
+    const result = await leaveOrgAction(slug)
     if (result.error) {
       toast.error(result.error)
       setLoading(false)
       return
     }
+    await refreshUser()
     router.push('/orgs')
   }
 

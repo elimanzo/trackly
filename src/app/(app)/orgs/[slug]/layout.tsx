@@ -3,6 +3,8 @@ import { PageTransition } from '@/components/motion/PageTransition'
 import { OrgRealtimeSync } from '@/lib/hooks/useOrgRealtimeSync'
 import { OrgProvider } from '@/providers/OrgProvider'
 
+import { OrgAccessGuard } from './OrgAccessGuard'
+
 export default async function OrgSlugLayout({
   children,
   params,
@@ -15,7 +17,9 @@ export default async function OrgSlugLayout({
     <OrgProvider slug={slug}>
       <OrgRealtimeSync />
       <AppShell>
-        <PageTransition>{children}</PageTransition>
+        <OrgAccessGuard>
+          <PageTransition>{children}</PageTransition>
+        </OrgAccessGuard>
       </AppShell>
     </OrgProvider>
   )

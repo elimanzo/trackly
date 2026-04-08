@@ -1,13 +1,26 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { updateOrganization } from '@/app/actions/org'
+import { transferOwnershipAction } from '@/app/actions/users'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -20,7 +33,15 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { orgUserKeys, useOrgUsers } from '@/lib/hooks/useOrgUsers'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -94,6 +115,102 @@ function ToggleRow({
         </FormItem>
       )}
     />
+  )
+}
+
+function TransferOwnershipCard({ slug }: { slug: string }) {
+  const { users } = useOrgUsers()
+  const { user, refreshUser } = useAuth()
+  const { org } = useOrg()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const admins = users.filter((u) => u.role === 'admin' && u.id !== user?.id)
+  const selectedAdmin = admins.find((u) => u.id === selectedUserId)
+
+  async function handleTransfer() {
+    if (!selectedUserId) return
+    setLoading(true)
+    const result = await transferOwnershipAction(slug, selectedUserId)
+    if (result.error) {
+      toast.error(result.error)
+      setLoading(false)
+      return
+    }
+    if (org?.id) void queryClient.invalidateQueries({ queryKey: orgUserKeys.all(org.id) })
+    await refreshUser()
+    toast.success('Ownership transferred')
+    router.push(`/orgs/${slug}/dashboard`)
+  }
+
+  return (
+    <Card className="border-destructive/40 shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-base">Transfer ownership</CardTitle>
+        <CardDescription>
+          Hand over ownership of this organisation to an existing admin. You will become an admin.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {admins.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            There are no admins to transfer ownership to. Promote a member to admin first.
+          </p>
+        ) : (
+          <div className="flex max-w-md items-center gap-3">
+            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select an admin…" />
+              </SelectTrigger>
+              <SelectContent>
+                {admins.map((admin) => (
+                  <SelectItem key={admin.id} value={admin.id}>
+                    {admin.fullName || admin.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="border-destructive text-destructive hover:bg-destructive/10"
+                  disabled={!selectedUserId}
+                >
+                  Transfer
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Transfer ownership?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {selectedAdmin && (
+                      <>
+                        <strong>{selectedAdmin.fullName || selectedAdmin.email}</strong> will become
+                        the new owner and you will become an admin. This cannot be undone without
+                        their cooperation.
+                      </>
+                    )}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={loading}
+                    onClick={handleTransfer}
+                  >
+                    {loading ? 'Transferring…' : 'Transfer ownership'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -409,6 +526,8 @@ export default function OrgSettingsPage() {
           </Button>
         </form>
       </Form>
+
+      {isOwner && <TransferOwnershipCard slug={slug} />}
 
       {form.formState.isDirty && (
         <div className="bg-card fixed right-0 bottom-0 left-0 z-50 border-t p-4 shadow-lg lg:left-60">
