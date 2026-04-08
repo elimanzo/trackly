@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-import { updateOrganization } from '@/app/actions/org'
+import { deleteOrgAction, updateOrganization } from '@/app/actions/org'
 import { transferOwnershipAction } from '@/app/actions/users'
 import {
   AlertDialog,
@@ -118,6 +118,71 @@ function ToggleRow({
   )
 }
 
+function DeleteOrgCard({ slug, orgName }: { slug: string; orgName: string }) {
+  const router = useRouter()
+  const [confirm, setConfirm] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleDelete() {
+    setLoading(true)
+    const result = await deleteOrgAction(slug)
+    if (result.error) {
+      toast.error(result.error)
+      setLoading(false)
+      return
+    }
+    router.push('/orgs')
+  }
+
+  return (
+    <Card className="border-destructive/40 shadow-sm">
+      <CardHeader>
+        <CardTitle className="text-destructive text-base">Danger zone</CardTitle>
+        <CardDescription>
+          Permanently delete this organisation and all its data — assets, departments, categories,
+          locations, and activity history. All members will lose access. This cannot be undone.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <AlertDialog onOpenChange={() => setConfirm('')}>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive">Delete organisation</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete organisation?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete <strong>{orgName}</strong> and all its data. This
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="px-1 pb-2">
+              <p className="text-muted-foreground mb-2 text-sm">
+                Type <strong>{orgName}</strong> to confirm
+              </p>
+              <Input
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder={orgName}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={confirm !== orgName || loading}
+                onClick={handleDelete}
+              >
+                {loading ? 'Deleting…' : 'Delete organisation'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
+  )
+}
+
 function TransferOwnershipCard({ slug }: { slug: string }) {
   const { users } = useOrgUsers()
   const { user, refreshUser } = useAuth()
@@ -223,7 +288,7 @@ export default function OrgSettingsPage() {
   const isAdmin = role === 'admin'
 
   useEffect(() => {
-    if (user && !isOwner && !isAdmin) router.replace(`/orgs/${slug}/settings/profile`)
+    if (user && !isOwner && !isAdmin) router.replace('/account/profile')
   }, [user, isOwner, isAdmin, router, slug])
 
   const dc = org?.dashboardConfig ?? {}
@@ -528,6 +593,7 @@ export default function OrgSettingsPage() {
       </Form>
 
       {isOwner && <TransferOwnershipCard slug={slug} />}
+      {isOwner && <DeleteOrgCard slug={slug} orgName={org?.name ?? ''} />}
 
       {form.formState.isDirty && (
         <div className="bg-card fixed right-0 bottom-0 left-0 z-50 border-t p-4 shadow-lg lg:left-60">

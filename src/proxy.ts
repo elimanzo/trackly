@@ -59,8 +59,7 @@ export async function proxy(request: NextRequest) {
   const isOrgPickerRoute = pathname === '/orgs'
   const isOrgScopedRoute = pathname.startsWith('/orgs/')
   const isAccessDeniedRoute = pathname === '/orgs/access-denied'
-  // Profile settings are accessible without an org (profile edit + delete account)
-  const isProfileSettingsRoute = /^\/orgs\/[^/]+\/settings\/profile$/.test(pathname)
+  const isAccountRoute = pathname.startsWith('/account')
 
   const isAppRoute =
     !isAuthRoute &&
@@ -136,6 +135,9 @@ export async function proxy(request: NextRequest) {
   // Let the access-denied page through — it's a valid authenticated destination
   if (isAccessDeniedRoute) return supabaseResponse
 
+  // Account settings are user-scoped — accessible regardless of org membership
+  if (isAccountRoute) return supabaseResponse
+
   // For org-scoped routes, verify the user is a member of the specific org in the URL.
   // Skip the '_' placeholder slug (used for pre-org profile settings).
   if (isOrgScopedRoute) {
@@ -171,7 +173,7 @@ export async function proxy(request: NextRequest) {
 
   // No org → must complete onboarding first
   if (!hasOrg) {
-    if (isOnboardingRoute || isProfileSettingsRoute) return supabaseResponse
+    if (isOnboardingRoute) return supabaseResponse
     if (isOrgPickerRoute || isOrgScopedRoute || isAppRoute || isSettingsRoute) {
       const url = request.nextUrl.clone()
       url.pathname = '/org/new'
