@@ -139,12 +139,11 @@ export async function proxy(request: NextRequest) {
   if (isAccountRoute) return supabaseResponse
 
   // For org-scoped routes, verify the user is a member of the specific org in the URL.
-  // Skip the '_' placeholder slug (used for pre-org profile settings).
   if (isOrgScopedRoute) {
     const slugMatch = pathname.match(/^\/orgs\/([^/]+)/)
     const routeSlug = slugMatch?.[1]
 
-    if (routeSlug && routeSlug !== '_') {
+    if (routeSlug) {
       const { data: orgRow } = await supabase
         .from('organizations')
         .select('id')

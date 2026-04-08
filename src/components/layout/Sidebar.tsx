@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   MapPin,
   Package,
+  Settings,
   Tag,
   Truck,
   Users,
@@ -128,6 +129,24 @@ export function Sidebar({ onNavClick }: SidebarProps) {
               {visibleManageItems.map((item) => (
                 <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
               ))}
+            </nav>
+          </>
+        )}
+
+        {isAdmin && base && (
+          <>
+            <Separator className="bg-sidebar-border my-3" />
+            <nav className="space-y-1">
+              <NavLink
+                item={{
+                  label: 'Settings',
+                  href: `${base}/settings/org`,
+                  icon: Settings,
+                  activePrefix: `${base}/settings`,
+                }}
+                pathname={pathname}
+                onNavClick={onNavClick}
+              />
             </nav>
           </>
         )}
