@@ -288,7 +288,7 @@ export default function OrgSettingsPage() {
   const isAdmin = role === 'admin'
 
   useEffect(() => {
-    if (user && !isOwner && !isAdmin) router.replace('/account/profile')
+    if (user && !isOwner && !isAdmin) router.replace(`/orgs/${slug}/settings/profile`)
   }, [user, isOwner, isAdmin, router, slug])
 
   const dc = org?.dashboardConfig ?? {}

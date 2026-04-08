@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   MapPin,
   Package,
-  Settings,
   Tag,
   Truck,
   Users,
@@ -45,17 +44,6 @@ function buildNavManage(base: string, deptLabel: string): NavItem[] {
     { label: 'Locations', href: `${base}/locations`, icon: MapPin },
     { label: 'Vendors', href: `${base}/vendors`, icon: Truck },
     { label: 'Users', href: `${base}/users`, icon: Users },
-  ]
-}
-
-function buildNavSettings(base: string): NavItem[] {
-  return [
-    {
-      label: 'Settings',
-      href: `${base}/settings/org`,
-      icon: Settings,
-      activePrefix: `${base}/settings`,
-    },
   ]
 }
 
@@ -142,17 +130,6 @@ export function Sidebar({ onNavClick }: SidebarProps) {
               ))}
             </nav>
           </>
-        )}
-
-        {(hasOrg || visibleManageItems.length > 0) && (
-          <Separator className="bg-sidebar-border my-3" />
-        )}
-        {hasOrg && (
-          <nav className="space-y-1">
-            {buildNavSettings(base).map((item) => (
-              <NavLink key={item.href} item={item} pathname={pathname} onNavClick={onNavClick} />
-            ))}
-          </nav>
         )}
       </ScrollArea>
 

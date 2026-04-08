@@ -1,17 +1,12 @@
 'use client'
 
 import { ArrowLeft, BoxesIcon } from 'lucide-react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/providers/AuthProvider'
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
-  const backHref =
-    (user?.memberships.length ?? 0) === 1
-      ? `/orgs/${user!.memberships[0].orgSlug}/dashboard`
-      : '/orgs'
+  const router = useRouter()
 
   return (
     <div className="bg-background flex h-screen flex-col overflow-hidden">
@@ -22,11 +17,14 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
           </div>
           <span className="text-sm font-semibold">Trackly</span>
         </div>
-        <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-          <Link href={backHref}>
-            <ArrowLeft className="mr-1.5 h-4 w-4" />
-            Back
-          </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="mr-1.5 h-4 w-4" />
+          Back
         </Button>
       </header>
       <div className="flex-1 overflow-y-auto">

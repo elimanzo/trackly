@@ -34,7 +34,8 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { user, signOut } = useAuth()
-  const { org } = useOrg()
+  const { org, role } = useOrg()
+  const canAccessOrgSettings = role === 'owner' || role === 'admin'
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
   const params = useParams<{ slug?: string }>()
@@ -134,10 +135,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`${base}/settings/org`)}>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
+            {canAccessOrgSettings && (
+              <DropdownMenuItem onClick={() => router.push(`${base}/settings/org`)}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
