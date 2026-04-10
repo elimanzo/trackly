@@ -377,6 +377,29 @@ describe('updateAssignment', () => {
     expect(audit.calls[0]).toMatchObject({ action: 'updated', entityId: ASSET_ID })
   })
 
+  it('persists all patch fields — quantity, departmentId, locationId, notes', async () => {
+    const ports = makePorts(repo, audit)
+    await updateAssignment(
+      assignmentId,
+      ASSET_ID,
+      true,
+      makeInput({
+        assignedToName: 'Bob',
+        quantity: 2,
+        departmentId: 'dept-001',
+        locationId: 'loc-001',
+        notes: 'fragile',
+      }),
+      ports
+    )
+
+    const stored = repo.assignments.get(assignmentId)!
+    expect(stored.quantity).toBe(2)
+    expect(stored.departmentId).toBe('dept-001')
+    expect(stored.locationId).toBe('loc-001')
+    expect(stored.notes).toBe('fragile')
+  })
+
   it('allows quantity up to available + own allocation (bulk)', async () => {
     // 10 total, 4 by others, this assignment has 3 → max = 10 - 4 = 6
     const ports = makePorts(repo, audit)
