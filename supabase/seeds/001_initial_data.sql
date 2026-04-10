@@ -80,22 +80,22 @@ begin
     confirmation_token, recovery_token, email_change_token_new, email_change
   ) values
     ('00000000-0000-0000-0000-000000000000', u_owner, 'authenticated', 'authenticated',
-      'owner@acme.dev', crypt('Dev1234!', gen_salt('bf')),
+      'owner@acme.dev', extensions.crypt('Dev1234!', extensions.gen_salt('bf')),
       now(), '{"full_name":"Alex Rivera"}', '{"provider":"email","providers":["email"]}',
       now(), now(), '', '', '', ''),
 
     ('00000000-0000-0000-0000-000000000000', u_admin, 'authenticated', 'authenticated',
-      'admin@acme.dev', crypt('Dev1234!', gen_salt('bf')),
+      'admin@acme.dev', extensions.crypt('Dev1234!', extensions.gen_salt('bf')),
       now(), '{"full_name":"Sarah Mitchell"}', '{"provider":"email","providers":["email"]}',
       now(), now(), '', '', '', ''),
 
     ('00000000-0000-0000-0000-000000000000', u_editor, 'authenticated', 'authenticated',
-      'editor@acme.dev', crypt('Dev1234!', gen_salt('bf')),
+      'editor@acme.dev', extensions.crypt('Dev1234!', extensions.gen_salt('bf')),
       now(), '{"full_name":"James Thornton"}', '{"provider":"email","providers":["email"]}',
       now(), now(), '', '', '', ''),
 
     ('00000000-0000-0000-0000-000000000000', u_viewer, 'authenticated', 'authenticated',
-      'viewer@acme.dev', crypt('Dev1234!', gen_salt('bf')),
+      'viewer@acme.dev', extensions.crypt('Dev1234!', extensions.gen_salt('bf')),
       now(), '{"full_name":"Maria Chen"}', '{"provider":"email","providers":["email"]}',
       now(), now(), '', '', '', '');
 

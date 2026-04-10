@@ -129,12 +129,12 @@ begin
     confirmation_token, recovery_token, email_change_token_new, email_change
   ) values
     ('00000000-0000-0000-0000-000000000000', u_user_d, 'authenticated', 'authenticated',
-      'newuser@dev.test', crypt('Dev1234!', gen_salt('bf')),
+      'newuser@dev.test', extensions.crypt('Dev1234!', extensions.gen_salt('bf')),
       now(), '{"full_name":"Dana Park"}', '{"provider":"email","providers":["email"]}',
       now(), now(), '', '', '', ''),
 
     ('00000000-0000-0000-0000-000000000000', u_user_f, 'authenticated', 'authenticated',
-      'soleowner@dev.test', crypt('Dev1234!', gen_salt('bf')),
+      'soleowner@dev.test', extensions.crypt('Dev1234!', extensions.gen_salt('bf')),
       now(), '{"full_name":"Frank Sole"}', '{"provider":"email","providers":["email"]}',
       now(), now(), '', '', '', '');
 
