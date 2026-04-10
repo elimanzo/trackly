@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   acceptAuthenticatedInviteAction,
+  acceptInviteAction,
   acceptInviteViaGoogleAction,
   sendInviteAction,
 } from '../invites'
@@ -228,5 +229,106 @@ describe('acceptAuthenticatedInviteAction', () => {
     const result = await acceptAuthenticatedInviteAction('tok-xyz-789', clients)
 
     expect(result).toEqual({ orgSlug: 'acme' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// acceptInviteAction
+// ---------------------------------------------------------------------------
+
+describe('acceptInviteAction', () => {
+  it('returns null error and email on success', async () => {
+    const clients = makeClients(chain, { email: 'invited@example.com' })
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
+
+    const result = await acceptInviteAction('Alex Rivera', 'S3cur3Pass!', clients)
+
+    expect(result).toEqual({ error: null, email: 'invited@example.com' })
+    expect(chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-actor-0001', org_id: 'org-0001', role: 'editor' })
+    )
+  })
+
+  it('returns error when no pending invite exists', async () => {
+    const clients = makeClients(chain, { email: 'noinvite@example.com' })
+    chain.maybeSingle.mockResolvedValueOnce({ data: null })
+
+    const result = await acceptInviteAction('Alex Rivera', 'S3cur3Pass!', clients)
+
+    expect(result).toEqual({
+      error: 'Invite not found or has expired. Ask your admin to resend it.',
+    })
+  })
+
+  it('returns error when session is missing', async () => {
+    const clients = makeClients(chain)
+    clients.supabase!.auth.getUser = vi.fn().mockResolvedValue({ data: { user: null } })
+
+    const result = await acceptInviteAction('Alex Rivera', 'S3cur3Pass!', clients)
+
+    expect(result).toEqual({ error: 'Session expired. Please use the invite link again.' })
+  })
+
+  it('returns error when password update fails', async () => {
+    const updateUserById = vi.fn().mockResolvedValue({ error: { message: 'weak password' } })
+    const clients = makeClients(chain, { email: 'invited@example.com', updateUserById })
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
+
+    const result = await acceptInviteAction('Alex Rivera', 'weak', clients)
+
+    expect(result).toEqual({ error: 'weak password' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// fulfillInvite — error paths exercised through the accept actions
+// ---------------------------------------------------------------------------
+
+describe('fulfillInvite error paths', () => {
+  it('returns profile error when profile upsert fails', async () => {
+    const clients = makeClients(chain, { email: 'invited@example.com' })
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
+    chain.then.mockImplementationOnce((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: { message: 'profile write failed' } })
+    )
+
+    const result = await acceptInviteViaGoogleAction('Alex Rivera', clients)
+
+    expect(result).toEqual({ error: 'profile write failed' })
+  })
+
+  it('returns membership error when membership upsert fails', async () => {
+    const clients = makeClients(chain, { email: 'invited@example.com' })
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
+    chain.then
+      .mockImplementationOnce(
+        (resolve: (v: unknown) => void) => resolve({ data: null, error: null }) // profile upsert OK
+      )
+      .mockImplementationOnce((resolve: (v: unknown) => void) =>
+        resolve({ data: null, error: { message: 'membership write failed' } })
+      )
+
+    const result = await acceptInviteViaGoogleAction('Alex Rivera', clients)
+
+    expect(result).toEqual({ error: 'membership write failed' })
+  })
+
+  it('returns dept error when department insert fails', async () => {
+    const clients = makeClients(chain, { email: 'invited@example.com' })
+    chain.maybeSingle.mockResolvedValueOnce({ data: PENDING_INVITE })
+    chain.then
+      .mockImplementationOnce(
+        (resolve: (v: unknown) => void) => resolve({ data: null, error: null }) // profile OK
+      )
+      .mockImplementationOnce(
+        (resolve: (v: unknown) => void) => resolve({ data: null, error: null }) // membership OK
+      )
+      .mockImplementationOnce((resolve: (v: unknown) => void) =>
+        resolve({ data: null, error: { message: 'dept insert failed' } })
+      )
+
+    const result = await acceptInviteViaGoogleAction('Alex Rivera', clients)
+
+    expect(result).toEqual({ error: 'dept insert failed' })
   })
 })
