@@ -1,5 +1,6 @@
 'use server'
 
+import { softDeleteWithCascade } from '@/lib/soft-delete'
 import { LocationFormSchema, type LocationFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
@@ -79,22 +80,10 @@ export async function deleteLocation(
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
-  const { data: loc } = await ctx.admin.from('locations').select('name').eq('id', id).maybeSingle()
-
-  const { error } = await ctx.admin
-    .from('locations')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('org_id', ctx.orgId)
-
-  if (error) return { error: error.message }
-
-  await logAudit(ctx, {
+  return softDeleteWithCascade(ctx, {
+    entityTable: 'locations',
     entityType: 'location',
     entityId: id,
-    entityName: (loc?.name as string) ?? 'Unknown',
-    action: 'deleted',
+    assetFkColumn: 'location_id',
   })
-
-  return null
 }

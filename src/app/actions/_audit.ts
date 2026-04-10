@@ -10,7 +10,14 @@ type AuditAction =
   | 'invited'
   | 'role_changed'
 
-export type EntityType = 'asset' | 'user' | 'department' | 'category' | 'location' | 'vendor'
+export type EntityType =
+  | 'asset'
+  | 'user'
+  | 'department'
+  | 'category'
+  | 'location'
+  | 'vendor'
+  | 'org'
 
 type AuditEntry = {
   orgId: string

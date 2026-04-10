@@ -1,5 +1,6 @@
 'use server'
 
+import { softDeleteWithCascade } from '@/lib/soft-delete'
 import { VendorFormSchema, type VendorFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
@@ -89,22 +90,10 @@ export async function deleteVendor(orgSlug: string, id: string): Promise<{ error
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
 
-  const { data: vendor } = await ctx.admin.from('vendors').select('name').eq('id', id).maybeSingle()
-
-  const { error } = await ctx.admin
-    .from('vendors')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('org_id', ctx.orgId)
-
-  if (error) return { error: error.message }
-
-  await logAudit(ctx, {
+  return softDeleteWithCascade(ctx, {
+    entityTable: 'vendors',
     entityType: 'vendor',
     entityId: id,
-    entityName: (vendor?.name as string) ?? 'Unknown',
-    action: 'deleted',
+    assetFkColumn: 'vendor_id',
   })
-
-  return null
 }
