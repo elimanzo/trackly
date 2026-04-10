@@ -42,8 +42,81 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { orgUserKeys, useOrgUsers } from '@/lib/hooks/useOrgUsers'
+import {
+  AssetTableConfigSchema,
+  DashboardConfigSchema,
+  ReportConfigSchema,
+  type AssetTableConfig,
+  type DashboardConfig,
+  type ReportConfig,
+} from '@/lib/types'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
+
+// ---------------------------------------------------------------------------
+// Config toggle metadata — add a new column/section here and it appears
+// everywhere: form schema defaults, reset mapping, submit payload, and JSX.
+// ---------------------------------------------------------------------------
+
+type ConfigToggle<T> = {
+  key: keyof T
+  label: string
+  description?: string
+  default: boolean
+}
+
+const DASHBOARD_STAT_TOGGLES: ConfigToggle<DashboardConfig>[] = [
+  { key: 'showCardTotal', label: 'Total assets', default: true },
+  { key: 'showCardActive', label: 'Active', default: true },
+  { key: 'showCardMaintenance', label: 'In maintenance', default: true },
+  { key: 'showCardRetired', label: 'Retired', default: true },
+  { key: 'showCardValue', label: 'Total value', default: true },
+]
+
+const DASHBOARD_SECTION_TOGGLES: ConfigToggle<DashboardConfig>[] = [
+  // description is rendered dynamically (depends on departmentLabel)
+  { key: 'showCharts', label: 'Charts', default: true },
+  { key: 'showWarranty', label: 'Warranty alerts', default: true },
+  { key: 'showActivity', label: 'Recent activity', default: true },
+]
+
+const TABLE_COLUMN_TOGGLES: ConfigToggle<AssetTableConfig>[] = [
+  { key: 'showAssignedTo', label: 'Assigned to', default: true },
+  { key: 'showDepartment', label: 'Department', default: true },
+  { key: 'showCategory', label: 'Category', default: true },
+  { key: 'showLocation', label: 'Location', default: true },
+  { key: 'showStatus', label: 'Status', default: true },
+  { key: 'showPurchaseDate', label: 'Purchase date', default: false },
+  { key: 'showPurchaseCost', label: 'Purchase cost', default: false },
+  { key: 'showWarrantyExpiry', label: 'Warranty expiry', default: false },
+  { key: 'showVendor', label: 'Vendor', default: false },
+]
+
+const REPORT_COLUMN_TOGGLES: ConfigToggle<ReportConfig>[] = [
+  { key: 'showAssignedTo', label: 'Assigned to', default: true },
+  { key: 'showDepartment', label: 'Department', default: true },
+  { key: 'showCategory', label: 'Category', default: true },
+  { key: 'showLocation', label: 'Location', default: false },
+  { key: 'showStatus', label: 'Status', default: true },
+  { key: 'showPurchaseDate', label: 'Purchase date', default: false },
+  { key: 'showPurchaseCost', label: 'Purchase cost', default: false },
+  { key: 'showWarrantyExpiry', label: 'Warranty expiry', default: false },
+  { key: 'showVendor', label: 'Vendor', default: false },
+  { key: 'showNotes', label: 'Notes', default: false },
+]
+
+/** Derive a complete config object from stored (possibly partial) values + metadata defaults. */
+function fromConfig<T>(
+  toggles: ConfigToggle<T>[],
+  stored: Partial<T> | null | undefined
+): Record<string, boolean> {
+  return Object.fromEntries(toggles.map((t) => [t.key, (stored?.[t.key] as boolean) ?? t.default]))
+}
+
+// ---------------------------------------------------------------------------
+// Form schema — nested shape matches UpdateOrganizationInput directly.
+// No flat-to-nested translation needed in onSubmit or useEffect.
+// ---------------------------------------------------------------------------
 
 const OrgFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -53,39 +126,15 @@ const OrgFormSchema = z.object({
     .max(60)
     .regex(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers, and hyphens'),
   departmentLabel: z.string().min(1, 'Label is required').max(50),
-  // Dashboard stat cards
-  showCardTotal: z.boolean(),
-  showCardActive: z.boolean(),
-  showCardMaintenance: z.boolean(),
-  showCardRetired: z.boolean(),
-  showCardValue: z.boolean(),
-  // Dashboard sections
-  showCharts: z.boolean(),
-  showWarranty: z.boolean(),
-  showActivity: z.boolean(),
-  // Asset table columns
-  showColAssignedTo: z.boolean(),
-  showColDepartment: z.boolean(),
-  showColCategory: z.boolean(),
-  showColLocation: z.boolean(),
-  showColStatus: z.boolean(),
-  showColPurchaseDate: z.boolean(),
-  showColPurchaseCost: z.boolean(),
-  showColWarrantyExpiry: z.boolean(),
-  showColVendor: z.boolean(),
-  // Report columns
-  showRptAssignedTo: z.boolean(),
-  showRptDepartment: z.boolean(),
-  showRptCategory: z.boolean(),
-  showRptLocation: z.boolean(),
-  showRptStatus: z.boolean(),
-  showRptPurchaseDate: z.boolean(),
-  showRptPurchaseCost: z.boolean(),
-  showRptWarrantyExpiry: z.boolean(),
-  showRptVendor: z.boolean(),
-  showRptNotes: z.boolean(),
+  dashboardConfig: DashboardConfigSchema.required(),
+  assetTableConfig: AssetTableConfigSchema.required(),
+  reportConfig: ReportConfigSchema.required(),
 })
 type OrgFormInput = z.infer<typeof OrgFormSchema>
+
+// ---------------------------------------------------------------------------
+// ToggleRow
+// ---------------------------------------------------------------------------
 
 function ToggleRow({
   name,
@@ -93,7 +142,7 @@ function ToggleRow({
   description,
   control,
 }: {
-  name: keyof OrgFormInput
+  name: string
   label: string
   description?: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,6 +166,10 @@ function ToggleRow({
     />
   )
 }
+
+// ---------------------------------------------------------------------------
+// DeleteOrgCard
+// ---------------------------------------------------------------------------
 
 function DeleteOrgCard({ slug, orgName }: { slug: string; orgName: string }) {
   const router = useRouter()
@@ -182,6 +235,10 @@ function DeleteOrgCard({ slug, orgName }: { slug: string; orgName: string }) {
     </Card>
   )
 }
+
+// ---------------------------------------------------------------------------
+// TransferOwnershipCard
+// ---------------------------------------------------------------------------
 
 function TransferOwnershipCard({ slug }: { slug: string }) {
   const { users } = useOrgUsers()
@@ -279,6 +336,10 @@ function TransferOwnershipCard({ slug }: { slug: string }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// OrgSettingsPage
+// ---------------------------------------------------------------------------
+
 export default function OrgSettingsPage() {
   const { org, role } = useOrg()
   const { user } = useAuth()
@@ -291,43 +352,18 @@ export default function OrgSettingsPage() {
     if (user && !isOwner && !isAdmin) router.replace('/account/profile')
   }, [user, isOwner, isAdmin, router, slug])
 
-  const dc = org?.dashboardConfig ?? {}
-  const tc = org?.assetTableConfig ?? {}
-  const rc = org?.reportConfig ?? {}
-
   const form = useForm<OrgFormInput>({
     resolver: zodResolver(OrgFormSchema),
     defaultValues: {
       name: '',
       slug: '',
       departmentLabel: 'Department',
-      showCardTotal: true,
-      showCardActive: true,
-      showCardMaintenance: true,
-      showCardRetired: true,
-      showCardValue: true,
-      showCharts: true,
-      showWarranty: true,
-      showActivity: true,
-      showColAssignedTo: true,
-      showColDepartment: true,
-      showColCategory: true,
-      showColLocation: true,
-      showColStatus: true,
-      showColPurchaseDate: false,
-      showColPurchaseCost: false,
-      showColWarrantyExpiry: false,
-      showColVendor: false,
-      showRptAssignedTo: true,
-      showRptDepartment: true,
-      showRptCategory: true,
-      showRptLocation: false,
-      showRptStatus: true,
-      showRptPurchaseDate: false,
-      showRptPurchaseCost: false,
-      showRptWarrantyExpiry: false,
-      showRptVendor: false,
-      showRptNotes: false,
+      dashboardConfig: {
+        ...fromConfig(DASHBOARD_STAT_TOGGLES, null),
+        ...fromConfig(DASHBOARD_SECTION_TOGGLES, null),
+      } as OrgFormInput['dashboardConfig'],
+      assetTableConfig: fromConfig(TABLE_COLUMN_TOGGLES, null) as OrgFormInput['assetTableConfig'],
+      reportConfig: fromConfig(REPORT_COLUMN_TOGGLES, null) as OrgFormInput['reportConfig'],
     },
   })
 
@@ -337,33 +373,18 @@ export default function OrgSettingsPage() {
         name: org.name,
         slug: org.slug,
         departmentLabel: org.departmentLabel,
-        showCardTotal: dc.showCardTotal ?? true,
-        showCardActive: dc.showCardActive ?? true,
-        showCardMaintenance: dc.showCardMaintenance ?? true,
-        showCardRetired: dc.showCardRetired ?? true,
-        showCardValue: dc.showCardValue ?? true,
-        showCharts: dc.showCharts ?? true,
-        showWarranty: dc.showWarranty ?? true,
-        showActivity: dc.showActivity ?? true,
-        showColAssignedTo: tc.showAssignedTo ?? true,
-        showColDepartment: tc.showDepartment ?? true,
-        showColCategory: tc.showCategory ?? true,
-        showColLocation: tc.showLocation ?? true,
-        showColStatus: tc.showStatus ?? true,
-        showColPurchaseDate: tc.showPurchaseDate ?? false,
-        showColPurchaseCost: tc.showPurchaseCost ?? false,
-        showColWarrantyExpiry: tc.showWarrantyExpiry ?? false,
-        showColVendor: tc.showVendor ?? false,
-        showRptAssignedTo: rc.showAssignedTo ?? true,
-        showRptDepartment: rc.showDepartment ?? true,
-        showRptCategory: rc.showCategory ?? true,
-        showRptLocation: rc.showLocation ?? false,
-        showRptStatus: rc.showStatus ?? true,
-        showRptPurchaseDate: rc.showPurchaseDate ?? false,
-        showRptPurchaseCost: rc.showPurchaseCost ?? false,
-        showRptWarrantyExpiry: rc.showWarrantyExpiry ?? false,
-        showRptVendor: rc.showVendor ?? false,
-        showRptNotes: rc.showNotes ?? false,
+        dashboardConfig: {
+          ...fromConfig(DASHBOARD_STAT_TOGGLES, org.dashboardConfig),
+          ...fromConfig(DASHBOARD_SECTION_TOGGLES, org.dashboardConfig),
+        } as OrgFormInput['dashboardConfig'],
+        assetTableConfig: fromConfig(
+          TABLE_COLUMN_TOGGLES,
+          org.assetTableConfig
+        ) as OrgFormInput['assetTableConfig'],
+        reportConfig: fromConfig(
+          REPORT_COLUMN_TOGGLES,
+          org.reportConfig
+        ) as OrgFormInput['reportConfig'],
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,47 +393,7 @@ export default function OrgSettingsPage() {
   if (!role || (!isOwner && !isAdmin)) return null
 
   async function onSubmit(data: OrgFormInput) {
-    const dashboardConfig = {
-      showCardTotal: data.showCardTotal,
-      showCardActive: data.showCardActive,
-      showCardMaintenance: data.showCardMaintenance,
-      showCardRetired: data.showCardRetired,
-      showCardValue: data.showCardValue,
-      showCharts: data.showCharts,
-      showWarranty: data.showWarranty,
-      showActivity: data.showActivity,
-    }
-    const assetTableConfig = {
-      showAssignedTo: data.showColAssignedTo,
-      showDepartment: data.showColDepartment,
-      showCategory: data.showColCategory,
-      showLocation: data.showColLocation,
-      showStatus: data.showColStatus,
-      showPurchaseDate: data.showColPurchaseDate,
-      showPurchaseCost: data.showColPurchaseCost,
-      showWarrantyExpiry: data.showColWarrantyExpiry,
-      showVendor: data.showColVendor,
-    }
-    const reportConfig = {
-      showAssignedTo: data.showRptAssignedTo,
-      showDepartment: data.showRptDepartment,
-      showCategory: data.showRptCategory,
-      showLocation: data.showRptLocation,
-      showStatus: data.showRptStatus,
-      showPurchaseDate: data.showRptPurchaseDate,
-      showPurchaseCost: data.showRptPurchaseCost,
-      showWarrantyExpiry: data.showRptWarrantyExpiry,
-      showVendor: data.showRptVendor,
-      showNotes: data.showRptNotes,
-    }
-    const result = await updateOrganization(slug, {
-      name: data.name,
-      slug: data.slug,
-      departmentLabel: data.departmentLabel,
-      dashboardConfig,
-      assetTableConfig,
-      reportConfig,
-    })
+    const result = await updateOrganization(slug, data)
     if (result.error) {
       toast.error(result.error)
       return
@@ -507,11 +488,14 @@ export default function OrgSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ToggleRow control={form.control} name="showCardTotal" label="Total assets" />
-              <ToggleRow control={form.control} name="showCardActive" label="Active" />
-              <ToggleRow control={form.control} name="showCardMaintenance" label="In maintenance" />
-              <ToggleRow control={form.control} name="showCardRetired" label="Retired" />
-              <ToggleRow control={form.control} name="showCardValue" label="Total value" />
+              {DASHBOARD_STAT_TOGGLES.map((t) => (
+                <ToggleRow
+                  key={t.key as string}
+                  control={form.control}
+                  name={`dashboardConfig.${t.key as string}`}
+                  label={t.label}
+                />
+              ))}
             </CardContent>
           </Card>
 
@@ -524,14 +508,19 @@ export default function OrgSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ToggleRow
-                control={form.control}
-                name="showCharts"
-                label="Charts"
-                description={`Assets by status and by ${deptLabel.toLowerCase()}`}
-              />
-              <ToggleRow control={form.control} name="showWarranty" label="Warranty alerts" />
-              <ToggleRow control={form.control} name="showActivity" label="Recent activity" />
+              {DASHBOARD_SECTION_TOGGLES.map((t) => (
+                <ToggleRow
+                  key={t.key as string}
+                  control={form.control}
+                  name={`dashboardConfig.${t.key as string}`}
+                  label={t.label}
+                  description={
+                    t.key === 'showCharts'
+                      ? `Assets by status and by ${deptLabel.toLowerCase()}`
+                      : undefined
+                  }
+                />
+              ))}
             </CardContent>
           </Card>
 
@@ -544,19 +533,14 @@ export default function OrgSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ToggleRow control={form.control} name="showColAssignedTo" label="Assigned to" />
-              <ToggleRow control={form.control} name="showColDepartment" label={deptLabel} />
-              <ToggleRow control={form.control} name="showColCategory" label="Category" />
-              <ToggleRow control={form.control} name="showColLocation" label="Location" />
-              <ToggleRow control={form.control} name="showColStatus" label="Status" />
-              <ToggleRow control={form.control} name="showColPurchaseDate" label="Purchase date" />
-              <ToggleRow control={form.control} name="showColPurchaseCost" label="Purchase cost" />
-              <ToggleRow
-                control={form.control}
-                name="showColWarrantyExpiry"
-                label="Warranty expiry"
-              />
-              <ToggleRow control={form.control} name="showColVendor" label="Vendor" />
+              {TABLE_COLUMN_TOGGLES.map((t) => (
+                <ToggleRow
+                  key={t.key as string}
+                  control={form.control}
+                  name={`assetTableConfig.${t.key as string}`}
+                  label={t.key === 'showDepartment' ? deptLabel : t.label}
+                />
+              ))}
             </CardContent>
           </Card>
 
@@ -569,20 +553,14 @@ export default function OrgSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ToggleRow control={form.control} name="showRptAssignedTo" label="Assigned to" />
-              <ToggleRow control={form.control} name="showRptDepartment" label={deptLabel} />
-              <ToggleRow control={form.control} name="showRptCategory" label="Category" />
-              <ToggleRow control={form.control} name="showRptLocation" label="Location" />
-              <ToggleRow control={form.control} name="showRptStatus" label="Status" />
-              <ToggleRow control={form.control} name="showRptPurchaseDate" label="Purchase date" />
-              <ToggleRow control={form.control} name="showRptPurchaseCost" label="Purchase cost" />
-              <ToggleRow
-                control={form.control}
-                name="showRptWarrantyExpiry"
-                label="Warranty expiry"
-              />
-              <ToggleRow control={form.control} name="showRptVendor" label="Vendor" />
-              <ToggleRow control={form.control} name="showRptNotes" label="Notes" />
+              {REPORT_COLUMN_TOGGLES.map((t) => (
+                <ToggleRow
+                  key={t.key as string}
+                  control={form.control}
+                  name={`reportConfig.${t.key as string}`}
+                  label={t.key === 'showDepartment' ? deptLabel : t.label}
+                />
+              ))}
             </CardContent>
           </Card>
 
