@@ -2,11 +2,12 @@
 
 import { redirect } from 'next/navigation'
 
-import { createPolicy } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { CreateOrganizationInput, UpdateOrganizationInput } from '@/lib/types'
-import type { UserRole } from '@/lib/types'
+
+import { logAudit } from './_audit'
+import { getAdminCtx, getContext } from './_context'
 
 export async function checkOrgAvailability(
   name: string,
@@ -115,36 +116,10 @@ export async function updateOrganization(
   orgSlug: string,
   input: UpdateOrganizationInput
 ): Promise<{ error: string } | { error: null }> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const ctx = await getAdminCtx(orgSlug)
+  if ('error' in ctx) return ctx
 
-  const admin = createAdminClient()
-
-  const { data: org } = await admin
-    .from('organizations')
-    .select('id')
-    .eq('slug', orgSlug)
-    .maybeSingle()
-
-  if (!org?.id) return { error: 'No organisation found' }
-
-  const { data: membership } = await admin
-    .from('user_org_memberships')
-    .select('role')
-    .eq('user_id', user.id)
-    .eq('org_id', org.id)
-    .maybeSingle()
-
-  if (!membership) return { error: 'No organisation found' }
-  const denied = createPolicy({ role: membership.role as UserRole, departmentIds: [] }).enforce(
-    'department:manage'
-  )
-  if (denied) return denied
-
-  const isOwner = membership.role === 'owner'
+  const isOwner = ctx.role === 'owner'
 
   const patch: Record<string, unknown> = {}
   if (isOwner && input.name !== undefined) patch.name = input.name
@@ -154,12 +129,22 @@ export async function updateOrganization(
   if (input.assetTableConfig !== undefined) patch.asset_table_config = input.assetTableConfig
   if (input.reportConfig !== undefined) patch.report_config = input.reportConfig
 
-  const { error } = await admin.from('organizations').update(patch).eq('id', org.id)
+  const [{ data: org }, { error }] = await Promise.all([
+    ctx.admin.from('organizations').select('name').eq('id', ctx.orgId).maybeSingle(),
+    ctx.admin.from('organizations').update(patch).eq('id', ctx.orgId),
+  ])
 
   if (error) {
     if (error.code === '23505') return { error: 'That URL slug is already taken.' }
     return { error: error.message }
   }
+
+  await logAudit(ctx, {
+    entityType: 'org',
+    entityId: ctx.orgId,
+    entityName: (org?.name as string) ?? 'Unknown',
+    action: 'updated',
+  })
 
   return { error: null }
 }
@@ -171,35 +156,27 @@ export async function updateOrganization(
 export async function deleteOrgAction(
   orgSlug: string
 ): Promise<{ error: string } | { error: null }> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const ctx = await getContext(orgSlug)
+  if (!ctx) return { error: 'Not authenticated' }
+  if (ctx.role !== 'owner') return { error: 'Only the organisation owner can delete it' }
 
-  const admin = createAdminClient()
-
-  const { data: org } = await admin
+  const { data: org } = await ctx.admin
     .from('organizations')
-    .select('id')
-    .eq('slug', orgSlug)
+    .select('name')
+    .eq('id', ctx.orgId)
     .maybeSingle()
 
-  if (!org?.id) return { error: 'No organisation found' }
-
-  const { data: membership } = await admin
-    .from('user_org_memberships')
-    .select('role')
-    .eq('user_id', user.id)
-    .eq('org_id', org.id)
-    .maybeSingle()
-
-  if (!membership) return { error: 'No organisation found' }
-  if (membership.role !== 'owner') return { error: 'Only the organisation owner can delete it' }
+  // Log before deletion — the row will be gone after
+  await logAudit(ctx, {
+    entityType: 'org',
+    entityId: ctx.orgId,
+    entityName: (org?.name as string) ?? 'Unknown',
+    action: 'deleted',
+  })
 
   // Delete the org — cascades departments, categories, locations, vendors,
   // assets, invites, audit_logs, user_departments, user_org_memberships
-  const { error } = await admin.from('organizations').delete().eq('id', org.id)
+  const { error } = await ctx.admin.from('organizations').delete().eq('id', ctx.orgId)
 
   return { error: error?.message ?? null }
 }
