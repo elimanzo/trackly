@@ -341,7 +341,7 @@ function TransferOwnershipCard({ slug }: { slug: string }) {
 // ---------------------------------------------------------------------------
 
 export default function OrgSettingsPage() {
-  const { org, role } = useOrg()
+  const { org, role, refetchOrg } = useOrg()
   const { user } = useAuth()
   const router = useRouter()
   const { slug } = useParams<{ slug: string }>()
@@ -398,6 +398,8 @@ export default function OrgSettingsPage() {
       toast.error(result.error)
       return
     }
+    form.reset(data)
+    refetchOrg()
     router.refresh()
     toast.success('Organisation settings saved')
   }
