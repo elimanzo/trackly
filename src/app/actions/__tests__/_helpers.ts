@@ -43,6 +43,7 @@ export function makeClients(
     userId?: string
     email?: string
     inviteUserByEmail?: ReturnType<typeof vi.fn>
+    updateUserById?: ReturnType<typeof vi.fn>
     rpc?: ReturnType<typeof vi.fn>
     /**
      * Pre-seed the org-lookup, membership, and profile-name maybeSingle calls that
@@ -56,6 +57,7 @@ export function makeClients(
     userId = 'user-actor-0001',
     email = 'actor@example.com',
     inviteUserByEmail = vi.fn().mockResolvedValue({ error: null }),
+    updateUserById = vi.fn().mockResolvedValue({ error: null }),
     rpc = vi.fn().mockResolvedValue({ error: null }),
     seedContext = false,
   } = opts
@@ -78,7 +80,9 @@ export function makeClients(
     admin: {
       from: vi.fn().mockReturnValue(chain),
       rpc,
-      auth: { admin: { inviteUserByEmail, deleteUser: vi.fn().mockResolvedValue({}) } },
+      auth: {
+        admin: { inviteUserByEmail, updateUserById, deleteUser: vi.fn().mockResolvedValue({}) },
+      },
     } as unknown as NonNullable<ActionClients['admin']>,
   }
 }

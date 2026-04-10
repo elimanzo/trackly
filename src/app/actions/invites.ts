@@ -136,6 +136,55 @@ export async function sendInviteAction(
 }
 
 // ---------------------------------------------------------------------------
+// fulfillInvite — shared accept flow (profile + membership + departments + mark accepted)
+// ---------------------------------------------------------------------------
+
+type FulfillableInvite = {
+  id: string
+  org_id: string
+  role: string
+  department_ids: string[] | null
+}
+
+async function fulfillInvite(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  userEmail: string | undefined,
+  fullName: string,
+  invite: FulfillableInvite
+): Promise<{ error: string } | null> {
+  const { error: profileError } = await admin.from('profiles').upsert({
+    id: userId,
+    full_name: fullName,
+    email: userEmail,
+    updated_at: new Date().toISOString(),
+  })
+  if (profileError) return { error: profileError.message }
+
+  const { error: membershipError } = await admin.from('user_org_memberships').upsert({
+    user_id: userId,
+    org_id: invite.org_id,
+    role: invite.role,
+    invite_status: 'active',
+  })
+  if (membershipError) return { error: membershipError.message }
+
+  const deptIds = invite.department_ids ?? []
+  if (deptIds.length > 0) {
+    const { error: deptError } = await admin
+      .from('user_departments')
+      .insert(
+        deptIds.map((department_id) => ({ user_id: userId, department_id, org_id: invite.org_id }))
+      )
+    if (deptError) return { error: deptError.message }
+  }
+
+  await admin.from('invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id)
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // acceptInviteViaGoogleAction
 // ---------------------------------------------------------------------------
 
@@ -153,7 +202,7 @@ export async function acceptInviteViaGoogleAction(
 
   const { data: invite } = await admin
     .from('invites')
-    .select('*')
+    .select('id, org_id, role, department_ids')
     .eq('email', user.email!.toLowerCase())
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
@@ -161,40 +210,7 @@ export async function acceptInviteViaGoogleAction(
 
   if (!invite) return { error: 'Invite not found or has expired. Ask your admin to resend it.' }
 
-  const { error: profileError } = await admin.from('profiles').upsert({
-    id: user.id,
-    full_name: fullName,
-    email: user.email,
-    updated_at: new Date().toISOString(),
-  })
-  if (profileError) return { error: profileError.message }
-
-  const { error: membershipError } = await admin.from('user_org_memberships').upsert({
-    user_id: user.id,
-    org_id: invite.org_id,
-    role: invite.role as string,
-    invite_status: 'active',
-  })
-  if (membershipError) return { error: membershipError.message }
-
-  const deptIds = (invite.department_ids as string[] | null) ?? []
-  if (deptIds.length > 0) {
-    const { error: deptError } = await admin.from('user_departments').insert(
-      deptIds.map((department_id: string) => ({
-        user_id: user.id,
-        department_id,
-        org_id: invite.org_id,
-      }))
-    )
-    if (deptError) return { error: deptError.message }
-  }
-
-  await admin
-    .from('invites')
-    .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id as string)
-
-  return { error: null }
+  return (await fulfillInvite(admin, user.id, user.email, fullName, invite)) ?? { error: null }
 }
 
 // ---------------------------------------------------------------------------
@@ -203,19 +219,20 @@ export async function acceptInviteViaGoogleAction(
 
 export async function acceptInviteAction(
   fullName: string,
-  password: string
+  password: string,
+  clients?: ActionClients
 ): Promise<{ error: string } | { error: null; email: string }> {
-  const supabase = await createClient()
+  const supabase = clients?.supabase ?? (await createClient())
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Session expired. Please use the invite link again.' }
 
-  const admin = createAdminClient()
+  const admin = clients?.admin ?? createAdminClient()
 
   const { data: invite } = await admin
     .from('invites')
-    .select('*')
+    .select('id, org_id, role, department_ids')
     .eq('email', user.email!.toLowerCase())
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
@@ -223,41 +240,11 @@ export async function acceptInviteAction(
 
   if (!invite) return { error: 'Invite not found or has expired. Ask your admin to resend it.' }
 
-  const { error: profileError } = await admin.from('profiles').upsert({
-    id: user.id,
-    full_name: fullName,
-    email: user.email,
-    updated_at: new Date().toISOString(),
-  })
-  if (profileError) return { error: profileError.message }
-
-  const { error: membershipError } = await admin.from('user_org_memberships').upsert({
-    user_id: user.id,
-    org_id: invite.org_id,
-    role: invite.role as string,
-    invite_status: 'active',
-  })
-  if (membershipError) return { error: membershipError.message }
-
   const { error: pwError } = await admin.auth.admin.updateUserById(user.id, { password })
   if (pwError) return { error: pwError.message }
 
-  const deptIds = (invite.department_ids as string[] | null) ?? []
-  if (deptIds.length > 0) {
-    const { error: deptError } = await admin.from('user_departments').insert(
-      deptIds.map((department_id: string) => ({
-        user_id: user.id,
-        department_id,
-        org_id: invite.org_id,
-      }))
-    )
-    if (deptError) return { error: deptError.message }
-  }
-
-  await admin
-    .from('invites')
-    .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id as string)
+  const result = await fulfillInvite(admin, user.id, user.email, fullName, invite)
+  if (result) return result
 
   return { error: null, email: user.email!.toLowerCase() }
 }
@@ -318,7 +305,7 @@ export async function acceptAuthenticatedInviteAction(
 
   const { data: invite } = await admin
     .from('invites')
-    .select('*, organizations(slug)')
+    .select('id, org_id, role, department_ids, email, organizations(slug)')
     .eq('token', token)
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
@@ -333,38 +320,14 @@ export async function acceptAuthenticatedInviteAction(
   const fullName =
     (user.user_metadata?.full_name as string | undefined) ?? user.email!.split('@')[0]
 
-  const { error: profileError } = await admin.from('profiles').upsert({
-    id: user.id,
-    full_name: fullName,
-    email: user.email,
-    updated_at: new Date().toISOString(),
-  })
-  if (profileError) return { error: profileError.message }
-
-  const { error: membershipError } = await admin.from('user_org_memberships').upsert({
-    user_id: user.id,
-    org_id: invite.org_id,
-    role: invite.role as string,
-    invite_status: 'active',
-  })
-  if (membershipError) return { error: membershipError.message }
-
-  const deptIds = (invite.department_ids as string[] | null) ?? []
-  if (deptIds.length > 0) {
-    const { error: deptError } = await admin.from('user_departments').insert(
-      deptIds.map((department_id: string) => ({
-        user_id: user.id,
-        department_id,
-        org_id: invite.org_id,
-      }))
-    )
-    if (deptError) return { error: deptError.message }
-  }
-
-  await admin
-    .from('invites')
-    .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id as string)
+  const result = await fulfillInvite(
+    admin,
+    user.id,
+    user.email,
+    fullName,
+    invite as FulfillableInvite
+  )
+  if (result) return result
 
   const orgs = invite.organizations as { slug: string }[] | { slug: string } | null
   const orgSlug = (Array.isArray(orgs) ? orgs[0]?.slug : orgs?.slug) ?? ''
