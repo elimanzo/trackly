@@ -25,10 +25,12 @@ A multi-tenant SaaS app for tracking physical assets across departments — buil
 
 ### Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
-- [pnpm](https://pnpm.io) — `npm install -g pnpm`
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — required for the local Supabase stack
-- [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) — `brew install supabase/tap/supabase`
+- **Node.js 20+** — use [nvm](https://github.com/nvm-sh/nvm) (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows) (Windows): `nvm install 20 && nvm use 20`
+- **pnpm** — `npm install -g pnpm`
+- **Docker Desktop** — [download here](https://www.docker.com/products/docker-desktop/) — required for the local Supabase stack
+- **Supabase CLI:**
+  - macOS: `brew install supabase/tap/supabase`
+  - Windows/Linux: `npx supabase` (no install needed), or see [official install guide](https://supabase.com/docs/guides/local-development/cli/getting-started)
 
 ### Setup
 
@@ -134,6 +136,10 @@ supabase/
 │   └── 003_multi_org.sql     # Multi-org edge cases (3 extra orgs, 6 users)
 └── templates/          # Custom Supabase email templates
 ```
+
+## For contributors
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a full breakdown of the codebase structure, conventions, and where to put new things.
 
 ## Adding a migration
 
