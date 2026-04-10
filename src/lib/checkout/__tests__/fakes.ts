@@ -12,9 +12,18 @@ import type {
 // InMemoryCheckoutRepo
 // ---------------------------------------------------------------------------
 
+type StoredAssignment = CheckoutAssignmentRecord & {
+  asset: CheckoutAssetRecord
+  // Fields not in CheckoutAssignmentRecord but written by updateAssignmentFields
+  departmentId: string | null
+  locationId: string | null
+  expectedReturnAt: string | null
+  notes: string | null
+}
+
 export class InMemoryCheckoutRepo implements CheckoutRepository {
   assets = new Map<string, CheckoutAssetRecord>()
-  assignments = new Map<string, CheckoutAssignmentRecord & { asset: CheckoutAssetRecord }>()
+  assignments = new Map<string, StoredAssignment>()
   private nextId = 1
 
   seedAsset(asset: CheckoutAssetRecord & { id: string }) {
@@ -64,6 +73,10 @@ export class InMemoryCheckoutRepo implements CheckoutRepository {
       quantity: data.quantity,
       assignedToName: data.assignedToName,
       returnedAt: null,
+      departmentId: data.departmentId,
+      locationId: data.locationId,
+      expectedReturnAt: data.expectedReturnAt,
+      notes: data.notes,
       asset,
     })
     return { id }
@@ -94,7 +107,13 @@ export class InMemoryCheckoutRepo implements CheckoutRepository {
 
   async updateAssignmentFields(assignmentId: string, patch: AssignmentPatch) {
     const a = this.assignments.get(assignmentId)
-    if (a) a.assignedToName = patch.assignedToName
+    if (!a) return
+    a.assignedToName = patch.assignedToName
+    a.quantity = patch.quantity
+    a.departmentId = patch.departmentId
+    a.locationId = patch.locationId
+    a.expectedReturnAt = patch.expectedReturnAt
+    a.notes = patch.notes
   }
 
   async setAssetStatus(_assetId: string, _status: 'active' | 'checked_out') {
