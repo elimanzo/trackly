@@ -50,3 +50,36 @@ export const MaintenanceEventSchema = z.object({
 })
 
 export type MaintenanceEvent = z.infer<typeof MaintenanceEventSchema>
+
+// ---------------------------------------------------------------------------
+// Form schemas
+// ---------------------------------------------------------------------------
+
+export const MaintenanceFormSchema = z
+  .object({
+    isRetroactive: z.boolean(),
+    title: z.string().min(1, 'Title is required').max(200),
+    type: MaintenanceTypeSchema,
+    scheduledDate: z.string().min(1, 'Scheduled date is required'),
+    startedAt: z.string().nullable(),
+    completedAt: z.string().nullable(),
+    cost: z.number().nonnegative('Cost must be 0 or more').nullable(),
+    technicianName: z.string().max(200).nullable(),
+    notes: z.string().max(2000).nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isRetroactive) {
+      if (!data.startedAt) {
+        ctx.addIssue({ code: 'custom', message: 'Start date is required', path: ['startedAt'] })
+      }
+      if (!data.completedAt) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Completion date is required',
+          path: ['completedAt'],
+        })
+      }
+    }
+  })
+
+export type MaintenanceFormInput = z.infer<typeof MaintenanceFormSchema>

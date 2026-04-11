@@ -10,6 +10,7 @@ import { deleteAsset, restockAsset, returnAsset, returnBulkAssignment } from '@/
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
 import { CheckoutModal } from '@/components/assets/CheckoutModal'
 import { EditAssignmentModal } from '@/components/assets/EditAssignmentModal'
+import { MaintenanceTab } from '@/components/assets/MaintenanceTab'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -152,6 +153,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="assignment">{asset.ui.assignmentTabLabel}</TabsTrigger>
+            <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
 
@@ -329,6 +331,16 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
                 This asset is not currently checked out.
               </div>
             )}
+          </TabsContent>
+
+          {/* Maintenance tab */}
+          <TabsContent value="maintenance" className="mt-4">
+            <MaintenanceTab
+              assetId={asset.id}
+              assetDepartmentId={asset.departmentId}
+              role={role}
+              departmentIds={departmentIds}
+            />
           </TabsContent>
 
           {/* History tab */}
@@ -541,6 +553,9 @@ const ACTION_LABELS: Record<AuditLog['action'], string> = {
   status_changed: 'Status changed',
   invited: 'Invited',
   role_changed: 'Role changed',
+  maintenance_scheduled: 'Maintenance scheduled',
+  maintenance_started: 'Maintenance started',
+  maintenance_completed: 'Maintenance completed',
 }
 
 const ACTION_COLORS: Record<AuditLog['action'], string> = {
@@ -552,6 +567,9 @@ const ACTION_COLORS: Record<AuditLog['action'], string> = {
   status_changed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   invited: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400',
   role_changed: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
+  maintenance_scheduled: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
+  maintenance_started: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  maintenance_completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
 }
 
 function AuditLogRow({ log, isLast }: { log: AuditLog; isLast: boolean }) {
