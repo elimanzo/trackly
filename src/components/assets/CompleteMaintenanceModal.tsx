@@ -31,6 +31,7 @@ import { useOrg } from '@/providers/OrgProvider'
 
 interface CompleteMaintenanceModalProps {
   eventId: string
+  assetId: string
   assetDepartmentId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -39,6 +40,7 @@ interface CompleteMaintenanceModalProps {
 
 export function CompleteMaintenanceModal({
   eventId,
+  assetId,
   assetDepartmentId,
   open,
   onOpenChange,
@@ -60,7 +62,13 @@ export function CompleteMaintenanceModal({
   const isSubmitting = form.formState.isSubmitting
 
   async function onSubmit(data: CompleteMaintenanceFormInput) {
-    const result = await completeMaintenanceAction(orgSlug, eventId, assetDepartmentId, data)
+    const result = await completeMaintenanceAction(
+      orgSlug,
+      assetId,
+      eventId,
+      assetDepartmentId,
+      data
+    )
     if (result?.error) {
       toast.error(result.error)
       return

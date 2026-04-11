@@ -1,5 +1,7 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
+
 import {
   completeMaintenance,
   createSupabaseMaintenancePorts,
@@ -85,6 +87,7 @@ export async function scheduleMaintenanceAction(
 
 export async function startMaintenanceAction(
   orgSlug: string,
+  assetId: string,
   eventId: string,
   assetDepartmentId: string | null
 ): Promise<{ error: string } | null> {
@@ -96,11 +99,14 @@ export async function startMaintenanceAction(
   })
   if (denied) return denied
 
-  return startMaintenance(eventId, createSupabaseMaintenancePorts(ctx))
+  const result = await startMaintenance(eventId, createSupabaseMaintenancePorts(ctx))
+  if (!result) revalidatePath(`/orgs/${orgSlug}/assets/${assetId}`)
+  return result
 }
 
 export async function completeMaintenanceAction(
   orgSlug: string,
+  assetId: string,
   eventId: string,
   assetDepartmentId: string | null,
   input: CompleteMaintenanceFormInput
@@ -116,5 +122,11 @@ export async function completeMaintenanceAction(
   })
   if (denied) return denied
 
-  return completeMaintenance(eventId, parsed.data, createSupabaseMaintenancePorts(ctx))
+  const result = await completeMaintenance(
+    eventId,
+    parsed.data,
+    createSupabaseMaintenancePorts(ctx)
+  )
+  if (!result) revalidatePath(`/orgs/${orgSlug}/assets/${assetId}`)
+  return result
 }

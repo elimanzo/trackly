@@ -1,7 +1,6 @@
 'use client'
 
 import { CalendarClock, Loader2, Play, Plus, Wrench } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -43,7 +42,6 @@ export function MaintenanceTab({
   role,
   departmentIds,
 }: MaintenanceTabProps) {
-  const router = useRouter()
   const { data: events, isLoading, refresh } = useAssetMaintenanceEvents(assetId)
   const [scheduleOpen, setScheduleOpen] = useState(false)
 
@@ -52,11 +50,6 @@ export function MaintenanceTab({
         departmentId: assetDepartmentId,
       })
     : false
-
-  function handleSuccess() {
-    refresh()
-    router.refresh()
-  }
 
   if (isBulk) {
     return (
@@ -109,9 +102,10 @@ export function MaintenanceTab({
             <MaintenanceEventCard
               key={event.id}
               event={event}
+              assetId={assetId}
               assetDepartmentId={assetDepartmentId}
               canManage={canManage}
-              onSuccess={handleSuccess}
+              onSuccess={refresh}
             />
           ))}
         </div>
@@ -123,7 +117,7 @@ export function MaintenanceTab({
           assetDepartmentId={assetDepartmentId}
           open={scheduleOpen}
           onOpenChange={setScheduleOpen}
-          onSuccess={handleSuccess}
+          onSuccess={refresh}
         />
       )}
     </div>
@@ -132,6 +126,7 @@ export function MaintenanceTab({
 
 interface MaintenanceEventCardProps {
   event: MaintenanceEvent
+  assetId: string
   assetDepartmentId: string | null
   canManage: boolean
   onSuccess: () => void
@@ -139,6 +134,7 @@ interface MaintenanceEventCardProps {
 
 function MaintenanceEventCard({
   event,
+  assetId,
   assetDepartmentId,
   canManage,
   onSuccess,
@@ -150,7 +146,7 @@ function MaintenanceEventCard({
 
   async function handleStart() {
     setStarting(true)
-    const result = await startMaintenanceAction(orgSlug, event.id, assetDepartmentId)
+    const result = await startMaintenanceAction(orgSlug, assetId, event.id, assetDepartmentId)
     setStarting(false)
     if (result?.error) {
       toast.error(result.error)
@@ -210,6 +206,7 @@ function MaintenanceEventCard({
               </Button>
               <CompleteMaintenanceModal
                 eventId={event.id}
+                assetId={assetId}
                 assetDepartmentId={assetDepartmentId}
                 open={completeOpen}
                 onOpenChange={setCompleteOpen}
