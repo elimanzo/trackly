@@ -1,12 +1,19 @@
 'use server'
 
 import {
+  completeMaintenance,
+  createSupabaseMaintenancePorts,
   logRetroactiveMaintenance,
   scheduleMaintenance,
-  createSupabaseMaintenancePorts,
+  startMaintenance,
 } from '@/lib/maintenance'
 import { createPolicy } from '@/lib/permissions'
-import { MaintenanceFormSchema, type MaintenanceFormInput } from '@/lib/types/maintenance'
+import {
+  CompleteMaintenanceFormSchema,
+  MaintenanceFormSchema,
+  type CompleteMaintenanceFormInput,
+  type MaintenanceFormInput,
+} from '@/lib/types/maintenance'
 
 import { getContext } from './_context'
 
@@ -74,4 +81,40 @@ export async function scheduleMaintenanceAction(
     ctx.userId,
     ports
   )
+}
+
+export async function startMaintenanceAction(
+  orgSlug: string,
+  eventId: string,
+  assetDepartmentId: string | null
+): Promise<{ error: string } | null> {
+  const ctx = await getContext(orgSlug)
+  if (!ctx) return { error: 'Not authenticated' }
+
+  const denied = createPolicy(ctx).enforce('maintenance:manage', {
+    departmentId: assetDepartmentId,
+  })
+  if (denied) return denied
+
+  return startMaintenance(eventId, createSupabaseMaintenancePorts(ctx))
+}
+
+export async function completeMaintenanceAction(
+  orgSlug: string,
+  eventId: string,
+  assetDepartmentId: string | null,
+  input: CompleteMaintenanceFormInput
+): Promise<{ error: string } | null> {
+  const parsed = CompleteMaintenanceFormSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+
+  const ctx = await getContext(orgSlug)
+  if (!ctx) return { error: 'Not authenticated' }
+
+  const denied = createPolicy(ctx).enforce('maintenance:manage', {
+    departmentId: assetDepartmentId,
+  })
+  if (denied) return denied
+
+  return completeMaintenance(eventId, parsed.data, createSupabaseMaintenancePorts(ctx))
 }

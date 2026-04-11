@@ -341,6 +341,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
               isBulk={asset.isBulk}
               role={role}
               departmentIds={departmentIds}
+              onAssetRefresh={refresh}
             />
           </TabsContent>
 
