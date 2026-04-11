@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import type { OrgMembership, Organization, UserRole } from '@/lib/types'
@@ -15,6 +15,7 @@ type OrgContextValue = {
   role: UserRole | null
   departmentIds: string[]
   departmentNames: string[]
+  refetchOrg: () => void
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -27,7 +28,7 @@ export function OrgProvider({ slug, children }: { slug: string; children: React.
   const membership = user?.memberships.find((m) => m.orgSlug === slug) ?? null
 
   // Fetch org data by slug
-  useEffect(() => {
+  const refetchOrg = useCallback(() => {
     if (!slug) return
     const supabase = createClient()
     supabase
@@ -53,6 +54,10 @@ export function OrgProvider({ slug, children }: { slug: string; children: React.
         })
       })
   }, [slug])
+
+  useEffect(() => {
+    refetchOrg()
+  }, [refetchOrg])
 
   // Fetch department names for the active membership (ids come from user_departments)
   const [departmentIds, setDepartmentIds] = useState<string[]>([])
@@ -92,6 +97,7 @@ export function OrgProvider({ slug, children }: { slug: string; children: React.
         role: membership?.role ?? null,
         departmentIds,
         departmentNames,
+        refetchOrg,
       }}
     >
       {children}
@@ -105,6 +111,7 @@ const DEFAULT_ORG_CONTEXT: OrgContextValue = {
   role: null,
   departmentIds: [],
   departmentNames: [],
+  refetchOrg: () => {},
 }
 
 export function useOrg(): OrgContextValue {
