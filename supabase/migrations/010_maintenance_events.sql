@@ -74,21 +74,21 @@ alter table public.maintenance_events enable row level security;
 create policy "org members can view maintenance events"
   on public.maintenance_events for select
   using (
-    org_id = public.get_my_org_id()
+    org_id = any(public.get_my_org_ids())
     and deleted_at is null
   );
 
 create policy "editor+ can insert maintenance events"
   on public.maintenance_events for insert
   with check (
-    org_id = public.get_my_org_id()
-    and public.get_my_role() in ('owner', 'admin', 'editor')
+    org_id = any(public.get_my_org_ids())
+    and public.get_my_role_in_org(org_id) in ('owner', 'admin', 'editor')
   );
 
 create policy "editor+ can update maintenance events"
   on public.maintenance_events for update
   using (
-    org_id = public.get_my_org_id()
+    org_id = any(public.get_my_org_ids())
     and deleted_at is null
-    and public.get_my_role() in ('owner', 'admin', 'editor')
+    and public.get_my_role_in_org(org_id) in ('owner', 'admin', 'editor')
   );
