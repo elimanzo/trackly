@@ -33,6 +33,7 @@ interface MaintenanceTabProps {
   isBulk: boolean
   role: UserRole | null
   departmentIds: string[]
+  onAssetRefresh: () => void
 }
 
 export function MaintenanceTab({
@@ -41,6 +42,7 @@ export function MaintenanceTab({
   isBulk,
   role,
   departmentIds,
+  onAssetRefresh,
 }: MaintenanceTabProps) {
   const { data: events, isLoading, refresh } = useAssetMaintenanceEvents(assetId)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -50,6 +52,11 @@ export function MaintenanceTab({
         departmentId: assetDepartmentId,
       })
     : false
+
+  function handleTransitionSuccess() {
+    refresh()
+    onAssetRefresh()
+  }
 
   if (isBulk) {
     return (
@@ -105,7 +112,7 @@ export function MaintenanceTab({
               assetId={assetId}
               assetDepartmentId={assetDepartmentId}
               canManage={canManage}
-              onSuccess={refresh}
+              onSuccess={handleTransitionSuccess}
             />
           ))}
         </div>
