@@ -1,8 +1,12 @@
 'use client'
 
-import { CalendarClock, Loader2, Plus, Wrench } from 'lucide-react'
+import { CalendarClock, Loader2, Play, Plus, Wrench } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
+import { startMaintenanceAction } from '@/app/actions/maintenance'
+import { CompleteMaintenanceModal } from '@/components/assets/CompleteMaintenanceModal'
 import { ScheduleMaintenanceModal } from '@/components/assets/ScheduleMaintenanceModal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,6 +20,7 @@ import {
   type MaintenanceEvent,
 } from '@/lib/types/maintenance'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
+import { useOrg } from '@/providers/OrgProvider'
 
 const STATUS_COLORS: Record<MaintenanceEvent['status'], string> = {
   scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
@@ -38,6 +43,7 @@ export function MaintenanceTab({
   role,
   departmentIds,
 }: MaintenanceTabProps) {
+  const router = useRouter()
   const { data: events, isLoading, refresh } = useAssetMaintenanceEvents(assetId)
   const [scheduleOpen, setScheduleOpen] = useState(false)
 
@@ -46,6 +52,11 @@ export function MaintenanceTab({
         departmentId: assetDepartmentId,
       })
     : false
+
+  function handleSuccess() {
+    refresh()
+    router.refresh()
+  }
 
   if (isBulk) {
     return (
@@ -95,7 +106,13 @@ export function MaintenanceTab({
       ) : (
         <div className="space-y-3">
           {events.map((event) => (
-            <MaintenanceEventCard key={event.id} event={event} />
+            <MaintenanceEventCard
+              key={event.id}
+              event={event}
+              assetDepartmentId={assetDepartmentId}
+              canManage={canManage}
+              onSuccess={handleSuccess}
+            />
           ))}
         </div>
       )}
@@ -106,14 +123,43 @@ export function MaintenanceTab({
           assetDepartmentId={assetDepartmentId}
           open={scheduleOpen}
           onOpenChange={setScheduleOpen}
-          onSuccess={refresh}
+          onSuccess={handleSuccess}
         />
       )}
     </div>
   )
 }
 
-function MaintenanceEventCard({ event }: { event: MaintenanceEvent }) {
+interface MaintenanceEventCardProps {
+  event: MaintenanceEvent
+  assetDepartmentId: string | null
+  canManage: boolean
+  onSuccess: () => void
+}
+
+function MaintenanceEventCard({
+  event,
+  assetDepartmentId,
+  canManage,
+  onSuccess,
+}: MaintenanceEventCardProps) {
+  const { membership } = useOrg()
+  const orgSlug = membership?.orgSlug ?? ''
+  const [completeOpen, setCompleteOpen] = useState(false)
+  const [starting, setStarting] = useState(false)
+
+  async function handleStart() {
+    setStarting(true)
+    const result = await startMaintenanceAction(orgSlug, event.id, assetDepartmentId)
+    setStarting(false)
+    if (result?.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success('Maintenance started')
+    onSuccess()
+  }
+
   return (
     <Card className="shadow-sm">
       <CardContent className="pt-4">
@@ -144,6 +190,33 @@ function MaintenanceEventCard({ event }: { event: MaintenanceEvent }) {
               {event.notes && <span className="col-span-2 truncate">Notes: {event.notes}</span>}
             </div>
           </div>
+
+          {/* Action buttons */}
+          {canManage && event.status === 'scheduled' && (
+            <Button size="sm" variant="outline" onClick={handleStart} disabled={starting}>
+              {starting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              <span className="ml-1.5">Start</span>
+            </Button>
+          )}
+          {canManage && event.status === 'in_progress' && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setCompleteOpen(true)}>
+                <Wrench className="h-3.5 w-3.5" />
+                <span className="ml-1.5">Complete</span>
+              </Button>
+              <CompleteMaintenanceModal
+                eventId={event.id}
+                assetDepartmentId={assetDepartmentId}
+                open={completeOpen}
+                onOpenChange={setCompleteOpen}
+                onSuccess={onSuccess}
+              />
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

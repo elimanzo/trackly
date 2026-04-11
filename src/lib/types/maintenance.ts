@@ -83,3 +83,12 @@ export const MaintenanceFormSchema = z
   })
 
 export type MaintenanceFormInput = z.infer<typeof MaintenanceFormSchema>
+
+export const CompleteMaintenanceFormSchema = z.object({
+  completedAt: z.string().min(1, 'Completion date is required'),
+  cost: z.number().nonnegative('Cost must be 0 or more').nullable(),
+  technicianName: z.string().max(200).nullable(),
+  notes: z.string().max(2000).nullable(),
+})
+
+export type CompleteMaintenanceFormInput = z.infer<typeof CompleteMaintenanceFormSchema>
