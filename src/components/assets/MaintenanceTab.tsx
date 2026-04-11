@@ -26,6 +26,7 @@ const STATUS_COLORS: Record<MaintenanceEvent['status'], string> = {
 interface MaintenanceTabProps {
   assetId: string
   assetDepartmentId: string | null
+  isBulk: boolean
   role: UserRole | null
   departmentIds: string[]
 }
@@ -33,6 +34,7 @@ interface MaintenanceTabProps {
 export function MaintenanceTab({
   assetId,
   assetDepartmentId,
+  isBulk,
   role,
   departmentIds,
 }: MaintenanceTabProps) {
@@ -44,6 +46,19 @@ export function MaintenanceTab({
         departmentId: assetDepartmentId,
       })
     : false
+
+  if (isBulk) {
+    return (
+      <div className="text-muted-foreground flex flex-col items-center gap-2 rounded-xl border py-12 text-center text-sm">
+        <Wrench className="h-8 w-8 opacity-30" />
+        <p className="font-medium">Maintenance is not tracked for bulk assets.</p>
+        <p className="max-w-xs">
+          To track maintenance per unit, create each item as a serialized asset with its own asset
+          tag.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

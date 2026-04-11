@@ -338,6 +338,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
             <MaintenanceTab
               assetId={asset.id}
               assetDepartmentId={asset.departmentId}
+              isBulk={asset.isBulk}
               role={role}
               departmentIds={departmentIds}
             />

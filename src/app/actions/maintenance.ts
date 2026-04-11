@@ -27,6 +27,19 @@ export async function scheduleMaintenanceAction(
   })
   if (denied) return denied
 
+  const { data: assetRow } = await ctx.admin
+    .from('assets')
+    .select('is_bulk')
+    .eq('id', assetId)
+    .eq('org_id', ctx.orgId)
+    .single()
+  if (assetRow?.is_bulk) {
+    return {
+      error:
+        'Maintenance cannot be scheduled for bulk assets. Track individual units as serialized assets.',
+    }
+  }
+
   const ports = createSupabaseMaintenancePorts(ctx)
 
   if (parsed.data.isRetroactive) {
