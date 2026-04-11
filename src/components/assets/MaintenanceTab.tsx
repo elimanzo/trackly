@@ -109,7 +109,6 @@ export function MaintenanceTab({
             <MaintenanceEventCard
               key={event.id}
               event={event}
-              assetId={assetId}
               assetDepartmentId={assetDepartmentId}
               canManage={canManage}
               onSuccess={handleTransitionSuccess}
@@ -133,7 +132,6 @@ export function MaintenanceTab({
 
 interface MaintenanceEventCardProps {
   event: MaintenanceEvent
-  assetId: string
   assetDepartmentId: string | null
   canManage: boolean
   onSuccess: () => void
@@ -141,7 +139,6 @@ interface MaintenanceEventCardProps {
 
 function MaintenanceEventCard({
   event,
-  assetId,
   assetDepartmentId,
   canManage,
   onSuccess,
@@ -153,7 +150,7 @@ function MaintenanceEventCard({
 
   async function handleStart() {
     setStarting(true)
-    const result = await startMaintenanceAction(orgSlug, assetId, event.id, assetDepartmentId)
+    const result = await startMaintenanceAction(orgSlug, event.id, assetDepartmentId)
     setStarting(false)
     if (result?.error) {
       toast.error(result.error)
@@ -213,7 +210,6 @@ function MaintenanceEventCard({
               </Button>
               <CompleteMaintenanceModal
                 eventId={event.id}
-                assetId={assetId}
                 assetDepartmentId={assetDepartmentId}
                 open={completeOpen}
                 onOpenChange={setCompleteOpen}
