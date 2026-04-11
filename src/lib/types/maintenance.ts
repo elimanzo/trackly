@@ -92,3 +92,16 @@ export const CompleteMaintenanceFormSchema = z.object({
 })
 
 export type CompleteMaintenanceFormInput = z.infer<typeof CompleteMaintenanceFormSchema>
+
+// started_at and completed_at are intentionally excluded — those timestamps
+// are audit-significant and are locked after creation.
+export const UpdateMaintenanceFormSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200),
+  type: MaintenanceTypeSchema,
+  scheduledDate: z.string().min(1, 'Scheduled date is required'),
+  cost: z.number().nonnegative('Cost must be 0 or more').nullable(),
+  technicianName: z.string().max(200).nullable(),
+  notes: z.string().max(2000).nullable(),
+})
+
+export type UpdateMaintenanceFormInput = z.infer<typeof UpdateMaintenanceFormSchema>

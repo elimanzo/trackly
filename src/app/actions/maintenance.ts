@@ -3,16 +3,20 @@
 import {
   completeMaintenance,
   createSupabaseMaintenancePorts,
+  deleteMaintenance,
   logRetroactiveMaintenance,
   scheduleMaintenance,
   startMaintenance,
+  updateMaintenance,
 } from '@/lib/maintenance'
 import { createPolicy } from '@/lib/permissions'
 import {
   CompleteMaintenanceFormSchema,
   MaintenanceFormSchema,
+  UpdateMaintenanceFormSchema,
   type CompleteMaintenanceFormInput,
   type MaintenanceFormInput,
+  type UpdateMaintenanceFormInput,
 } from '@/lib/types/maintenance'
 
 import { getContext } from './_context'
@@ -117,4 +121,51 @@ export async function completeMaintenanceAction(
   if (denied) return denied
 
   return completeMaintenance(eventId, parsed.data, createSupabaseMaintenancePorts(ctx))
+}
+
+export async function updateMaintenanceAction(
+  orgSlug: string,
+  eventId: string,
+  assetDepartmentId: string | null,
+  input: UpdateMaintenanceFormInput
+): Promise<{ error: string } | null> {
+  const parsed = UpdateMaintenanceFormSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+
+  const ctx = await getContext(orgSlug)
+  if (!ctx) return { error: 'Not authenticated' }
+
+  // Only admins and owners can edit maintenance events
+  const denied = createPolicy(ctx).enforce('department:manage')
+  if (denied) return denied
+
+  return updateMaintenance(
+    eventId,
+    {
+      title: parsed.data.title,
+      type: parsed.data.type,
+      scheduledDate: parsed.data.scheduledDate,
+      cost: parsed.data.cost,
+      technicianName: parsed.data.technicianName ?? null,
+      notes: parsed.data.notes ?? null,
+    },
+    createSupabaseMaintenancePorts(ctx)
+  )
+}
+
+export async function deleteMaintenanceAction(
+  orgSlug: string,
+  eventId: string,
+  assetDepartmentId: string | null
+): Promise<{ error: string } | null> {
+  const ctx = await getContext(orgSlug)
+  if (!ctx) return { error: 'Not authenticated' }
+
+  const policy = createPolicy(ctx)
+  const denied = policy.enforce('maintenance:delete', { departmentId: assetDepartmentId })
+  if (denied) return denied
+
+  const isAdmin = policy.can('department:manage')
+
+  return deleteMaintenance(eventId, ctx.userId, isAdmin, createSupabaseMaintenancePorts(ctx))
 }

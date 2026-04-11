@@ -10,6 +10,7 @@ import type {
   MaintenanceAuditPort,
   MaintenancePorts,
   MaintenanceRepository,
+  UpdateMaintenanceData,
 } from './ports'
 
 type AdminClient = ActionContext['admin']
@@ -110,6 +111,29 @@ function makeRepo(admin: AdminClient, orgId: string): MaintenanceRepository {
           technician_name: data.technicianName,
           notes: data.notes,
         })
+        .eq('id', eventId)
+        .eq('org_id', orgId)
+    },
+
+    async updateEvent(eventId, data: UpdateMaintenanceData) {
+      await admin
+        .from('maintenance_events')
+        .update({
+          title: data.title,
+          type: data.type,
+          scheduled_date: data.scheduledDate,
+          cost: data.cost,
+          technician_name: data.technicianName,
+          notes: data.notes,
+        })
+        .eq('id', eventId)
+        .eq('org_id', orgId)
+    },
+
+    async softDeleteEvent(eventId) {
+      await admin
+        .from('maintenance_events')
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', eventId)
         .eq('org_id', orgId)
     },
