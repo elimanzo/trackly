@@ -42,21 +42,24 @@ export type CompleteMaintenanceData = {
 }
 
 export type UpdateMaintenanceData = {
-  title?: string
-  type?: string
-  scheduledDate?: string
-  startedAt?: string | null
-  completedAt?: string | null
-  cost?: number | null
-  technicianName?: string | null
-  notes?: string | null
+  title: string
+  type: string
+  scheduledDate: string
+  cost: number | null
+  technicianName: string | null
+  notes: string | null
 }
 
 export type MaintenanceAuditPayload = {
   entityType: 'asset'
   entityId: string
   entityName: string
-  action: 'maintenance_scheduled' | 'maintenance_started' | 'maintenance_completed'
+  action:
+    | 'maintenance_scheduled'
+    | 'maintenance_started'
+    | 'maintenance_completed'
+    | 'maintenance_updated'
+    | 'maintenance_deleted'
   changes: Record<string, { old: unknown; new: unknown }> | null
 }
 
@@ -72,6 +75,8 @@ export interface MaintenanceRepository {
   insertEvent(data: InsertMaintenanceData): Promise<{ id: string }>
   setEventStatus(eventId: string, status: MaintenanceStatus): Promise<void>
   completeEvent(eventId: string, data: CompleteMaintenanceData): Promise<void>
+  updateEvent(eventId: string, data: UpdateMaintenanceData): Promise<void>
+  softDeleteEvent(eventId: string): Promise<void>
   setAssetStatus(assetId: string, status: AssetStatus): Promise<void>
 }
 

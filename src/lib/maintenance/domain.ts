@@ -1,6 +1,6 @@
 import type { MaintenanceType } from '@/lib/types/maintenance'
 
-import type { CompleteMaintenanceData, MaintenancePorts } from './ports'
+import type { CompleteMaintenanceData, MaintenancePorts, UpdateMaintenanceData } from './ports'
 
 export type DomainResult = { error: string } | null
 
@@ -219,6 +219,79 @@ export async function completeMaintenance(
       status: { old: 'under_maintenance', new: 'active' },
       ...(input.cost != null ? { cost: { old: null, new: input.cost } } : {}),
     },
+  })
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// updateMaintenance
+// Edits metadata on any event. started_at and completed_at are intentionally
+// excluded — those timestamps are audit-significant and locked after creation.
+// Admins can edit any event; editors are blocked at the action layer.
+// ---------------------------------------------------------------------------
+
+export async function updateMaintenance(
+  eventId: string,
+  input: UpdateMaintenanceData,
+  ports: MaintenancePorts
+): Promise<DomainResult> {
+  const event = await ports.repo.getEvent(eventId)
+  if (!event) return { error: 'Maintenance event not found.' }
+
+  const asset = await ports.repo.getAsset(event.assetId)
+  if (!asset) return { error: 'Asset not found.' }
+
+  await ports.repo.updateEvent(eventId, input)
+
+  await ports.audit.log({
+    entityType: 'asset',
+    entityId: event.assetId,
+    entityName: asset.name,
+    action: 'maintenance_updated',
+    changes: { title: { old: event.title, new: input.title } },
+  })
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// deleteMaintenance
+// Soft-deletes an event by setting deleted_at.
+// Editors: only their own scheduled events.
+// Admins: any event in any status.
+// Completed events are never hard-deleted (enforced here + at the action layer).
+// ---------------------------------------------------------------------------
+
+export async function deleteMaintenance(
+  eventId: string,
+  requesterId: string,
+  isAdmin: boolean,
+  ports: MaintenancePorts
+): Promise<DomainResult> {
+  const event = await ports.repo.getEvent(eventId)
+  if (!event) return { error: 'Maintenance event not found.' }
+
+  if (!isAdmin) {
+    if (event.status !== 'scheduled') {
+      return { error: 'Editors can only delete scheduled events.' }
+    }
+    if (event.createdBy !== requesterId) {
+      return { error: 'You can only delete events you created.' }
+    }
+  }
+
+  const asset = await ports.repo.getAsset(event.assetId)
+  if (!asset) return { error: 'Asset not found.' }
+
+  await ports.repo.softDeleteEvent(eventId)
+
+  await ports.audit.log({
+    entityType: 'asset',
+    entityId: event.assetId,
+    entityName: asset.name,
+    action: 'maintenance_deleted',
+    changes: { title: { old: event.title, new: null } },
   })
 
   return null

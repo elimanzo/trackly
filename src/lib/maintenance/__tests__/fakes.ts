@@ -9,6 +9,7 @@ import type {
   MaintenanceAuditPort,
   MaintenanceEventRecord,
   MaintenanceRepository,
+  UpdateMaintenanceData,
 } from '../ports'
 
 // ---------------------------------------------------------------------------
@@ -117,6 +118,23 @@ export class InMemoryMaintenanceRepo implements MaintenanceRepository {
       event.technicianName = data.technicianName
       event.notes = data.notes
     }
+  }
+
+  async updateEvent(eventId: string, data: UpdateMaintenanceData) {
+    const event = this.events.get(eventId)
+    if (event) {
+      event.title = data.title
+      event.type = data.type
+      event.scheduledDate = data.scheduledDate
+      event.cost = data.cost
+      event.technicianName = data.technicianName
+      event.notes = data.notes
+    }
+  }
+
+  async softDeleteEvent(eventId: string) {
+    const event = this.events.get(eventId)
+    if (event) event.deletedAt = new Date().toISOString()
   }
 
   async setAssetStatus(assetId: string, status: AssetStatus) {
