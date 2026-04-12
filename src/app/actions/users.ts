@@ -70,27 +70,15 @@ export async function updateUserDepartmentsAction(
   const denied = ctx.requireRole('admin')
   if (denied) return denied
 
-  // Replace all department memberships for this user within the active org
-  const { error: deleteError } = await ctx.admin
-    .from('user_departments')
-    .delete()
-    .eq('user_id', userId)
-    .eq('org_id', ctx.orgId)
+  // Replace all department memberships atomically via a DB function —
+  // delete and insert run in a single transaction so partial state is impossible.
+  const { error } = await ctx.admin.rpc('replace_user_departments', {
+    p_user_id: userId,
+    p_org_id: ctx.orgId,
+    p_department_ids: departmentIds,
+  })
 
-  if (deleteError) return { error: deleteError.message }
-
-  if (departmentIds.length > 0) {
-    const { error: insertError } = await ctx.admin.from('user_departments').insert(
-      departmentIds.map((department_id) => ({
-        user_id: userId,
-        department_id,
-        org_id: ctx.orgId,
-      }))
-    )
-    if (insertError) return { error: insertError.message }
-  }
-
-  return { error: null }
+  return { error: error?.message ?? null }
 }
 
 export async function revokeInviteAction(
