@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form'
 
 import { checkoutAsset } from '@/app/actions/assets'
 import { QuickAddDialog } from '@/components/shared/QuickAddDialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -37,6 +38,8 @@ import { useDepartmentMutations, useDepartments } from '@/lib/hooks/useDepartmen
 import { useLocationMutations, useLocations } from '@/lib/hooks/useLocations'
 import { CheckoutFormSchema, type CheckoutFormInput } from '@/lib/types'
 import type { TypedAsset } from '@/lib/types'
+import type { MaintenanceEvent } from '@/lib/types/maintenance'
+import { formatDate } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -45,9 +48,16 @@ interface CheckoutModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
+  scheduledEvent?: MaintenanceEvent | null
 }
 
-export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: CheckoutModalProps) {
+export function CheckoutModal({
+  asset,
+  open,
+  onOpenChange,
+  onSuccess,
+  scheduledEvent,
+}: CheckoutModalProps) {
   const { user } = useAuth()
   const { org, membership } = useOrg()
   const orgSlug = membership?.orgSlug ?? ''
@@ -94,6 +104,15 @@ export function CheckoutModal({ asset, open, onOpenChange, onSuccess }: Checkout
             <span className="text-foreground font-medium">{asset.name}</span>
             <span className="ml-2">{asset.ui.checkoutSubtitle}</span>
           </p>
+          {scheduledEvent && (
+            <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+              <AlertDescription className="text-xs">
+                Maintenance &ldquo;{scheduledEvent.title}&rdquo; is scheduled for{' '}
+                {formatDate(scheduledEvent.scheduledDate)}. Checking out may conflict with this
+                work.
+              </AlertDescription>
+            </Alert>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
