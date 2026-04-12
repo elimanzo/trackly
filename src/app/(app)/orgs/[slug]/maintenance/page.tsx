@@ -31,6 +31,7 @@ import {
 import {
   MAINTENANCE_STATUSES,
   MAINTENANCE_STATUS_LABELS,
+  MAINTENANCE_TYPES,
   MAINTENANCE_TYPE_LABELS,
 } from '@/lib/types/maintenance'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
@@ -84,6 +85,23 @@ export default function MaintenancePage() {
             {MAINTENANCE_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {MAINTENANCE_STATUS_LABELS[s]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filters.type || '__all__'}
+          onValueChange={(v) => setFilter('type', v === '__all__' ? '' : v)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All types</SelectItem>
+            {MAINTENANCE_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {MAINTENANCE_TYPE_LABELS[t]}
               </SelectItem>
             ))}
           </SelectContent>

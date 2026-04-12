@@ -3,7 +3,7 @@ import { useCallback } from 'react'
 
 import { createPolicy } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/client'
-import type { MaintenanceEvent, MaintenanceStatus } from '@/lib/types/maintenance'
+import type { MaintenanceEvent, MaintenanceStatus, MaintenanceType } from '@/lib/types/maintenance'
 import { useOrg } from '@/providers/OrgProvider'
 
 function mapEvent(r: Record<string, unknown>): MaintenanceEvent {
@@ -64,6 +64,7 @@ export function useAssetMaintenanceEvents(assetId: string): {
 
 export type MaintenanceListFilters = {
   status?: MaintenanceStatus | ''
+  type?: MaintenanceType | ''
   dateFrom?: string
   dateTo?: string
 }
@@ -92,6 +93,7 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
       role,
       JSON.stringify(departmentIds),
       filters.status,
+      filters.type,
       filters.dateFrom,
       filters.dateTo,
     ],
@@ -125,6 +127,7 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
 
       if (allowedAssetIds !== null) query = query.in('asset_id', allowedAssetIds)
       if (filters.status) query = query.eq('status', filters.status)
+      if (filters.type) query = query.eq('type', filters.type)
       if (filters.dateFrom) query = query.gte('scheduled_date', filters.dateFrom)
       if (filters.dateTo) query = query.lte('scheduled_date', filters.dateTo)
 
