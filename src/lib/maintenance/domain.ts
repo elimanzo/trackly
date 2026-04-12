@@ -51,9 +51,9 @@ export async function scheduleMaintenance(
     return { error: 'Cannot schedule maintenance on a retired asset.' }
   }
 
-  const existing = await ports.repo.getActiveEvent(assetId)
-  if (existing) {
-    return { error: 'This asset already has an active maintenance event.' }
+  const inProgress = await ports.repo.getInProgressEvent(assetId)
+  if (inProgress) {
+    return { error: 'This asset already has maintenance in progress.' }
   }
 
   await ports.repo.insertEvent({
@@ -101,9 +101,9 @@ export async function logRetroactiveMaintenance(
 
   // Retroactive entries skip straight to completed — no status conflict
   // with checked_out or retired since we are not changing asset status.
-  const existing = await ports.repo.getActiveEvent(assetId)
-  if (existing) {
-    return { error: 'This asset already has an active maintenance event.' }
+  const inProgress = await ports.repo.getInProgressEvent(assetId)
+  if (inProgress) {
+    return { error: 'This asset already has maintenance in progress.' }
   }
 
   await ports.repo.insertEvent({

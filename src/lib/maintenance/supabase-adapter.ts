@@ -51,13 +51,13 @@ function makeRepo(admin: AdminClient, orgId: string): MaintenanceRepository {
       }
     },
 
-    async getActiveEvent(assetId) {
+    async getInProgressEvent(assetId) {
       const { data } = await admin
         .from('maintenance_events')
         .select('id, asset_id, status, title, created_by')
         .eq('asset_id', assetId)
         .eq('org_id', orgId)
-        .in('status', ['scheduled', 'in_progress'])
+        .eq('status', 'in_progress')
         .is('deleted_at', null)
         .maybeSingle()
       if (!data) return null
