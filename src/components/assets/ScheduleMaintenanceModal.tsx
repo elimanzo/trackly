@@ -95,7 +95,7 @@ export function ScheduleMaintenanceModal({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
             {isRetroactive ? 'Log past maintenance' : 'Schedule maintenance'}

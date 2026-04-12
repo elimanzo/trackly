@@ -43,6 +43,7 @@ function SheetContent({
   children,
   side = 'right',
   showCloseButton = true,
+  'aria-describedby': ariaDescribedBy,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'right' | 'bottom' | 'left'
@@ -53,6 +54,7 @@ function SheetContent({
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        aria-describedby={ariaDescribedBy}
         className={cn(
           'bg-background data-[state=closed]:animate-out data-[state=open]:animate-in fixed z-50 flex flex-col gap-4 shadow-lg transition data-[state=closed]:duration-200 data-[state=closed]:ease-in data-[state=open]:duration-300 data-[state=open]:ease-[var(--ease-drawer)]',
           side === 'right' &&

@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant can-hover (@media (hover: hover) and (pointer: fine));
 
 :root {
   --background: oklch(0.9232 0.0026 48.7171);
