@@ -6,7 +6,6 @@ import { useState } from 'react'
 
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -41,6 +40,12 @@ const STATUS_COLORS: Record<MaintenanceListItem['status'], string> = {
   scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   in_progress: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+}
+
+const TYPE_COLORS: Record<MaintenanceListItem['type'], string> = {
+  preventive: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  corrective: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400',
+  inspection: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
 }
 
 export default function MaintenancePage() {
@@ -161,9 +166,11 @@ export default function MaintenancePage() {
                   </TableCell>
                   <TableCell>{event.title}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[event.type]}`}
+                    >
                       {MAINTENANCE_TYPE_LABELS[event.type]}
-                    </Badge>
+                    </span>
                   </TableCell>
                   <TableCell>
                     <span
