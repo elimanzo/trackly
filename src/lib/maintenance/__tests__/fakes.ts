@@ -9,6 +9,7 @@ import type {
   MaintenanceAuditPort,
   MaintenanceEventRecord,
   MaintenanceRepository,
+  UpdateMaintenanceData,
 } from '../ports'
 
 // ---------------------------------------------------------------------------
@@ -63,13 +64,9 @@ export class InMemoryMaintenanceRepo implements MaintenanceRepository {
     }
   }
 
-  async getActiveEvent(assetId: string) {
+  async getInProgressEvent(assetId: string) {
     for (const event of this.events.values()) {
-      if (
-        event.assetId === assetId &&
-        !event.deletedAt &&
-        (event.status === 'scheduled' || event.status === 'in_progress')
-      ) {
+      if (event.assetId === assetId && !event.deletedAt && event.status === 'in_progress') {
         return {
           id: event.id,
           assetId: event.assetId,
@@ -117,6 +114,23 @@ export class InMemoryMaintenanceRepo implements MaintenanceRepository {
       event.technicianName = data.technicianName
       event.notes = data.notes
     }
+  }
+
+  async updateEvent(eventId: string, data: UpdateMaintenanceData) {
+    const event = this.events.get(eventId)
+    if (event) {
+      event.title = data.title
+      event.type = data.type
+      event.scheduledDate = data.scheduledDate
+      event.cost = data.cost
+      event.technicianName = data.technicianName
+      event.notes = data.notes
+    }
+  }
+
+  async softDeleteEvent(eventId: string) {
+    const event = this.events.get(eventId)
+    if (event) event.deletedAt = new Date().toISOString()
   }
 
   async setAssetStatus(assetId: string, status: AssetStatus) {

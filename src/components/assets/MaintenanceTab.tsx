@@ -1,12 +1,24 @@
 'use client'
 
-import { CalendarClock, Loader2, Play, Plus, Wrench } from 'lucide-react'
+import { CalendarClock, Loader2, Pencil, Play, Plus, Trash2, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { startMaintenanceAction } from '@/app/actions/maintenance'
+import { deleteMaintenanceAction, startMaintenanceAction } from '@/app/actions/maintenance'
 import { CompleteMaintenanceModal } from '@/components/assets/CompleteMaintenanceModal'
+import { EditMaintenanceModal } from '@/components/assets/EditMaintenanceModal'
 import { ScheduleMaintenanceModal } from '@/components/assets/ScheduleMaintenanceModal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,6 +31,7 @@ import {
   type MaintenanceEvent,
 } from '@/lib/types/maintenance'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
+import { useAuth } from '@/providers/AuthProvider'
 import { useOrg } from '@/providers/OrgProvider'
 
 const STATUS_COLORS: Record<MaintenanceEvent['status'], string> = {
@@ -110,6 +123,7 @@ export function MaintenanceTab({
               key={event.id}
               event={event}
               assetDepartmentId={assetDepartmentId}
+              role={role}
               canManage={canManage}
               onSuccess={handleTransitionSuccess}
             />
@@ -133,6 +147,7 @@ export function MaintenanceTab({
 interface MaintenanceEventCardProps {
   event: MaintenanceEvent
   assetDepartmentId: string | null
+  role: UserRole | null
   canManage: boolean
   onSuccess: () => void
 }
@@ -140,13 +155,25 @@ interface MaintenanceEventCardProps {
 function MaintenanceEventCard({
   event,
   assetDepartmentId,
+  role,
   canManage,
   onSuccess,
 }: MaintenanceEventCardProps) {
   const { membership } = useOrg()
+  const { user } = useAuth()
   const orgSlug = membership?.orgSlug ?? ''
   const [completeOpen, setCompleteOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const isAdmin = role === 'admin' || role === 'owner'
+  const isMyScheduledEvent = event.status === 'scheduled' && event.createdBy === (user?.id ?? '')
+
+  // Admins can edit any event; editors/others cannot
+  const canEdit = isAdmin
+  // Admins can delete any event; editors can delete only their own scheduled events
+  const canDelete = isAdmin || isMyScheduledEvent
 
   async function handleStart() {
     setStarting(true)
@@ -157,6 +184,18 @@ function MaintenanceEventCard({
       return
     }
     toast.success('Maintenance started')
+    onSuccess()
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    const result = await deleteMaintenanceAction(orgSlug, event.id, assetDepartmentId)
+    setDeleting(false)
+    if (result?.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success('Maintenance event deleted')
     onSuccess()
   }
 
@@ -185,38 +224,105 @@ function MaintenanceEventCard({
                 {formatDate(event.scheduledDate)}
               </span>
               {event.technicianName && <span>Technician: {event.technicianName}</span>}
+              {event.startedAt && <span>Started: {formatDate(event.startedAt)}</span>}
               {event.completedAt && <span>Completed: {formatDate(event.completedAt)}</span>}
               {event.cost != null && <span>Cost: {formatCurrency(event.cost)}</span>}
               {event.notes && <span className="col-span-2 truncate">Notes: {event.notes}</span>}
             </div>
+
+            {/* Last edited indicator */}
+            {event.updatedAt !== event.createdAt && (
+              <p className="text-muted-foreground text-xs">
+                Last edited {formatDate(event.updatedAt)}
+              </p>
+            )}
           </div>
 
           {/* Action buttons */}
-          {canManage && event.status === 'scheduled' && (
-            <Button size="sm" variant="outline" onClick={handleStart} disabled={starting}>
-              {starting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-              <span className="ml-1.5">Start</span>
-            </Button>
-          )}
-          {canManage && event.status === 'in_progress' && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setCompleteOpen(true)}>
-                <Wrench className="h-3.5 w-3.5" />
-                <span className="ml-1.5">Complete</span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {canManage && event.status === 'scheduled' && (
+              <Button size="sm" variant="outline" onClick={handleStart} disabled={starting}>
+                {starting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+                <span className="ml-1.5">Start</span>
               </Button>
-              <CompleteMaintenanceModal
-                eventId={event.id}
-                assetDepartmentId={assetDepartmentId}
-                open={completeOpen}
-                onOpenChange={setCompleteOpen}
-                onSuccess={onSuccess}
-              />
-            </>
-          )}
+            )}
+            {canManage && event.status === 'in_progress' && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setCompleteOpen(true)}>
+                  <Wrench className="h-3.5 w-3.5" />
+                  <span className="ml-1.5">Complete</span>
+                </Button>
+                <CompleteMaintenanceModal
+                  eventId={event.id}
+                  assetDepartmentId={assetDepartmentId}
+                  open={completeOpen}
+                  onOpenChange={setCompleteOpen}
+                  onSuccess={onSuccess}
+                />
+              </>
+            )}
+            {canEdit && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setEditOpen(true)}
+                  title="Edit event"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <EditMaintenanceModal
+                  event={event}
+                  assetDepartmentId={assetDepartmentId}
+                  open={editOpen}
+                  onOpenChange={setEditOpen}
+                  onSuccess={onSuccess}
+                />
+              </>
+            )}
+            {canDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                    disabled={deleting}
+                    title="Delete event"
+                  >
+                    {deleting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete maintenance event?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      &ldquo;{event.title}&rdquo; will be removed from the maintenance history. This
+                      cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleDelete}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
