@@ -70,7 +70,7 @@ export type MaintenanceAuditPayload = {
 export interface MaintenanceRepository {
   getAsset(assetId: string): Promise<MaintenanceAssetRecord | null>
   getEvent(eventId: string): Promise<MaintenanceEventRecord | null>
-  getActiveEvent(assetId: string): Promise<MaintenanceEventRecord | null>
+  getInProgressEvent(assetId: string): Promise<MaintenanceEventRecord | null>
 
   insertEvent(data: InsertMaintenanceData): Promise<{ id: string }>
   setEventStatus(eventId: string, status: MaintenanceStatus): Promise<void>

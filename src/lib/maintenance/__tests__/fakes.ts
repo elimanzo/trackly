@@ -64,13 +64,9 @@ export class InMemoryMaintenanceRepo implements MaintenanceRepository {
     }
   }
 
-  async getActiveEvent(assetId: string) {
+  async getInProgressEvent(assetId: string) {
     for (const event of this.events.values()) {
-      if (
-        event.assetId === assetId &&
-        !event.deletedAt &&
-        (event.status === 'scheduled' || event.status === 'in_progress')
-      ) {
+      if (event.assetId === assetId && !event.deletedAt && event.status === 'in_progress') {
         return {
           id: event.id,
           assetId: event.assetId,

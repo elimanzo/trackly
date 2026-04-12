@@ -98,17 +98,17 @@ describe('scheduleMaintenance', () => {
     expect(result).toEqual({ error: 'Cannot schedule maintenance on a retired asset.' })
   })
 
-  it('returns error when an active event already exists', async () => {
-    repo.seedAsset({ id: ASSET_ID, name: 'Laptop', status: 'active' })
+  it('returns error when maintenance is already in progress', async () => {
+    repo.seedAsset({ id: ASSET_ID, name: 'Laptop', status: 'under_maintenance' })
     repo.seedEvent({
       id: 'evt-existing',
       orgId: ORG_ID,
       assetId: ASSET_ID,
       title: 'Existing',
       type: 'inspection',
-      status: 'scheduled',
+      status: 'in_progress',
       scheduledDate: '2026-04-01',
-      startedAt: null,
+      startedAt: '2026-04-01T09:00:00Z',
       completedAt: null,
       cost: null,
       technicianName: null,
@@ -124,7 +124,37 @@ describe('scheduleMaintenance', () => {
       USER_ID,
       makePorts(repo, audit)
     )
-    expect(result).toEqual({ error: 'This asset already has an active maintenance event.' })
+    expect(result).toEqual({ error: 'This asset already has maintenance in progress.' })
+  })
+
+  it('allows scheduling a second event when one is already scheduled', async () => {
+    repo.seedAsset({ id: ASSET_ID, name: 'Laptop', status: 'active' })
+    repo.seedEvent({
+      id: 'evt-existing',
+      orgId: ORG_ID,
+      assetId: ASSET_ID,
+      title: 'Oil change',
+      type: 'preventive',
+      status: 'scheduled',
+      scheduledDate: '2026-05-01',
+      startedAt: null,
+      completedAt: null,
+      cost: null,
+      technicianName: null,
+      notes: null,
+      createdBy: USER_ID,
+      deletedAt: null,
+    })
+
+    const result = await scheduleMaintenance(
+      ORG_ID,
+      ASSET_ID,
+      makeScheduleInput({ title: 'Annual inspection', scheduledDate: '2026-06-01' }),
+      USER_ID,
+      makePorts(repo, audit)
+    )
+    expect(result).toBeNull()
+    expect(repo.events.size).toBe(2)
   })
 
   it('creates a scheduled event and logs audit on success', async () => {
@@ -243,7 +273,7 @@ describe('logRetroactiveMaintenance', () => {
       USER_ID,
       makePorts(repo, audit)
     )
-    expect(result).toEqual({ error: 'This asset already has an active maintenance event.' })
+    expect(result).toEqual({ error: 'This asset already has maintenance in progress.' })
   })
 
   it('does not change asset status for retroactive entries', async () => {
