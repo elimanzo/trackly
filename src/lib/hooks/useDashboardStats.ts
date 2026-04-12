@@ -102,7 +102,7 @@ export function useDashboardStats(): { data: DashboardStats; isLoading: boolean 
           count,
           value,
         }))
-        .sort((a, b) => b.count - a.count)
+        .toSorted((a, b) => b.count - a.count)
 
       const now = new Date()
       const warrantyAlerts: WarrantyAlert[] = (

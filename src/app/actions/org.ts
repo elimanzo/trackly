@@ -13,6 +13,12 @@ export async function checkOrgAvailability(
   name: string,
   slug: string
 ): Promise<{ nameTaken: boolean; slugTaken: boolean }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { nameTaken: false, slugTaken: false }
+
   const admin = createAdminClient()
   const [nameResult, slugResult] = await Promise.all([
     admin.from('organizations').select('id').ilike('name', name).maybeSingle(),
@@ -53,27 +59,28 @@ export async function completeOnboardingSetup(
     return { error: orgError.message }
   }
 
-  const { error: membershipError } = await admin.from('user_org_memberships').insert({
-    user_id: user.id,
-    org_id: orgData.id,
-    role: 'owner',
-    invite_status: 'active',
-  })
+  const [{ error: membershipError }, { error: deptError }, { error: catError }] = await Promise.all(
+    [
+      admin.from('user_org_memberships').insert({
+        user_id: user.id,
+        org_id: orgData.id,
+        role: 'owner',
+        invite_status: 'active',
+      }),
+      departments.length > 0
+        ? admin
+            .from('departments')
+            .insert(departments.map((name) => ({ name, org_id: orgData.id })))
+        : Promise.resolve({ error: null }),
+      categories.length > 0
+        ? admin.from('categories').insert(categories.map((name) => ({ name, org_id: orgData.id })))
+        : Promise.resolve({ error: null }),
+    ]
+  )
+
   if (membershipError) return { error: membershipError.message }
-
-  if (departments.length > 0) {
-    const { error: deptError } = await admin
-      .from('departments')
-      .insert(departments.map((name) => ({ name, org_id: orgData.id })))
-    if (deptError) return { error: deptError.message }
-  }
-
-  if (categories.length > 0) {
-    const { error: catError } = await admin
-      .from('categories')
-      .insert(categories.map((name) => ({ name, org_id: orgData.id })))
-    if (catError) return { error: catError.message }
-  }
+  if (deptError) return { error: deptError.message }
+  if (catError) return { error: catError.message }
 
   return { error: null, slug: org.slug }
 }
