@@ -187,7 +187,7 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
     'assets',
     orgId,
     role,
-    JSON.stringify(departmentIds),
+    departmentIds.join(','),
     filters.search,
     filters.status,
     filters.departmentId,

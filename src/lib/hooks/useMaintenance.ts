@@ -91,7 +91,7 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
       'maintenanceList',
       orgId,
       role,
-      JSON.stringify(departmentIds),
+      departmentIds.join(','),
       filters.status,
       filters.type,
       filters.dateFrom,

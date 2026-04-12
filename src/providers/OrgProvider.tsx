@@ -86,7 +86,13 @@ export function OrgProvider({ slug, children }: { slug: string; children: React.
 
   // Remember last active org in localStorage
   useEffect(() => {
-    if (slug) localStorage.setItem(LAST_ORG_KEY, slug)
+    if (slug) {
+      try {
+        localStorage.setItem(LAST_ORG_KEY, slug)
+      } catch {
+        // localStorage unavailable (incognito, quota exceeded, or disabled)
+      }
+    }
   }, [slug])
 
   return (
