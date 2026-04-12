@@ -9,8 +9,6 @@ export type PolicyAction =
   | 'asset:restock'
   | 'assignment:update'
   | 'department:manage'
-  | 'maintenance:manage'
-  | 'maintenance:delete'
   | 'user:manage'
   | 'org:manage'
 
@@ -50,8 +48,6 @@ const ACTION_RULES: Record<
   'asset:restock': { minRole: 'editor', deptScoped: true },
   'assignment:update': { minRole: 'editor', deptScoped: true },
   'department:manage': { minRole: 'admin', deptScoped: false },
-  'maintenance:manage': { minRole: 'editor', deptScoped: true },
-  'maintenance:delete': { minRole: 'editor', deptScoped: true },
   'user:manage': { minRole: 'admin', deptScoped: false },
   'org:manage': { minRole: 'owner', deptScoped: false },
 }
