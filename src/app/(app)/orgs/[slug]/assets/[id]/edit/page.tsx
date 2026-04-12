@@ -1,12 +1,12 @@
 'use client'
 
-import { Loader2 } from 'lucide-react'
 import { notFound, useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { use } from 'react'
 
 import { AssetForm } from '@/components/assets/AssetForm'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAsset } from '@/lib/hooks/useAssets'
 import { createPolicy } from '@/lib/permissions'
 import { useOrg } from '@/providers/OrgProvider'
@@ -29,8 +29,19 @@ export default function EditAssetPage({ params }: EditAssetPageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div>
+          <Skeleton className="h-7 w-24" />
+          <Skeleton className="mt-1 h-4 w-40" />
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-10 w-full rounded-md" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }

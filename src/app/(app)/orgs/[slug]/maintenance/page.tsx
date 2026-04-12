@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarClock, Loader2, Wrench } from 'lucide-react'
+import { CalendarClock, Wrench } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -135,8 +136,17 @@ export default function MaintenancePage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+        <div className="rounded-md border">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className="h-3.5 w-40" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3.5 w-20" />
+            </div>
+          ))}
         </div>
       ) : events.length === 0 ? (
         <EmptyState

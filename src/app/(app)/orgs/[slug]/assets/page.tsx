@@ -1,6 +1,6 @@
 'use client'
 
-import { LayoutGrid, List, Loader2, Plus } from 'lucide-react'
+import { LayoutGrid, List, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PaginationBar } from '@/components/shared/PaginationBar'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { type AssetFilters, useAssets } from '@/lib/hooks/useAssets'
 import { createPolicy } from '@/lib/permissions'
 import { useOrg } from '@/providers/OrgProvider'
@@ -78,8 +79,16 @@ export default function AssetsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+        <div className="rounded-md border">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-3.5 flex-1" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3.5 w-16" />
+            </div>
+          ))}
         </div>
       ) : assets.length === 0 ? (
         <EmptyState

@@ -8,7 +8,6 @@ import { z } from 'zod'
 
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { PageLoader } from '@/components/shared/PageLoader'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,6 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -91,7 +91,24 @@ export default function UsersPage() {
     defaultValues: { email: '', role: 'viewer' },
   })
 
-  if (isLoading) return <PageLoader />
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Users" />
+        <div className="rounded-md border">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
 
   function openEdit(u: OrgMember) {
     setEditingUser(u)

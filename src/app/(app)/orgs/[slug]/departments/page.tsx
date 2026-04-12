@@ -10,7 +10,6 @@ import { countAssetsInDepartment } from '@/app/actions/departments'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { PageLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -23,6 +22,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useDepartmentMutations, useDepartments } from '@/lib/hooks/useDepartments'
 import { DepartmentFormSchema, type Department, type DepartmentFormInput } from '@/lib/types'
@@ -48,7 +48,22 @@ export default function DepartmentsPage() {
     defaultValues: { name: '', description: '' },
   })
 
-  if (isLoading) return <PageLoader />
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <PageHeader title={`${deptLabel}s`} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="shadow-sm">
+              <CardContent className="p-4">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="mt-2 h-3 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
 
   function openCreate() {
     setEditing(null)

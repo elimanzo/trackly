@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { PageLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -93,7 +93,27 @@ export default function ReportsPage() {
     })
   }
 
-  if (isLoading) return <PageLoader />
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Reports" description="Filter and export your asset data as CSV." />
+        <div className="rounded-md border">
+          <div className="flex items-center gap-2 border-b p-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-24 rounded-md" />
+            ))}
+          </div>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3.5 w-40" />
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-3.5 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
 
   function handleExport() {
     exportAssetsToCsv(assets, 'asset-report.csv', visibleKeys)
