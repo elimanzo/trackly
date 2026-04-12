@@ -79,7 +79,7 @@ export function CompleteMaintenanceModal({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Complete maintenance</DialogTitle>
         </DialogHeader>

@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="bg-background flex h-screen overflow-hidden">
+    <div className="bg-background flex h-dvh overflow-hidden">
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 lg:block">
         <Sidebar />
@@ -41,7 +41,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar onMenuClick={() => setMobileOpen(true)} />
         <main className="min-h-0 flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto p-6">{children}</div>
+          <div data-main-scroll className="h-full overflow-y-auto p-6">
+            {children}
+          </div>
         </main>
       </div>
     </div>

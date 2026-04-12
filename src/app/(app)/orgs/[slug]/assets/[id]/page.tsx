@@ -3,7 +3,7 @@
 import { ArrowLeft, LogIn, LogOut, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { notFound, useParams, useRouter } from 'next/navigation'
-import { use, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { deleteAsset, restockAsset, returnAsset, returnBulkAssignment } from '@/app/actions/assets'
@@ -50,6 +50,10 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [activeTab, setActiveTab] = useState('details')
+
+  useEffect(() => {
+    document.querySelector<HTMLElement>('[data-main-scroll]')?.scrollTo({ top: 0 })
+  }, [activeTab])
   const [restockOpen, setRestockOpen] = useState(false)
   const [returnAssignment, setReturnAssignment] = useState<AssetAssignment | null>(null)
   const [editAssignment, setEditAssignment] = useState<AssetAssignment | null>(null)
@@ -473,7 +477,7 @@ function RestockModal({
   const [qty, setQty] = useState(1)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xs">
+      <DialogContent className="sm:max-w-xs" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Restock</DialogTitle>
         </DialogHeader>
@@ -513,7 +517,7 @@ function BulkReturnModal({
   const [qty, setQty] = useState(assignment.quantity)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xs">
+      <DialogContent className="sm:max-w-xs" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Return items</DialogTitle>
         </DialogHeader>

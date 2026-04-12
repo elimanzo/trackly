@@ -36,7 +36,7 @@ export function AssetCard({ asset }: AssetCardProps) {
 
   return (
     <>
-      <Card className="group shadow-sm transition-shadow hover:shadow-md">
+      <Card className="group can-hover:hover:shadow-md shadow-sm transition-shadow">
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
             <Link href={`/orgs/${orgSlug}/assets/${asset.id}`} className="min-w-0 flex-1">
@@ -49,7 +49,7 @@ export function AssetCard({ asset }: AssetCardProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                    className="can-hover:opacity-0 can-hover:group-hover:opacity-100 h-7 w-7 transition-opacity"
                     aria-label={`More options for ${asset.name}`}
                   >
                     <MoreHorizontal className="h-4 w-4" />

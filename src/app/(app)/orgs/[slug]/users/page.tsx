@@ -354,7 +354,7 @@ export default function UsersPage() {
 
       {/* Invite modal */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Invite a team member</DialogTitle>
           </DialogHeader>

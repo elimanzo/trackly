@@ -104,7 +104,7 @@ export function EditMaintenanceModal({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Edit maintenance event</DialogTitle>
         </DialogHeader>
