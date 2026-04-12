@@ -56,10 +56,7 @@ export default function MaintenancePage() {
   const { data: events, isLoading } = useMaintenanceList(filters)
 
   function setFilter(key: keyof MaintenanceListFilters, value: string) {
-    setFilters((f) => ({
-      ...f,
-      [key]: value && value !== '__all__' ? value : undefined,
-    }))
+    setFilters((f) => ({ ...f, [key]: value || undefined }))
   }
 
   const hasFilters = Object.values(filters).some(Boolean)
@@ -75,7 +72,10 @@ export default function MaintenancePage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={filters.status || '__all__'} onValueChange={(v) => setFilter('status', v)}>
+        <Select
+          value={filters.status || '__all__'}
+          onValueChange={(v) => setFilter('status', v === '__all__' ? '' : v)}
+        >
           <SelectTrigger className="w-36">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
