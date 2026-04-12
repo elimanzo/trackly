@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAssetMaintenanceEvents } from '@/lib/hooks/useMaintenance'
 import { createPolicy } from '@/lib/permissions'
 import type { UserRole } from '@/lib/types'
@@ -108,8 +109,23 @@ export function MaintenanceTab({
 
       {/* List */}
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-2/3" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-8 w-16 rounded-md" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : events.length === 0 ? (
         <div className="text-muted-foreground flex flex-col items-center gap-2 rounded-xl border py-12 text-center text-sm">

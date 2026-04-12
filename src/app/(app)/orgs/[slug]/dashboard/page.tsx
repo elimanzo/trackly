@@ -9,7 +9,6 @@ import { UpcomingMaintenance } from '@/components/dashboard/UpcomingMaintenance'
 import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts'
 import { FadeIn } from '@/components/motion/FadeIn'
 import { StaggerChildren, StaggerItem } from '@/components/motion/StaggerChildren'
-import { PageLoader } from '@/components/shared/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecentActivity } from '@/lib/hooks/useAuditLogs'
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats'
@@ -41,7 +40,24 @@ export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats()
   const { data: logs } = useRecentActivity(8)
 
-  if (isLoading) return <PageLoader />
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="mt-1.5 h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Skeleton className="h-[288px] rounded-xl" />
+          <Skeleton className="h-[288px] rounded-xl" />
+        </div>
+      </div>
+    )
 
   const cfg = org?.dashboardConfig ?? {}
   const showCardTotal = cfg.showCardTotal ?? true

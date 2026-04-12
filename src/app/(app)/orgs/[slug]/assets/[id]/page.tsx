@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, LogIn, LogOut, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, LogIn, LogOut, Pencil, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { notFound, useParams, useRouter } from 'next/navigation'
 import { use, useEffect, useState } from 'react'
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsset } from '@/lib/hooks/useAssets'
 import { useAssetHistory } from '@/lib/hooks/useAuditLogs'
@@ -60,8 +61,28 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
 
   if (isLoading)
     return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <div className="ml-auto flex gap-2">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </div>
+        </div>
+        <div>
+          <Skeleton className="h-8 w-64" />
+          <div className="mt-2 flex gap-2">
+            <Skeleton className="h-5 w-24 rounded-full" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+        </div>
+        <div>
+          <Skeleton className="h-9 w-80 rounded-lg" />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-40 rounded-xl" />
+            <Skeleton className="h-40 rounded-xl" />
+          </div>
+        </div>
       </div>
     )
   if (!asset) return notFound()
@@ -97,28 +118,28 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
           <div className="ml-auto flex items-center gap-2">
             {canEditAssets && canCheckOut && (
               <Button variant="outline" size="sm" onClick={() => setCheckoutOpen(true)}>
-                <LogOut className="mr-1.5 h-4 w-4" />
-                Check out
+                <LogOut className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Check out</span>
               </Button>
             )}
             {canEditAssets && asset.ui.secondaryAction === 'return' && (
               <Button variant="outline" size="sm" onClick={handleReturn}>
-                <LogIn className="mr-1.5 h-4 w-4" />
-                Return
+                <LogIn className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Return</span>
               </Button>
             )}
             {canEditAssets && asset.ui.secondaryAction === 'restock' && (
               <Button variant="outline" size="sm" onClick={() => setRestockOpen(true)}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                Restock
+                <Plus className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Restock</span>
               </Button>
             )}
             {canEditAssets && (
               <>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/orgs/${slug}/assets/${asset.id}/edit`}>
-                    <Pencil className="mr-1.5 h-4 w-4" />
-                    Edit
+                    <Pencil className="h-4 w-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Edit</span>
                   </Link>
                 </Button>
                 <Button
@@ -127,8 +148,8 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
                   className="text-destructive hover:text-destructive"
                   onClick={() => setConfirmDelete(true)}
                 >
-                  <Trash2 className="mr-1.5 h-4 w-4" />
-                  Delete
+                  <Trash2 className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Delete</span>
                 </Button>
               </>
             )}
@@ -156,12 +177,14 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="assignment">{asset.ui.assignmentTabLabel}</TabsTrigger>
-            <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="assignment">{asset.ui.assignmentTabLabel}</TabsTrigger>
+              <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Details tab */}
           <TabsContent value="details" className="mt-4">
@@ -354,8 +377,14 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
           {/* History tab */}
           <TabsContent value="history" className="mt-4">
             {historyLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+              <div className="space-y-0 rounded-md border">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
+                    <Skeleton className="h-3.5 w-24" />
+                    <Skeleton className="h-3.5 flex-1" />
+                    <Skeleton className="h-3.5 w-20" />
+                  </div>
+                ))}
               </div>
             ) : history.length === 0 ? (
               <div className="text-muted-foreground rounded-md border py-12 text-center text-sm">
