@@ -11,6 +11,7 @@ import {
   Tag,
   Truck,
   Users,
+  Wrench,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
@@ -34,6 +35,7 @@ function buildNavMain(base: string): NavItem[] {
   return [
     { label: 'Dashboard', href: `${base}/dashboard`, icon: LayoutDashboard },
     { label: 'Assets', href: `${base}/assets`, icon: Package },
+    { label: 'Maintenance', href: `${base}/maintenance`, icon: Wrench },
     { label: 'Reports', href: `${base}/reports`, icon: BarChart3 },
   ]
 }

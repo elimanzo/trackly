@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAssetMaintenanceEvents } from '@/lib/hooks/useMaintenance'
@@ -38,6 +37,12 @@ const STATUS_COLORS: Record<MaintenanceEvent['status'], string> = {
   scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   in_progress: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+}
+
+const TYPE_COLORS: Record<MaintenanceEvent['type'], string> = {
+  preventive: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  corrective: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400',
+  inspection: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
 }
 
 interface MaintenanceTabProps {
@@ -207,9 +212,11 @@ function MaintenanceEventCard({
             {/* Title + badges */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-foreground font-medium">{event.title}</span>
-              <Badge variant="outline" className="text-xs">
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[event.type]}`}
+              >
                 {MAINTENANCE_TYPE_LABELS[event.type]}
-              </Badge>
+              </span>
               <span
                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[event.status]}`}
               >
