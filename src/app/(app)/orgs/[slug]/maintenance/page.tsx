@@ -55,22 +55,14 @@ export default function MaintenancePage() {
   const [filters, setFilters] = useState<MaintenanceListFilters>({})
   const { data: events, isLoading } = useMaintenanceList(filters)
 
-  function handleStatusChange(value: string) {
+  function setFilter(key: keyof MaintenanceListFilters, value: string) {
     setFilters((f) => ({
       ...f,
-      status: value === '__all__' ? '' : (value as MaintenanceListFilters['status']),
+      [key]: value && value !== '__all__' ? value : undefined,
     }))
   }
 
-  function handleDateFromChange(value: string) {
-    setFilters((f) => ({ ...f, dateFrom: value || undefined }))
-  }
-
-  function handleDateToChange(value: string) {
-    setFilters((f) => ({ ...f, dateTo: value || undefined }))
-  }
-
-  const hasFilters = !!filters.status || !!filters.dateFrom || !!filters.dateTo
+  const hasFilters = Object.values(filters).some(Boolean)
 
   return (
     <div className="space-y-6">
@@ -83,7 +75,7 @@ export default function MaintenancePage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={filters.status || '__all__'} onValueChange={handleStatusChange}>
+        <Select value={filters.status || '__all__'} onValueChange={(v) => setFilter('status', v)}>
           <SelectTrigger className="w-36">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
@@ -103,7 +95,7 @@ export default function MaintenancePage() {
             type="date"
             className="w-36"
             value={filters.dateFrom ?? ''}
-            onChange={(e) => handleDateFromChange(e.target.value)}
+            onChange={(e) => setFilter('dateFrom', e.target.value)}
             placeholder="From"
           />
           <span className="text-muted-foreground text-sm">—</span>
@@ -111,7 +103,7 @@ export default function MaintenancePage() {
             type="date"
             className="w-36"
             value={filters.dateTo ?? ''}
-            onChange={(e) => handleDateToChange(e.target.value)}
+            onChange={(e) => setFilter('dateTo', e.target.value)}
             placeholder="To"
           />
         </div>

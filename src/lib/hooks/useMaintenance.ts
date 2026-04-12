@@ -111,8 +111,7 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
           .eq('org_id', orgId)
           .is('deleted_at', null)
           .in('department_id', constraint.ids)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ids = (assets ?? []).map((a: any) => a.id as string)
+        const ids = ((assets ?? []) as { id: string }[]).map((a) => a.id)
         if (ids.length === 0) return []
         allowedAssetIds = ids
       }
@@ -131,20 +130,20 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
 
       const { data: rows } = await query
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (rows ?? []).map((r: any) => {
-        const asset = r.assets as {
+      type MaintenanceRow = Record<string, unknown> & {
+        assets: {
           name: string
           asset_tag: string
           departments: { name: string } | null
         }
-        return {
-          ...mapEvent(r as unknown as Record<string, unknown>),
-          assetName: asset.name,
-          assetTag: asset.asset_tag,
-          departmentName: asset.departments?.name ?? null,
-        }
-      })
+      }
+
+      return ((rows ?? []) as MaintenanceRow[]).map((r) => ({
+        ...mapEvent(r),
+        assetName: r.assets.name,
+        assetTag: r.assets.asset_tag,
+        departmentName: r.assets.departments?.name ?? null,
+      }))
     },
     staleTime: 30_000,
   })
