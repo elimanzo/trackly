@@ -16,6 +16,8 @@ export const AuditActionSchema = z.enum([
   'maintenance_scheduled',
   'maintenance_started',
   'maintenance_completed',
+  'maintenance_updated',
+  'maintenance_deleted',
 ])
 
 export type AuditAction = z.infer<typeof AuditActionSchema>

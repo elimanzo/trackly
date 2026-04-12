@@ -33,12 +33,26 @@ export const WarrantyAlertSchema = z.object({
 
 export type WarrantyAlert = z.infer<typeof WarrantyAlertSchema>
 
+export const UpcomingMaintenanceAlertSchema = z.object({
+  eventId: z.string().uuid(),
+  assetId: z.string().uuid(),
+  assetTag: z.string(),
+  assetName: z.string(),
+  departmentName: z.string().nullable(),
+  title: z.string(),
+  scheduledDate: z.string(), // ISO date YYYY-MM-DD
+  daysUntil: z.number().int(),
+})
+
+export type UpcomingMaintenanceAlert = z.infer<typeof UpcomingMaintenanceAlertSchema>
+
 export const DashboardStatsSchema = z.object({
   totalAssets: z.number().int().min(0),
   totalValue: z.number().nonnegative(),
   byStatus: z.array(StatusBreakdownSchema),
   byDepartment: z.array(DepartmentBreakdownSchema),
   warrantyAlerts: z.array(WarrantyAlertSchema),
+  upcomingMaintenance: z.array(UpcomingMaintenanceAlertSchema),
   recentActivityCount: z.number().int().min(0),
 })
 

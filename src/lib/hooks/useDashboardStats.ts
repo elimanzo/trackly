@@ -5,6 +5,7 @@ import type {
   DashboardStats,
   DepartmentBreakdown,
   StatusBreakdown,
+  UpcomingMaintenanceAlert,
   WarrantyAlert,
 } from '@/lib/types'
 import { useOrg } from '@/providers/OrgProvider'
@@ -15,6 +16,7 @@ const EMPTY: DashboardStats = {
   byStatus: [],
   byDepartment: [],
   warrantyAlerts: [],
+  upcomingMaintenance: [],
   recentActivityCount: 0,
 }
 
@@ -29,7 +31,9 @@ export function useDashboardStats(): { data: DashboardStats; isLoading: boolean 
       const supabase = createClient()
       const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-      const [aggregates, warrantyRows, activityCount] = await Promise.all([
+      const today = new Date().toISOString().split('T')[0]
+
+      const [aggregates, warrantyRows, upcomingMaintenanceRows, activityCount] = await Promise.all([
         supabase
           .from('assets')
           .select('status, department_id, purchase_cost, departments(name)')
@@ -44,6 +48,18 @@ export function useDashboardStats(): { data: DashboardStats; isLoading: boolean 
           .not('warranty_expiry', 'is', null)
           .lte('warranty_expiry', thirtyDays)
           .order('warranty_expiry'),
+
+        supabase
+          .from('maintenance_events')
+          .select(
+            'id, asset_id, title, scheduled_date, assets!inner(asset_tag, name, departments(name))'
+          )
+          .eq('org_id', orgId)
+          .eq('status', 'scheduled')
+          .is('deleted_at', null)
+          .gte('scheduled_date', today)
+          .lte('scheduled_date', thirtyDays)
+          .order('scheduled_date'),
 
         supabase
           .from('audit_logs')
@@ -88,14 +104,12 @@ export function useDashboardStats(): { data: DashboardStats; isLoading: boolean 
         }))
         .sort((a, b) => b.count - a.count)
 
-      const today = new Date()
+      const now = new Date()
       const warrantyAlerts: WarrantyAlert[] = (
         (warrantyRows.data ?? []) as Record<string, unknown>[]
       ).map((r) => {
         const expiry = new Date(r.warranty_expiry as string)
-        const daysRemaining = Math.ceil(
-          (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-        )
+        const daysRemaining = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         return {
           assetId: r.id as string,
           assetTag: r.asset_tag as string,
@@ -106,12 +120,33 @@ export function useDashboardStats(): { data: DashboardStats; isLoading: boolean 
         }
       })
 
+      type MaintenanceRow = Record<string, unknown> & {
+        assets: { asset_tag: string; name: string; departments: { name: string } | null }
+      }
+      const upcomingMaintenance: UpcomingMaintenanceAlert[] = (
+        (upcomingMaintenanceRows.data ?? []) as MaintenanceRow[]
+      ).map((r) => {
+        const scheduled = new Date(r.scheduled_date as string)
+        const daysUntil = Math.ceil((scheduled.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        return {
+          eventId: r.id as string,
+          assetId: r.asset_id as string,
+          assetTag: r.assets.asset_tag,
+          assetName: r.assets.name,
+          departmentName: r.assets.departments?.name ?? null,
+          title: r.title as string,
+          scheduledDate: r.scheduled_date as string,
+          daysUntil,
+        }
+      })
+
       return {
         totalAssets,
         totalValue,
         byStatus,
         byDepartment,
         warrantyAlerts,
+        upcomingMaintenance,
         recentActivityCount: activityCount.count ?? 0,
       }
     },

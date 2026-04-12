@@ -77,6 +77,7 @@ const DASHBOARD_SECTION_TOGGLES: ConfigToggle<DashboardConfig>[] = [
   // description is rendered dynamically (depends on departmentLabel)
   { key: 'showCharts', label: 'Charts', default: true },
   { key: 'showWarranty', label: 'Warranty alerts', default: true },
+  { key: 'showMaintenanceAlerts', label: 'Upcoming maintenance', default: true },
   { key: 'showActivity', label: 'Recent activity', default: true },
 ]
 

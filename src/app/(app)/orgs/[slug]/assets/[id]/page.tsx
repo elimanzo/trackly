@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAsset } from '@/lib/hooks/useAssets'
 import { useAssetHistory } from '@/lib/hooks/useAuditLogs'
+import { useAssetMaintenanceEvents } from '@/lib/hooks/useMaintenance'
 import { createPolicy } from '@/lib/permissions'
 import type { AssetAssignment, AuditLog } from '@/lib/types'
 import { computeMaxForEdit } from '@/lib/utils/availability'
@@ -42,6 +43,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { slug } = useParams<{ slug: string }>()
   const { data: asset, isLoading, refresh } = useAsset(id)
   const { data: history, isLoading: historyLoading } = useAssetHistory(id)
+  const { data: maintenanceEvents } = useAssetMaintenanceEvents(id)
   const { org, role, departmentIds } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const router = useRouter()
@@ -372,6 +374,7 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
           open={checkoutOpen}
           onOpenChange={setCheckoutOpen}
           onSuccess={refresh}
+          scheduledEvent={maintenanceEvents.find((e) => e.status === 'scheduled') ?? null}
         />
       )}
 
@@ -558,6 +561,8 @@ const ACTION_LABELS: Record<AuditLog['action'], string> = {
   maintenance_scheduled: 'Maintenance scheduled',
   maintenance_started: 'Maintenance started',
   maintenance_completed: 'Maintenance completed',
+  maintenance_updated: 'Maintenance updated',
+  maintenance_deleted: 'Maintenance deleted',
 }
 
 const ACTION_COLORS: Record<AuditLog['action'], string> = {
@@ -572,6 +577,8 @@ const ACTION_COLORS: Record<AuditLog['action'], string> = {
   maintenance_scheduled: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
   maintenance_started: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   maintenance_completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  maintenance_updated: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  maintenance_deleted: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 }
 
 function AuditLogRow({ log, isLast }: { log: AuditLog; isLast: boolean }) {
