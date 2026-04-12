@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
+import { createPolicy } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/client'
-import type { MaintenanceEvent } from '@/lib/types/maintenance'
+import type { MaintenanceEvent, MaintenanceStatus } from '@/lib/types/maintenance'
 import { useOrg } from '@/providers/OrgProvider'
 
 function mapEvent(r: Record<string, unknown>): MaintenanceEvent {
@@ -53,6 +54,104 @@ export function useAssetMaintenanceEvents(assetId: string): {
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['maintenanceEvents', assetId] })
   }, [queryClient, assetId])
+
+  return { data, isLoading, refresh }
+}
+
+// ---------------------------------------------------------------------------
+// useMaintenanceList — org-wide list (global maintenance page)
+// ---------------------------------------------------------------------------
+
+export type MaintenanceListFilters = {
+  status?: MaintenanceStatus | ''
+  dateFrom?: string
+  dateTo?: string
+}
+
+export type MaintenanceListItem = MaintenanceEvent & {
+  assetName: string
+  assetTag: string
+  departmentName: string | null
+}
+
+export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
+  data: MaintenanceListItem[]
+  isLoading: boolean
+  refresh: () => void
+} {
+  const { org, role, departmentIds } = useOrg()
+  const orgId = org?.id ?? ''
+  const queryClient = useQueryClient()
+
+  const constraint = createPolicy({ role: role ?? 'viewer', departmentIds }).queryConstraint()
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: [
+      'maintenanceList',
+      orgId,
+      role,
+      JSON.stringify(departmentIds),
+      filters.status,
+      filters.dateFrom,
+      filters.dateTo,
+    ],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const supabase = createClient()
+
+      // Short-circuit: no department assignments → nothing visible
+      if (constraint.kind === 'none') return []
+
+      // For department-scoped roles, resolve allowed asset IDs first
+      let allowedAssetIds: string[] | null = null
+      if (constraint.kind === 'in') {
+        const { data: assets } = await supabase
+          .from('assets')
+          .select('id')
+          .eq('org_id', orgId)
+          .is('deleted_at', null)
+          .in('department_id', constraint.ids)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ids = (assets ?? []).map((a: any) => a.id as string)
+        if (ids.length === 0) return []
+        allowedAssetIds = ids
+      }
+
+      let query = supabase
+        .from('maintenance_events')
+        .select('*, assets!inner(name, asset_tag, departments(name))')
+        .eq('org_id', orgId)
+        .is('deleted_at', null)
+        .order('scheduled_date', { ascending: false })
+
+      if (allowedAssetIds !== null) query = query.in('asset_id', allowedAssetIds)
+      if (filters.status) query = query.eq('status', filters.status)
+      if (filters.dateFrom) query = query.gte('scheduled_date', filters.dateFrom)
+      if (filters.dateTo) query = query.lte('scheduled_date', filters.dateTo)
+
+      const { data: rows } = await query
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (rows ?? []).map((r: any) => {
+        const asset = r.assets as {
+          name: string
+          asset_tag: string
+          departments: { name: string } | null
+        }
+        return {
+          ...mapEvent(r as unknown as Record<string, unknown>),
+          assetName: asset.name,
+          assetTag: asset.asset_tag,
+          departmentName: asset.departments?.name ?? null,
+        }
+      })
+    },
+    staleTime: 30_000,
+  })
+
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['maintenanceList'] })
+  }, [queryClient])
 
   return { data, isLoading, refresh }
 }
