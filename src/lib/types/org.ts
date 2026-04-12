@@ -14,6 +14,7 @@ export const DashboardConfigSchema = z.object({
   // Sections
   showCharts: z.boolean().optional(),
   showWarranty: z.boolean().optional(),
+  showMaintenanceAlerts: z.boolean().optional(),
   showActivity: z.boolean().optional(),
 })
 

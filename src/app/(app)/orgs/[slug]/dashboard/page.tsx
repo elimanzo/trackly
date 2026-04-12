@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { StatCard } from '@/components/dashboard/StatCard'
+import { UpcomingMaintenance } from '@/components/dashboard/UpcomingMaintenance'
 import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts'
 import { FadeIn } from '@/components/motion/FadeIn'
 import { StaggerChildren, StaggerItem } from '@/components/motion/StaggerChildren'
@@ -50,6 +51,7 @@ export default function DashboardPage() {
   const showCardValue = cfg.showCardValue ?? true
   const showCharts = cfg.showCharts ?? true
   const showWarranty = cfg.showWarranty ?? true
+  const showMaintenanceAlerts = cfg.showMaintenanceAlerts ?? true
   const showActivity = cfg.showActivity ?? true
   const deptLabel = org?.departmentLabel ?? 'Department'
 
@@ -141,11 +143,12 @@ export default function DashboardPage() {
         </FadeIn>
       )}
 
-      {/* Activity + Warranty */}
-      {(showActivity || showWarranty) && (
+      {/* Activity + Warranty + Upcoming Maintenance */}
+      {(showActivity || showWarranty || showMaintenanceAlerts) && (
         <FadeIn delay={0.18} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {showActivity && <RecentActivity logs={logs} />}
           {showWarranty && <WarrantyAlerts alerts={stats.warrantyAlerts} />}
+          {showMaintenanceAlerts && <UpcomingMaintenance alerts={stats.upcomingMaintenance} />}
         </FadeIn>
       )}
 

@@ -6,6 +6,7 @@ import {
   TrendingUp,
   UserCheck,
   UserPlus,
+  Wrench,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -26,6 +27,11 @@ const ACTION_CONFIG: Record<
   status_changed: { label: 'Status changed', icon: TrendingUp, color: 'text-amber-500' },
   invited: { label: 'Invited', icon: UserPlus, color: 'text-teal-500' },
   role_changed: { label: 'Role changed', icon: UserCheck, color: 'text-indigo-500' },
+  maintenance_scheduled: { label: 'Maintenance scheduled', icon: Wrench, color: 'text-cyan-500' },
+  maintenance_started: { label: 'Maintenance started', icon: Wrench, color: 'text-amber-500' },
+  maintenance_completed: { label: 'Maintenance completed', icon: Wrench, color: 'text-green-500' },
+  maintenance_updated: { label: 'Maintenance updated', icon: Wrench, color: 'text-blue-500' },
+  maintenance_deleted: { label: 'Maintenance deleted', icon: Wrench, color: 'text-destructive' },
 }
 
 interface RecentActivityProps {
