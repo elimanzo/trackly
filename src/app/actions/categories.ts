@@ -12,7 +12,7 @@ export async function createCategory(
   input: CategoryFormInput
 ): Promise<{ id: string } | { error: string }> {
   const parsed = CategoryFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
@@ -56,7 +56,7 @@ export async function updateCategory(
   input: CategoryFormInput
 ): Promise<{ error: string } | null> {
   const parsed = CategoryFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx

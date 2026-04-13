@@ -30,7 +30,7 @@ import { useAsset } from '@/lib/hooks/useAssets'
 import { useAssetHistory } from '@/lib/hooks/useAuditLogs'
 import { useAssetMaintenanceEvents } from '@/lib/hooks/useMaintenance'
 import { createPolicy } from '@/lib/permissions'
-import type { AssetAssignment, AuditLog } from '@/lib/types'
+import type { AssetAssignment, AuditLog, TypedAsset } from '@/lib/types'
 import { computeMaxForEdit } from '@/lib/utils/availability'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/formatters'
 import { useOrg } from '@/providers/OrgProvider'
@@ -259,107 +259,13 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
 
           {/* Assignment tab */}
           <TabsContent value="assignment" className="mt-4">
-            {asset.isBulk ? (
-              asset.activeAssignments.length === 0 ? (
-                <div className="text-muted-foreground rounded-xl border py-12 text-center text-sm">
-                  No items currently checked out.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {asset.activeAssignments.map((a) => (
-                    <Card key={a.id} className="shadow-sm">
-                      <CardContent className="flex items-start justify-between gap-4 pt-4">
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="text-foreground font-medium">{a.assignedToName}</span>
-                            <Badge variant="secondary">{a.quantity}×</Badge>
-                          </div>
-                          <div className="text-muted-foreground grid grid-cols-2 gap-x-6 gap-y-1">
-                            <span>Assigned by: {a.assignedByName}</span>
-                            <span>Checked out: {formatDate(a.assignedAt)}</span>
-                            {a.departmentName && (
-                              <span>
-                                {deptLabel}: {a.departmentName}
-                              </span>
-                            )}
-                            {a.locationName && <span>Location: {a.locationName}</span>}
-                            {a.expectedReturnAt && (
-                              <span>Expected return: {formatDate(a.expectedReturnAt)}</span>
-                            )}
-                            {a.notes && <span className="col-span-2">Notes: {a.notes}</span>}
-                          </div>
-                        </div>
-                        {canEditAssets && (
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setEditAssignment(a)}
-                            >
-                              <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setReturnAssignment(a)}
-                            >
-                              <LogIn className="mr-1.5 h-3.5 w-3.5" />
-                              Return
-                            </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )
-            ) : asset.currentAssignment ? (
-              <Card className="shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-semibold">Current assignment</CardTitle>
-                  {canEditAssets && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditAssignment(asset.currentAssignment)}
-                    >
-                      <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <DetailRow label="Assigned to" value={asset.currentAssignment.assignedToName} />
-                  <DetailRow label="Assigned by" value={asset.currentAssignment.assignedByName} />
-                  <DetailRow
-                    label="Assigned on"
-                    value={formatDate(asset.currentAssignment.assignedAt)}
-                  />
-                  <DetailRow
-                    label="Expected return"
-                    value={
-                      asset.currentAssignment.expectedReturnAt
-                        ? formatDate(asset.currentAssignment.expectedReturnAt)
-                        : '—'
-                    }
-                  />
-                  {asset.currentAssignment.departmentName && (
-                    <DetailRow label={deptLabel} value={asset.currentAssignment.departmentName} />
-                  )}
-                  {asset.currentAssignment.locationName && (
-                    <DetailRow label="Location" value={asset.currentAssignment.locationName} />
-                  )}
-                  {asset.currentAssignment.notes && (
-                    <DetailRow label="Notes" value={asset.currentAssignment.notes} />
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="text-muted-foreground rounded-xl border py-12 text-center text-sm">
-                This asset is not currently checked out.
-              </div>
-            )}
+            <AssignmentTabContent
+              asset={asset}
+              canEditAssets={canEditAssets}
+              deptLabel={deptLabel}
+              onEditAssignment={setEditAssignment}
+              onReturnAssignment={setReturnAssignment}
+            />
           </TabsContent>
 
           {/* Maintenance tab */}
@@ -368,35 +274,13 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
               assetId={asset.id}
               assetDepartmentId={asset.departmentId}
               isBulk={asset.isBulk}
-              role={role}
-              departmentIds={departmentIds}
               onAssetRefresh={refresh}
             />
           </TabsContent>
 
           {/* History tab */}
           <TabsContent value="history" className="mt-4">
-            {historyLoading ? (
-              <div className="space-y-0 rounded-md border">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
-                    <Skeleton className="h-3.5 w-24" />
-                    <Skeleton className="h-3.5 flex-1" />
-                    <Skeleton className="h-3.5 w-20" />
-                  </div>
-                ))}
-              </div>
-            ) : history.length === 0 ? (
-              <div className="text-muted-foreground rounded-md border py-12 text-center text-sm">
-                No activity recorded yet.
-              </div>
-            ) : (
-              <div className="space-y-0 rounded-md border">
-                {history.map((log, i) => (
-                  <AuditLogRow key={log.id} log={log} isLast={i === history.length - 1} />
-                ))}
-              </div>
-            )}
+            <HistoryTabContent history={history} isLoading={historyLoading} />
           </TabsContent>
         </Tabs>
       </div>
@@ -480,6 +364,150 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
         onConfirm={handleDelete}
       />
     </>
+  )
+}
+
+function AssignmentTabContent({
+  asset,
+  canEditAssets,
+  deptLabel,
+  onEditAssignment,
+  onReturnAssignment,
+}: {
+  asset: TypedAsset
+  canEditAssets: boolean
+  deptLabel: string
+  onEditAssignment: (a: AssetAssignment) => void
+  onReturnAssignment: (a: AssetAssignment) => void
+}) {
+  if (asset.isBulk) {
+    if (asset.activeAssignments.length === 0) {
+      return (
+        <div className="text-muted-foreground rounded-xl border py-12 text-center text-sm">
+          No items currently checked out.
+        </div>
+      )
+    }
+    return (
+      <div className="space-y-3">
+        {asset.activeAssignments.map((a) => (
+          <Card key={a.id} className="shadow-sm">
+            <CardContent className="flex items-start justify-between gap-4 pt-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground font-medium">{a.assignedToName}</span>
+                  <Badge variant="secondary">{a.quantity}×</Badge>
+                </div>
+                <div className="text-muted-foreground grid grid-cols-2 gap-x-6 gap-y-1">
+                  <span>Assigned by: {a.assignedByName}</span>
+                  <span>Checked out: {formatDate(a.assignedAt)}</span>
+                  {a.departmentName && (
+                    <span>
+                      {deptLabel}: {a.departmentName}
+                    </span>
+                  )}
+                  {a.locationName && <span>Location: {a.locationName}</span>}
+                  {a.expectedReturnAt && (
+                    <span>Expected return: {formatDate(a.expectedReturnAt)}</span>
+                  )}
+                  {a.notes && <span className="col-span-2">Notes: {a.notes}</span>}
+                </div>
+              </div>
+              {canEditAssets && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => onEditAssignment(a)}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => onReturnAssignment(a)}>
+                    <LogIn className="mr-1.5 h-3.5 w-3.5" />
+                    Return
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (!asset.currentAssignment) {
+    return (
+      <div className="text-muted-foreground rounded-xl border py-12 text-center text-sm">
+        This asset is not currently checked out.
+      </div>
+    )
+  }
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-semibold">Current assignment</CardTitle>
+        {canEditAssets && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEditAssignment(asset.currentAssignment!)}
+          >
+            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+            Edit
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <DetailRow label="Assigned to" value={asset.currentAssignment.assignedToName} />
+        <DetailRow label="Assigned by" value={asset.currentAssignment.assignedByName} />
+        <DetailRow label="Assigned on" value={formatDate(asset.currentAssignment.assignedAt)} />
+        <DetailRow
+          label="Expected return"
+          value={
+            asset.currentAssignment.expectedReturnAt
+              ? formatDate(asset.currentAssignment.expectedReturnAt)
+              : '—'
+          }
+        />
+        {asset.currentAssignment.departmentName && (
+          <DetailRow label={deptLabel} value={asset.currentAssignment.departmentName} />
+        )}
+        {asset.currentAssignment.locationName && (
+          <DetailRow label="Location" value={asset.currentAssignment.locationName} />
+        )}
+        {asset.currentAssignment.notes && (
+          <DetailRow label="Notes" value={asset.currentAssignment.notes} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function HistoryTabContent({ history, isLoading }: { history: AuditLog[]; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="space-y-0 rounded-md border">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
+            <Skeleton className="h-3.5 w-24" />
+            <Skeleton className="h-3.5 flex-1" />
+            <Skeleton className="h-3.5 w-20" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (history.length === 0) {
+    return (
+      <div className="text-muted-foreground rounded-md border py-12 text-center text-sm">
+        No activity recorded yet.
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-0 rounded-md border">
+      {history.map((log, i) => (
+        <AuditLogRow key={log.id} log={log} isLast={i === history.length - 1} />
+      ))}
+    </div>
   )
 }
 

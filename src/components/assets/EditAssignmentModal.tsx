@@ -82,8 +82,9 @@ export function EditAssignmentModal({
   })
 
   // Re-sync if a different assignment is opened
+  const { reset } = form
   useEffect(() => {
-    form.reset({
+    reset({
       assignedToUserId: assignment.assignedToUserId,
       assignedToName: assignment.assignedToName,
       quantity: assignment.quantity,
@@ -94,7 +95,7 @@ export function EditAssignmentModal({
         : null,
       notes: assignment.notes ?? '',
     })
-  }, [assignment.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [assignment.id, reset])
 
   async function onSubmit(data: CheckoutFormInput) {
     const result = await updateAssignment(orgSlug, assignment.id, { id: assetId, isBulk }, data)

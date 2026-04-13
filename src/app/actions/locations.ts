@@ -11,7 +11,7 @@ export async function createLocation(
   input: LocationFormInput
 ): Promise<{ id: string } | { error: string }> {
   const parsed = LocationFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
@@ -50,7 +50,7 @@ export async function updateLocation(
   input: LocationFormInput
 ): Promise<{ error: string } | null> {
   const parsed = LocationFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx

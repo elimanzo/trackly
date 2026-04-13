@@ -11,7 +11,7 @@ export async function createVendor(
   input: VendorFormInput
 ): Promise<{ id: string } | { error: string }> {
   const parsed = VendorFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx
@@ -57,7 +57,7 @@ export async function updateVendor(
   input: VendorFormInput
 ): Promise<{ error: string } | null> {
   const parsed = VendorFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx

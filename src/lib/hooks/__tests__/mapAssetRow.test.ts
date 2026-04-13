@@ -12,6 +12,9 @@ function baseRow(overrides: Record<string, unknown> = {}) {
     org_id: 'org-1',
     asset_tag: 'AST-001',
     name: 'Test Asset',
+    is_bulk: false,
+    quantity: null,
+    status: 'available',
     category_id: null,
     categories: null,
     department_id: null,
@@ -118,7 +121,7 @@ describe('mapAssetRow — serialized asset ui', () => {
       })
     )
     expect(asset.ui.assignments).toHaveLength(1)
-    expect(asset.ui.assignments[0].assignedToName).toBe('Alice')
+    expect(asset.ui.assignments[0]!.assignedToName).toBe('Alice')
   })
 })
 
@@ -226,6 +229,6 @@ describe('mapAssetRow — bulk asset ui', () => {
       })
     )
     expect(asset.ui.assignments).toHaveLength(1)
-    expect(asset.ui.assignments[0].assignedToName).toBe('Bob')
+    expect(asset.ui.assignments[0]!.assignedToName).toBe('Bob')
   })
 })

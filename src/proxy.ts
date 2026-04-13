@@ -35,7 +35,7 @@ export async function proxy(request: NextRequest) {
     } = await supabase.auth.getSession()
     if (session?.access_token) {
       try {
-        const payload = JSON.parse(atob(session.access_token.split('.')[1]))
+        const payload = JSON.parse(atob(session.access_token.split('.')[1] ?? ''))
         isRecoverySession =
           Array.isArray(payload.amr) &&
           payload.amr.some((a: { method: string }) => a.method === 'recovery')

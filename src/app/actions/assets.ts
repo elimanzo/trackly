@@ -29,7 +29,7 @@ export async function createAsset(
   clients?: ActionClients
 ): Promise<{ error: string } | { id: string }> {
   const parsed = AssetFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
@@ -82,7 +82,7 @@ export async function updateAsset(
   clients?: ActionClients
 ): Promise<{ error: string } | null> {
   const parsed = AssetFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
@@ -191,7 +191,7 @@ export async function checkoutAsset(
   clients?: ActionClients
 ): Promise<{ error: string } | null> {
   const parsed = CheckoutFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getContext(orgSlug, clients)
   if (!ctx) return { error: 'Not authenticated' }
@@ -324,7 +324,7 @@ export async function updateAssignment(
   input: CheckoutFormInput
 ): Promise<{ error: string } | null> {
   const parsed = CheckoutFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }

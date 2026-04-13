@@ -169,11 +169,11 @@ describe('scheduleMaintenance', () => {
 
     expect(result).toBeNull()
     expect(repo.events.size).toBe(1)
-    const event = [...repo.events.values()][0]
+    const event = [...repo.events.values()][0]!
     expect(event.status).toBe('scheduled')
     expect(event.title).toBe('Annual inspection')
     expect(audit.calls).toHaveLength(1)
-    expect(audit.calls[0]).toMatchObject({
+    expect(audit.calls[0]!).toMatchObject({
       action: 'maintenance_scheduled',
       entityId: ASSET_ID,
     })
@@ -228,12 +228,12 @@ describe('logRetroactiveMaintenance', () => {
     )
 
     expect(result).toBeNull()
-    const event = [...repo.events.values()][0]
+    const event = [...repo.events.values()][0]!
     expect(event.status).toBe('completed')
     expect(event.startedAt).toBe('2026-03-01T09:00:00Z')
     expect(event.completedAt).toBe('2026-03-01T11:00:00Z')
     expect(event.cost).toBe(150)
-    expect(audit.calls[0].action).toBe('maintenance_completed')
+    expect(audit.calls[0]!.action).toBe('maintenance_completed')
   })
 
   it('returns error when asset is not found', async () => {
@@ -371,7 +371,7 @@ describe('startMaintenance', () => {
     expect(result).toBeNull()
     expect(repo.events.get('evt-001')!.status).toBe('in_progress')
     expect(repo.assetStatuses.get(ASSET_ID)).toBe('under_maintenance')
-    expect(audit.calls[0]).toMatchObject({
+    expect(audit.calls[0]!).toMatchObject({
       action: 'maintenance_started',
       entityId: ASSET_ID,
     })
@@ -439,7 +439,7 @@ describe('completeMaintenance', () => {
     expect(result).toBeNull()
     expect(repo.events.get('evt-001')!.status).toBe('completed')
     expect(repo.assetStatuses.get(ASSET_ID)).toBe('active')
-    expect(audit.calls[0]).toMatchObject({
+    expect(audit.calls[0]!).toMatchObject({
       action: 'maintenance_completed',
       entityId: ASSET_ID,
     })
@@ -469,11 +469,11 @@ describe('completeMaintenance', () => {
 
   it('includes cost in audit changes when provided', async () => {
     await completeMaintenance('evt-001', makeCompleteInput({ cost: 500 }), makePorts(repo, audit))
-    expect(audit.calls[0].changes).toMatchObject({ cost: { old: null, new: 500 } })
+    expect(audit.calls[0]!.changes).toMatchObject({ cost: { old: null, new: 500 } })
   })
 
   it('omits cost from audit changes when not provided', async () => {
     await completeMaintenance('evt-001', makeCompleteInput({ cost: null }), makePorts(repo, audit))
-    expect(audit.calls[0].changes).not.toHaveProperty('cost')
+    expect(audit.calls[0]!.changes).not.toHaveProperty('cost')
   })
 })
