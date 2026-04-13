@@ -1,7 +1,7 @@
 'use client'
 
 import { VisuallyHidden } from 'radix-ui'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
@@ -11,6 +11,17 @@ import { useAuth } from '@/providers/AuthProvider'
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Next.js can scroll the window on navigation (focus management, scroll
+  // restoration). This shell uses a custom scroll container, so window.scrollY
+  // must always be 0. Snap it back immediately whenever it drifts.
+  useEffect(() => {
+    const lock = () => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0)
+    }
+    window.addEventListener('scroll', lock, { passive: true })
+    return () => window.removeEventListener('scroll', lock)
+  }, [])
 
   if (isLoading) {
     return (
