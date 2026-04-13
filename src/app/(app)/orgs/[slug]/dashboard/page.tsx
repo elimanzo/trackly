@@ -3,14 +3,11 @@
 import { Activity, AlertTriangle, CheckCircle, DollarSign, Package, Wrench } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
-import { RecentActivity } from '@/components/dashboard/RecentActivity'
+import { Feed } from '@/components/dashboard/Feed'
 import { StatCard } from '@/components/dashboard/StatCard'
-import { UpcomingMaintenance } from '@/components/dashboard/UpcomingMaintenance'
-import { WarrantyAlerts } from '@/components/dashboard/WarrantyAlerts'
 import { FadeIn } from '@/components/motion/FadeIn'
 import { StaggerChildren, StaggerItem } from '@/components/motion/StaggerChildren'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useRecentActivity } from '@/lib/hooks/useAuditLogs'
 import { useDashboardStats } from '@/lib/hooks/useDashboardStats'
 import { formatCompactCurrency } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
@@ -38,7 +35,6 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { org } = useOrg()
   const { data: stats, isLoading } = useDashboardStats()
-  const { data: logs } = useRecentActivity(8)
 
   if (isLoading)
     return (
@@ -66,9 +62,6 @@ export default function DashboardPage() {
   const showCardRetired = cfg.showCardRetired ?? true
   const showCardValue = cfg.showCardValue ?? true
   const showCharts = cfg.showCharts ?? true
-  const showWarranty = cfg.showWarranty ?? true
-  const showMaintenanceAlerts = cfg.showMaintenanceAlerts ?? true
-  const showActivity = cfg.showActivity ?? true
   const deptLabel = org?.departmentLabel ?? 'Department'
 
   const activeCount = stats.byStatus.find((s) => s.status === 'active')?.count ?? 0
@@ -159,14 +152,10 @@ export default function DashboardPage() {
         </FadeIn>
       )}
 
-      {/* Activity + Warranty + Upcoming Maintenance */}
-      {(showActivity || showWarranty || showMaintenanceAlerts) && (
-        <FadeIn delay={0.18} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {showActivity && <RecentActivity logs={logs} />}
-          {showWarranty && <WarrantyAlerts alerts={stats.warrantyAlerts} />}
-          {showMaintenanceAlerts && <UpcomingMaintenance alerts={stats.upcomingMaintenance} />}
-        </FadeIn>
-      )}
+      {/* Feed */}
+      <FadeIn delay={0.18} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Feed />
+      </FadeIn>
 
       <div className="text-muted-foreground flex items-center gap-2 text-xs">
         <Activity className="h-3.5 w-3.5" />
