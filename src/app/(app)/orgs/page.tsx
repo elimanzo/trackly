@@ -16,7 +16,7 @@ export default function OrgPickerPage() {
   // Auto-redirect only if the user belongs to exactly one org
   useEffect(() => {
     if (!user || memberships.length !== 1) return
-    router.replace(`/orgs/${memberships[0].orgSlug}/dashboard`)
+    router.replace(`/orgs/${memberships[0]!.orgSlug}/dashboard`)
   }, [user, memberships, router])
 
   if (!user) return null

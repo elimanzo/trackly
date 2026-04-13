@@ -83,7 +83,7 @@ describe('checkoutAsset', () => {
     it('does not include quantity in audit for serialized checkout', async () => {
       const ports = makePorts(repo, audit)
       await checkoutAsset(ASSET_ID, makeInput(), 'Admin', ACTOR_ID, ports)
-      expect(audit.calls[0].changes).not.toHaveProperty('quantity')
+      expect(audit.calls[0]!.changes).not.toHaveProperty('quantity')
     })
   })
 
@@ -110,7 +110,7 @@ describe('checkoutAsset', () => {
 
       expect(result).toBeNull()
       expect(repo.assignments.size).toBe(1)
-      expect(audit.calls[0].changes).toMatchObject({
+      expect(audit.calls[0]!.changes).toMatchObject({
         assignedTo: { old: null, new: 'Alice' },
         quantity: { old: null, new: 3 },
       })
@@ -196,7 +196,7 @@ describe('checkoutAsset', () => {
       // Only the concurrent assignment remains; ours was rolled back
       const active = [...repo.assignments.values()].filter((a) => !a.returnedAt)
       expect(active).toHaveLength(1)
-      expect(active[0].assignedToName).toBe('Concurrent')
+      expect(active[0]!.assignedToName).toBe('Concurrent')
     })
   })
 })
@@ -304,7 +304,7 @@ describe('returnBulkAssignment', () => {
 
     expect(result).toBeNull()
     expect(repo.assignments.get(assignmentId)!.returnedAt).not.toBeNull()
-    expect(audit.calls[0].changes).toMatchObject({ quantity: { old: 5, new: 0 } })
+    expect(audit.calls[0]!.changes).toMatchObject({ quantity: { old: 5, new: 0 } })
   })
 
   it('closes the assignment when returning more than held', async () => {

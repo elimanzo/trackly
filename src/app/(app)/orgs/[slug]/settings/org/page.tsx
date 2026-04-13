@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import type { Control, Path } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -146,13 +147,12 @@ function ToggleRow({
   name: string
   label: string
   description?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  control: any
+  control: Control<OrgFormInput>
 }) {
   return (
     <FormField
       control={control}
-      name={name}
+      name={name as Path<OrgFormInput>}
       render={({ field }) => (
         <FormItem className="flex items-center justify-between gap-4">
           <div>

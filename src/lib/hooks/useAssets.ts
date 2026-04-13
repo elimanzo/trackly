@@ -45,6 +45,36 @@ type AssignmentRow = {
   locations: { name: string } | null
 }
 
+type RelationName = { name: string } | null
+
+type AssetRow = {
+  id: string
+  org_id: string
+  asset_tag: string
+  name: string
+  is_bulk: boolean
+  quantity: number | null
+  category_id: string | null
+  department_id: string | null
+  location_id: string | null
+  vendor_id: string | null
+  status: string
+  purchase_date: string | null
+  purchase_cost: number | null
+  warranty_expiry: string | null
+  notes: string | null
+  deleted_at: string | null
+  created_by: string
+  updated_by: string
+  created_at: string
+  updated_at: string
+  departments: RelationName
+  categories: RelationName
+  locations: RelationName
+  vendors: RelationName
+  asset_assignments: AssignmentRow[]
+}
+
 function mapAssignment(a: AssignmentRow, assetId: string): AssetAssignment {
   return {
     id: a.id,
@@ -65,60 +95,60 @@ function mapAssignment(a: AssignmentRow, assetId: string): AssetAssignment {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapAssetRow(row: any): TypedAsset {
-  const assignments: AssignmentRow[] = row.asset_assignments ?? []
-  const activeRows = assignments.filter((a) => a.returned_at === null)
-  const activeAssignments = activeRows.map((a) => mapAssignment(a, row.id as string))
+export function mapAssetRow(row: AssetRow): TypedAsset {
+  const activeRows = row.asset_assignments.filter((a) => a.returned_at === null)
+  const activeAssignments = activeRows.map((a) => mapAssignment(a, row.id))
 
   const assigneeSummary: string | null = (() => {
     if (activeAssignments.length === 0) return null
-    const first = activeAssignments[0].assignedToName
+    // Safe: guarded by length check above
+    const first = activeAssignments[0]!.assignedToName
     const extra = activeAssignments.length - 1
     return extra > 0 ? `${first} +${extra} other${extra > 1 ? 's' : ''}` : first
   })()
 
   const base = {
-    id: row.id as string,
-    orgId: row.org_id as string,
-    assetTag: row.asset_tag as string,
-    name: row.name as string,
-    categoryId: (row.category_id as string | null) ?? null,
-    categoryName: (row.categories as { name: string } | null)?.name ?? null,
-    departmentId: (row.department_id as string | null) ?? null,
-    departmentName: (row.departments as { name: string } | null)?.name ?? null,
-    locationId: (row.location_id as string | null) ?? null,
-    locationName: (row.locations as { name: string } | null)?.name ?? null,
+    id: row.id,
+    orgId: row.org_id,
+    assetTag: row.asset_tag,
+    name: row.name,
+    categoryId: row.category_id,
+    categoryName: row.categories?.name ?? null,
+    departmentId: row.department_id,
+    departmentName: row.departments?.name ?? null,
+    locationId: row.location_id,
+    locationName: row.locations?.name ?? null,
     status: row.status as SerializedAsset['status'],
-    purchaseDate: (row.purchase_date as string | null) ?? null,
-    purchaseCost: (row.purchase_cost as number | null) ?? null,
-    warrantyExpiry: (row.warranty_expiry as string | null) ?? null,
-    vendorId: (row.vendor_id as string | null) ?? null,
-    vendorName: (row.vendors as { name: string } | null)?.name ?? null,
-    notes: (row.notes as string | null) ?? null,
-    deletedAt: (row.deleted_at as string | null) ?? null,
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
-    createdBy: (row.created_by as string) ?? '',
-    updatedBy: (row.updated_by as string) ?? '',
+    purchaseDate: row.purchase_date,
+    purchaseCost: row.purchase_cost,
+    warrantyExpiry: row.warranty_expiry,
+    vendorId: row.vendor_id,
+    vendorName: row.vendors?.name ?? null,
+    notes: row.notes,
+    deletedAt: row.deleted_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    createdBy: row.created_by,
+    updatedBy: row.updated_by,
     isCheckedOut: activeAssignments.length > 0,
     assigneeSummary,
   }
 
-  if (row.is_bulk as boolean) {
+  if (row.is_bulk) {
+    const qty = row.quantity ?? 0
     const quantityCheckedOut = activeAssignments.reduce((sum, a) => sum + a.quantity, 0)
-    const available = computeAvailable(row.quantity as number, quantityCheckedOut)
+    const available = computeAvailable(qty, quantityCheckedOut)
     return {
       ...base,
       isBulk: true,
-      quantity: row.quantity as number,
+      quantity: qty,
       available,
       quantityCheckedOut,
       activeAssignments,
       isAvailable: available > 0,
-      statusLabel: `${available}/${row.quantity as number} avail.`,
+      statusLabel: `${available}/${qty} avail.`,
       ui: {
-        statusBadgeText: `${available}/${row.quantity as number} avail.`,
+        statusBadgeText: `${available}/${qty} avail.`,
         checkoutLabel: 'items',
         checkoutSubtitle: `— ${available} available`,
         availableQty: available,
@@ -143,7 +173,7 @@ export function mapAssetRow(row: any): TypedAsset {
       checkoutSubtitle: `— ${base.assetTag}`,
       availableQty: null,
       assignmentTabLabel: 'Assignment',
-      secondaryAction: (row.status as string) === 'checked_out' ? 'return' : null,
+      secondaryAction: row.status === 'checked_out' ? 'return' : null,
       assignments: currentAssignment ? [currentAssignment] : [],
     },
   } satisfies SerializedAsset
@@ -232,7 +262,7 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
       const { data: rows, count, error } = await query.range(from, to)
 
       if (error || !rows) return { rows: [], count: 0 }
-      return { rows, count: count ?? 0 }
+      return { rows: rows as unknown as AssetRow[], count: count ?? 0 }
     },
     staleTime: 30_000,
   })
@@ -275,7 +305,7 @@ export function useAsset(id: string): {
         .maybeSingle()
 
       if (error || !row) return null
-      return mapAssetRow(row)
+      return mapAssetRow(row as unknown as AssetRow)
     },
     staleTime: 30_000,
   })

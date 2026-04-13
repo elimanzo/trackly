@@ -24,7 +24,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssetMaintenanceEvents } from '@/lib/hooks/useMaintenance'
 import { createPolicy } from '@/lib/permissions'
-import type { UserRole } from '@/lib/types'
 import {
   MAINTENANCE_STATUS_LABELS,
   MAINTENANCE_TYPE_LABELS,
@@ -50,8 +49,6 @@ interface MaintenanceTabProps {
   assetId: string
   assetDepartmentId: string | null
   isBulk: boolean
-  role: UserRole | null
-  departmentIds: string[]
   onAssetRefresh: () => void
 }
 
@@ -59,10 +56,9 @@ export function MaintenanceTab({
   assetId,
   assetDepartmentId,
   isBulk,
-  role,
-  departmentIds,
   onAssetRefresh,
 }: MaintenanceTabProps) {
+  const { role, departmentIds } = useOrg()
   const { data: events, isLoading, refresh } = useAssetMaintenanceEvents(assetId)
   const [scheduleOpen, setScheduleOpen] = useState(false)
 
@@ -144,7 +140,6 @@ export function MaintenanceTab({
               key={event.id}
               event={event}
               assetDepartmentId={assetDepartmentId}
-              role={role}
               canManage={canManage}
               onSuccess={handleTransitionSuccess}
             />
@@ -168,7 +163,6 @@ export function MaintenanceTab({
 interface MaintenanceEventCardProps {
   event: MaintenanceEvent
   assetDepartmentId: string | null
-  role: UserRole | null
   canManage: boolean
   onSuccess: () => void
 }
@@ -176,11 +170,10 @@ interface MaintenanceEventCardProps {
 function MaintenanceEventCard({
   event,
   assetDepartmentId,
-  role,
   canManage,
   onSuccess,
 }: MaintenanceEventCardProps) {
-  const { membership } = useOrg()
+  const { membership, role } = useOrg()
   const { user } = useAuth()
   const orgSlug = membership?.orgSlug ?? ''
   const [completeOpen, setCompleteOpen] = useState(false)

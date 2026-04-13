@@ -210,7 +210,9 @@ export async function acceptInviteViaGoogleAction(
 
   if (!invite) return { error: 'Invite not found or has expired. Ask your admin to resend it.' }
 
-  return (await fulfillInvite(admin, user.id, user.email, fullName, invite)) ?? { error: null }
+  return (
+    (await fulfillInvite(admin, user.id, user.email ?? '', fullName, invite)) ?? { error: null }
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -243,7 +245,7 @@ export async function acceptInviteAction(
   const { error: pwError } = await admin.auth.admin.updateUserById(user.id, { password })
   if (pwError) return { error: pwError.message }
 
-  const result = await fulfillInvite(admin, user.id, user.email, fullName, invite)
+  const result = await fulfillInvite(admin, user.id, user.email ?? '', fullName, invite)
   if (result) return result
 
   return { error: null, email: user.email!.toLowerCase() }
@@ -318,12 +320,12 @@ export async function acceptAuthenticatedInviteAction(
   }
 
   const fullName =
-    (user.user_metadata?.full_name as string | undefined) ?? user.email!.split('@')[0]
+    (user.user_metadata?.full_name as string | undefined) ?? user.email!.split('@')[0]!
 
   const result = await fulfillInvite(
     admin,
     user.id,
-    user.email,
+    user.email ?? '',
     fullName,
     invite as FulfillableInvite
   )

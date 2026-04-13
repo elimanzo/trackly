@@ -28,7 +28,7 @@ export async function scheduleMaintenanceAction(
   input: MaintenanceFormInput
 ): Promise<{ error: string } | null> {
   const parsed = MaintenanceFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }
@@ -110,7 +110,7 @@ export async function completeMaintenanceAction(
   input: CompleteMaintenanceFormInput
 ): Promise<{ error: string } | null> {
   const parsed = CompleteMaintenanceFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }
@@ -130,7 +130,7 @@ export async function updateMaintenanceAction(
   input: UpdateMaintenanceFormInput
 ): Promise<{ error: string } | null> {
   const parsed = UpdateMaintenanceFormSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' }
 
   const ctx = await getContext(orgSlug)
   if (!ctx) return { error: 'Not authenticated' }

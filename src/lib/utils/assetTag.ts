@@ -23,7 +23,7 @@ export function nextTagInSequence(sanitizedPrefix: string, existingTags: string[
   for (const tag of existingTags) {
     const match = pattern.exec(tag)
     if (match) {
-      const n = parseInt(match[1], 10)
+      const n = parseInt(match[1]!, 10)
       if (n > max) max = n
     }
   }

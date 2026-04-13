@@ -43,7 +43,7 @@ export async function googleSignInDestination(
     const { data: org } = await admin
       .from('organizations')
       .select('slug')
-      .eq('id', memberships[0].org_id)
+      .eq('id', memberships[0]!.org_id)
       .maybeSingle()
     if (org?.slug) return { destination: `/orgs/${org.slug as string}/dashboard` }
   }
