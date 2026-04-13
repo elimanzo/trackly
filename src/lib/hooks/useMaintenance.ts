@@ -6,37 +6,61 @@ import { createClient } from '@/lib/supabase/client'
 import type { MaintenanceEvent, MaintenanceStatus, MaintenanceType } from '@/lib/types/maintenance'
 import { useOrg } from '@/providers/OrgProvider'
 
-function mapEvent(r: Record<string, unknown>): MaintenanceEvent {
+type MaintenanceEventRow = {
+  id: string
+  org_id: string
+  asset_id: string
+  title: string
+  type: string
+  status: string
+  scheduled_date: string
+  started_at: string | null
+  completed_at: string | null
+  cost: number | null
+  technician_name: string | null
+  notes: string | null
+  created_by: string | null
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+function mapEvent(r: MaintenanceEventRow): MaintenanceEvent {
   return {
-    id: r.id as string,
-    orgId: r.org_id as string,
-    assetId: r.asset_id as string,
-    title: r.title as string,
+    id: r.id,
+    orgId: r.org_id,
+    assetId: r.asset_id,
+    title: r.title,
     type: r.type as MaintenanceEvent['type'],
     status: r.status as MaintenanceEvent['status'],
-    scheduledDate: r.scheduled_date as string,
-    startedAt: (r.started_at as string) ?? null,
-    completedAt: (r.completed_at as string) ?? null,
-    cost: (r.cost as number) ?? null,
-    technicianName: (r.technician_name as string) ?? null,
-    notes: (r.notes as string) ?? null,
-    createdBy: (r.created_by as string) ?? null,
-    deletedAt: (r.deleted_at as string) ?? null,
-    createdAt: r.created_at as string,
-    updatedAt: r.updated_at as string,
+    scheduledDate: r.scheduled_date,
+    startedAt: r.started_at,
+    completedAt: r.completed_at,
+    cost: r.cost,
+    technicianName: r.technician_name,
+    notes: r.notes,
+    createdBy: r.created_by,
+    deletedAt: r.deleted_at,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
   }
 }
 
 export function useAssetMaintenanceEvents(assetId: string): {
   data: MaintenanceEvent[]
   isLoading: boolean
+  isError: boolean
   refresh: () => void
 } {
   const { org } = useOrg()
   const orgId = org?.id ?? ''
   const queryClient = useQueryClient()
 
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['maintenanceEvents', assetId],
     enabled: !!orgId && !!assetId,
     queryFn: async () => {
@@ -46,7 +70,7 @@ export function useAssetMaintenanceEvents(assetId: string): {
         .eq('asset_id', assetId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
-      return (rows ?? []).map(mapEvent)
+      return ((rows ?? []) as MaintenanceEventRow[]).map(mapEvent)
     },
     staleTime: 30_000,
   })
@@ -55,7 +79,7 @@ export function useAssetMaintenanceEvents(assetId: string): {
     void queryClient.invalidateQueries({ queryKey: ['maintenanceEvents', assetId] })
   }, [queryClient, assetId])
 
-  return { data, isLoading, refresh }
+  return { data, isLoading, isError, refresh }
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +102,7 @@ export type MaintenanceListItem = MaintenanceEvent & {
 export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
   data: MaintenanceListItem[]
   isLoading: boolean
+  isError: boolean
   refresh: () => void
 } {
   const { org, role, departmentIds } = useOrg()
@@ -86,7 +111,11 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
 
   const constraint = createPolicy({ role: role ?? 'viewer', departmentIds }).queryConstraint()
 
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: [
       'maintenanceList',
       orgId,
@@ -133,7 +162,7 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
 
       const { data: rows } = await query
 
-      type MaintenanceRow = Record<string, unknown> & {
+      type MaintenanceListRow = MaintenanceEventRow & {
         assets: {
           name: string
           asset_tag: string
@@ -141,7 +170,7 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
         }
       }
 
-      return ((rows ?? []) as MaintenanceRow[]).map((r) => ({
+      return ((rows ?? []) as MaintenanceListRow[]).map((r) => ({
         ...mapEvent(r),
         assetName: r.assets.name,
         assetTag: r.assets.asset_tag,
@@ -155,5 +184,5 @@ export function useMaintenanceList(filters: MaintenanceListFilters = {}): {
     void queryClient.invalidateQueries({ queryKey: ['maintenanceList'] })
   }, [queryClient])
 
-  return { data, isLoading, refresh }
+  return { data, isLoading, isError, refresh }
 }

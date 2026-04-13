@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import type { AssetId, EventId, OrgId, UserId } from '@/lib/types'
+
 import {
   completeMaintenance,
   logRetroactiveMaintenance,
@@ -14,9 +16,10 @@ import { InMemoryMaintenanceRepo, SpyMaintenanceAuditPort } from './fakes'
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ORG_ID = 'org-001'
-const ASSET_ID = 'asset-001'
-const USER_ID = 'user-001'
+const ORG_ID = 'org-001' as OrgId
+const ASSET_ID = 'asset-001' as AssetId
+const USER_ID = 'user-001' as UserId
+const EVENT_ID = 'evt-001' as EventId
 
 function makePorts(
   repo: InMemoryMaintenanceRepo,
@@ -66,7 +69,7 @@ describe('scheduleMaintenance', () => {
   it('returns error when asset is not found', async () => {
     const result = await scheduleMaintenance(
       ORG_ID,
-      'nonexistent',
+      'nonexistent' as AssetId,
       makeScheduleInput(),
       USER_ID,
       makePorts(repo, audit)
@@ -239,7 +242,7 @@ describe('logRetroactiveMaintenance', () => {
   it('returns error when asset is not found', async () => {
     const result = await logRetroactiveMaintenance(
       ORG_ID,
-      'nonexistent',
+      'nonexistent' as AssetId,
       makeRetroactiveInput(),
       USER_ID,
       makePorts(repo, audit)
@@ -325,7 +328,7 @@ describe('startMaintenance', () => {
   }
 
   it('returns error when event is not found', async () => {
-    const result = await startMaintenance('nonexistent', makePorts(repo, audit))
+    const result = await startMaintenance('nonexistent' as EventId, makePorts(repo, audit))
     expect(result).toEqual({ error: 'Maintenance event not found.' })
   })
 
@@ -346,27 +349,27 @@ describe('startMaintenance', () => {
       createdBy: USER_ID,
       deletedAt: null,
     })
-    const result = await startMaintenance('evt-001', makePorts(repo, audit))
+    const result = await startMaintenance(EVENT_ID, makePorts(repo, audit))
     expect(result).toEqual({ error: 'Only scheduled events can be started.' })
   })
 
   it('returns error when asset is checked_out', async () => {
     seedScheduledEvent()
     repo.assetStatuses.set(ASSET_ID, 'checked_out')
-    const result = await startMaintenance('evt-001', makePorts(repo, audit))
+    const result = await startMaintenance(EVENT_ID, makePorts(repo, audit))
     expect(result).toEqual({ error: 'Return the asset before starting maintenance.' })
   })
 
   it('returns error when asset is retired', async () => {
     seedScheduledEvent()
     repo.assetStatuses.set(ASSET_ID, 'retired')
-    const result = await startMaintenance('evt-001', makePorts(repo, audit))
+    const result = await startMaintenance(EVENT_ID, makePorts(repo, audit))
     expect(result).toEqual({ error: 'Cannot start maintenance on a retired asset.' })
   })
 
   it('sets event to in_progress and asset to under_maintenance on success', async () => {
     seedScheduledEvent()
-    const result = await startMaintenance('evt-001', makePorts(repo, audit))
+    const result = await startMaintenance(EVENT_ID, makePorts(repo, audit))
 
     expect(result).toBeNull()
     expect(repo.events.get('evt-001')!.status).toBe('in_progress')
@@ -420,7 +423,7 @@ describe('completeMaintenance', () => {
 
   it('returns error when event is not found', async () => {
     const result = await completeMaintenance(
-      'nonexistent',
+      'nonexistent' as EventId,
       makeCompleteInput(),
       makePorts(repo, audit)
     )
@@ -429,12 +432,12 @@ describe('completeMaintenance', () => {
 
   it('returns error when event is not in_progress', async () => {
     repo.events.get('evt-001')!.status = 'scheduled'
-    const result = await completeMaintenance('evt-001', makeCompleteInput(), makePorts(repo, audit))
+    const result = await completeMaintenance(EVENT_ID, makeCompleteInput(), makePorts(repo, audit))
     expect(result).toEqual({ error: 'Only in-progress events can be completed.' })
   })
 
   it('sets event to completed and restores asset to active', async () => {
-    const result = await completeMaintenance('evt-001', makeCompleteInput(), makePorts(repo, audit))
+    const result = await completeMaintenance(EVENT_ID, makeCompleteInput(), makePorts(repo, audit))
 
     expect(result).toBeNull()
     expect(repo.events.get('evt-001')!.status).toBe('completed')
@@ -447,7 +450,7 @@ describe('completeMaintenance', () => {
 
   it('persists cost, technicianName, and notes on completion', async () => {
     await completeMaintenance(
-      'evt-001',
+      EVENT_ID,
       makeCompleteInput({ cost: 350, technicianName: 'Bob', notes: 'Fixed leak' }),
       makePorts(repo, audit)
     )
@@ -460,7 +463,7 @@ describe('completeMaintenance', () => {
   it('does not overwrite asset status if asset is no longer under_maintenance', async () => {
     // Simulate a concurrent state change (e.g. someone manually changed status)
     repo.assetStatuses.set(ASSET_ID, 'checked_out')
-    const result = await completeMaintenance('evt-001', makeCompleteInput(), makePorts(repo, audit))
+    const result = await completeMaintenance(EVENT_ID, makeCompleteInput(), makePorts(repo, audit))
 
     expect(result).toBeNull()
     // Asset status should not have been touched
@@ -468,12 +471,12 @@ describe('completeMaintenance', () => {
   })
 
   it('includes cost in audit changes when provided', async () => {
-    await completeMaintenance('evt-001', makeCompleteInput({ cost: 500 }), makePorts(repo, audit))
+    await completeMaintenance(EVENT_ID, makeCompleteInput({ cost: 500 }), makePorts(repo, audit))
     expect(audit.calls[0]!.changes).toMatchObject({ cost: { old: null, new: 500 } })
   })
 
   it('omits cost from audit changes when not provided', async () => {
-    await completeMaintenance('evt-001', makeCompleteInput({ cost: null }), makePorts(repo, audit))
+    await completeMaintenance(EVENT_ID, makeCompleteInput({ cost: null }), makePorts(repo, audit))
     expect(audit.calls[0]!.changes).not.toHaveProperty('cost')
   })
 })

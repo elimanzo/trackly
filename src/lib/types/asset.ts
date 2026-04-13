@@ -84,40 +84,40 @@ export type AssetAssignment = z.infer<typeof AssetAssignmentSchema>
 // ---------------------------------------------------------------------------
 
 type AssetRelations = {
-  categoryName: string | null
-  departmentName: string | null
-  locationName: string | null
-  vendorName: string | null
+  readonly categoryName: string | null
+  readonly departmentName: string | null
+  readonly locationName: string | null
+  readonly vendorName: string | null
 }
 
 /** Pre-computed view-layer fields — eliminates isBulk branching in UI components. */
 export type AssetUI = {
   /** null = render <AssetStatusBadge>; string = render <Badge variant="secondary"> */
-  statusBadgeText: string | null
+  readonly statusBadgeText: string | null
   /** "items" for bulk, "asset" for serialized — used in CheckoutModal title */
-  checkoutLabel: 'items' | 'asset'
+  readonly checkoutLabel: 'items' | 'asset'
   /** "— 4 available" for bulk, "— TAG-001" for serialized */
-  checkoutSubtitle: string
+  readonly checkoutSubtitle: string
   /** null = don't render quantity field; number = max for the quantity input */
-  availableQty: number | null
+  readonly availableQty: number | null
   /** "Checked out (3)" for bulk, "Assignment" for serialized */
-  assignmentTabLabel: string
+  readonly assignmentTabLabel: string
   /** Which secondary action button to show in the detail header */
-  secondaryAction: 'restock' | 'return' | null
+  readonly secondaryAction: 'restock' | 'return' | null
   /** Normalized assignment list — serialized gets [] or [currentAssignment] */
-  assignments: AssetAssignment[]
+  readonly assignments: readonly AssetAssignment[]
 }
 
 /** Pre-computed display fields available on every asset regardless of kind. */
 type AssetDisplay = {
   /** "Alice" for serialized, "Alice +2 others" for bulk with multiple, null if unassigned. */
-  assigneeSummary: string | null
+  readonly assigneeSummary: string | null
   /** "3/10 avail." for bulk; ASSET_STATUS_LABELS value for serialized. */
-  statusLabel: string
+  readonly statusLabel: string
   /** True if the asset can be checked out right now — uniform gate, no branching needed. */
-  isAvailable: boolean
-  isCheckedOut: boolean
-  ui: AssetUI
+  readonly isAvailable: boolean
+  readonly isCheckedOut: boolean
+  readonly ui: AssetUI
 }
 
 export type BulkAsset = Asset &

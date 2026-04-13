@@ -1,3 +1,4 @@
+import type { AssetId, AssignmentId, UserId } from '@/lib/types'
 import type { CheckoutFormInput } from '@/lib/types'
 import { computeAvailable } from '@/lib/utils/availability'
 
@@ -10,10 +11,10 @@ export type DomainResult = { error: string } | null
 // ---------------------------------------------------------------------------
 
 export async function checkoutAsset(
-  assetId: string,
+  assetId: AssetId,
   input: CheckoutFormInput,
   assignedByName: string,
-  actorId: string,
+  actorId: UserId,
   ports: CheckoutPorts
 ): Promise<DomainResult> {
   const asset = await ports.repo.getAsset(assetId)
@@ -77,7 +78,7 @@ export async function checkoutAsset(
 // ---------------------------------------------------------------------------
 
 export async function returnSerializedAsset(
-  assetId: string,
+  assetId: AssetId,
   ports: CheckoutPorts
 ): Promise<DomainResult> {
   const [assignment, asset] = await Promise.all([
@@ -106,7 +107,7 @@ export async function returnSerializedAsset(
 // ---------------------------------------------------------------------------
 
 export async function returnBulkAssignment(
-  assignmentId: string,
+  assignmentId: AssignmentId,
   quantityToReturn: number,
   ports: CheckoutPorts
 ): Promise<DomainResult> {
@@ -140,8 +141,8 @@ export async function returnBulkAssignment(
 // ---------------------------------------------------------------------------
 
 export async function updateAssignment(
-  assignmentId: string,
-  assetId: string,
+  assignmentId: AssignmentId,
+  assetId: AssetId,
   isBulk: boolean,
   input: CheckoutFormInput,
   ports: CheckoutPorts

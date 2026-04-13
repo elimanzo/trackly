@@ -27,7 +27,7 @@ export const AuditLogSchema = z.object({
   orgId: z.string().uuid(),
   actorId: z.string().uuid(),
   actorName: z.string(),
-  entityType: z.enum(['asset', 'user', 'department', 'category', 'location', 'vendor']),
+  entityType: z.enum(['asset', 'user', 'department', 'category', 'location', 'vendor', 'org']),
   entityId: z.string().uuid(),
   entityName: z.string(),
   action: AuditActionSchema,

@@ -8,7 +8,11 @@ export function useWarrantyAlerts(limit = 8, enabled = true) {
   const { org } = useOrg()
   const orgId = org?.id
 
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['warrantyAlerts', orgId, limit],
     enabled: orgId != null && enabled,
     queryFn: async () => {
@@ -24,20 +28,28 @@ export function useWarrantyAlerts(limit = 8, enabled = true) {
         .order('warranty_expiry')
         .limit(limit)
 
+      type WarrantyRow = {
+        id: string
+        asset_tag: string
+        name: string
+        warranty_expiry: string
+        departments: { name: string } | null
+      }
+
       const now = new Date()
-      return ((rows ?? []) as Record<string, unknown>[]).map((r) => ({
-        assetId: r.id as string,
-        assetTag: r.asset_tag as string,
-        assetName: r.name as string,
-        departmentName: (r.departments as { name: string } | null)?.name ?? null,
-        warrantyExpiry: r.warranty_expiry as string,
+      return ((rows ?? []) as WarrantyRow[]).map((r) => ({
+        assetId: r.id,
+        assetTag: r.asset_tag,
+        assetName: r.name,
+        departmentName: r.departments?.name ?? null,
+        warrantyExpiry: r.warranty_expiry,
         daysRemaining: Math.ceil(
-          (new Date(r.warranty_expiry as string).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          (new Date(r.warranty_expiry).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         ),
       })) satisfies WarrantyAlert[]
     },
     staleTime: 60_000,
   })
 
-  return { data, isLoading }
+  return { data, isLoading, isError }
 }

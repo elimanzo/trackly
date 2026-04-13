@@ -108,11 +108,13 @@ const REPORT_COLUMN_TOGGLES: ConfigToggle<ReportConfig>[] = [
 ]
 
 /** Derive a complete config object from stored (possibly partial) values + metadata defaults. */
-function fromConfig<T>(
+function fromConfig<T extends Record<string, boolean>>(
   toggles: ConfigToggle<T>[],
   stored: Partial<T> | null | undefined
-): Record<string, boolean> {
-  return Object.fromEntries(toggles.map((t) => [t.key, (stored?.[t.key] as boolean) ?? t.default]))
+): { [K in keyof T]: boolean } {
+  return Object.fromEntries(toggles.map((t) => [t.key, stored?.[t.key] ?? t.default])) as {
+    [K in keyof T]: boolean
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -362,9 +364,9 @@ export default function OrgSettingsPage() {
       dashboardConfig: {
         ...fromConfig(DASHBOARD_STAT_TOGGLES, null),
         ...fromConfig(DASHBOARD_SECTION_TOGGLES, null),
-      } as OrgFormInput['dashboardConfig'],
-      assetTableConfig: fromConfig(TABLE_COLUMN_TOGGLES, null) as OrgFormInput['assetTableConfig'],
-      reportConfig: fromConfig(REPORT_COLUMN_TOGGLES, null) as OrgFormInput['reportConfig'],
+      },
+      assetTableConfig: fromConfig(TABLE_COLUMN_TOGGLES, null),
+      reportConfig: fromConfig(REPORT_COLUMN_TOGGLES, null),
     },
   })
 
@@ -377,15 +379,9 @@ export default function OrgSettingsPage() {
         dashboardConfig: {
           ...fromConfig(DASHBOARD_STAT_TOGGLES, org.dashboardConfig),
           ...fromConfig(DASHBOARD_SECTION_TOGGLES, org.dashboardConfig),
-        } as OrgFormInput['dashboardConfig'],
-        assetTableConfig: fromConfig(
-          TABLE_COLUMN_TOGGLES,
-          org.assetTableConfig
-        ) as OrgFormInput['assetTableConfig'],
-        reportConfig: fromConfig(
-          REPORT_COLUMN_TOGGLES,
-          org.reportConfig
-        ) as OrgFormInput['reportConfig'],
+        },
+        assetTableConfig: fromConfig(TABLE_COLUMN_TOGGLES, org.assetTableConfig),
+        reportConfig: fromConfig(REPORT_COLUMN_TOGGLES, org.reportConfig),
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

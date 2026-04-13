@@ -36,7 +36,18 @@ type UDRow = {
   departments: { id: string; name: string } | null
 }
 
-type InvRow = Record<string, unknown>
+type InvRow = {
+  id: string
+  org_id: string
+  email: string
+  role: string
+  token: string
+  invited_by: string | null
+  invited_by_name: string
+  accepted_at: string | null
+  expires_at: string
+  created_at: string
+}
 
 async function fetchOrgUsers(
   orgId: string
@@ -67,13 +78,13 @@ async function fetchOrgUsers(
   if (invsResult.error) throw new Error(invsResult.error.message)
 
   const deptsByUser = new Map<string, UDRow[]>()
-  for (const ud of (deptsResult.data ?? []) as unknown as UDRow[]) {
+  for (const ud of deptsResult.data as UDRow[]) {
     const arr = deptsByUser.get(ud.user_id) ?? []
     arr.push(ud)
     deptsByUser.set(ud.user_id, arr)
   }
 
-  const users = ((membershipsResult.data ?? []) as unknown as MembershipRow[]).map((m) => {
+  const users = (membershipsResult.data as MembershipRow[]).map((m) => {
     const p = m.profiles
     const depts = deptsByUser.get(m.user_id) ?? []
     return {
@@ -83,7 +94,7 @@ async function fetchOrgUsers(
       email: p?.email ?? '',
       avatarUrl: p?.avatar_url ?? null,
       role: m.role as OrgMember['role'],
-      inviteStatus: m.invite_status,
+      inviteStatus: m.invite_status as OrgMember['inviteStatus'],
       createdAt: p?.created_at ?? '',
       updatedAt: p?.updated_at ?? '',
       departmentIds: depts.map((ud) => ud.department_id),
@@ -91,17 +102,17 @@ async function fetchOrgUsers(
     }
   })
 
-  const pendingInvites = ((invsResult.data ?? []) as InvRow[]).map((r) => ({
-    id: r.id as string,
-    orgId: r.org_id as string,
-    email: r.email as string,
+  const pendingInvites = (invsResult.data as InvRow[]).map((r) => ({
+    id: r.id,
+    orgId: r.org_id,
+    email: r.email,
     role: r.role as Invite['role'],
-    token: r.token as string,
-    invitedBy: (r.invited_by as string) ?? '',
-    invitedByName: r.invited_by_name as string,
+    token: r.token,
+    invitedBy: r.invited_by ?? '',
+    invitedByName: r.invited_by_name,
     acceptedAt: null,
-    expiresAt: r.expires_at as string,
-    createdAt: r.created_at as string,
+    expiresAt: r.expires_at,
+    createdAt: r.created_at,
   }))
 
   return { users, pendingInvites }
@@ -120,6 +131,7 @@ export function useOrgUsers() {
     users: query.data?.users ?? [],
     pendingInvites: query.data?.pendingInvites ?? [],
     isLoading: query.isLoading,
+    isError: query.isError,
   }
 }
 
