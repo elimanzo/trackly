@@ -1,3 +1,4 @@
+import type { AssetId, EventId, OrgId, UserId } from '@/lib/types'
 import type { MaintenanceType } from '@/lib/types/maintenance'
 
 import type { CompleteMaintenanceData, MaintenancePorts, UpdateMaintenanceData } from './ports'
@@ -35,10 +36,10 @@ export type RetroactiveInput = {
 // ---------------------------------------------------------------------------
 
 export async function scheduleMaintenance(
-  orgId: string,
-  assetId: string,
+  orgId: OrgId,
+  assetId: AssetId,
   input: ScheduleInput,
-  createdBy: string,
+  createdBy: UserId,
   ports: MaintenancePorts
 ): Promise<DomainResult> {
   const asset = await ports.repo.getAsset(assetId)
@@ -90,10 +91,10 @@ export async function scheduleMaintenance(
 // ---------------------------------------------------------------------------
 
 export async function logRetroactiveMaintenance(
-  orgId: string,
-  assetId: string,
+  orgId: OrgId,
+  assetId: AssetId,
   input: RetroactiveInput,
-  createdBy: string,
+  createdBy: UserId,
   ports: MaintenancePorts
 ): Promise<DomainResult> {
   const asset = await ports.repo.getAsset(assetId)
@@ -143,7 +144,7 @@ export async function logRetroactiveMaintenance(
 // ---------------------------------------------------------------------------
 
 export async function startMaintenance(
-  eventId: string,
+  eventId: EventId,
   ports: MaintenancePorts
 ): Promise<DomainResult> {
   const event = await ports.repo.getEvent(eventId)
@@ -188,7 +189,7 @@ export async function startMaintenance(
 // ---------------------------------------------------------------------------
 
 export async function completeMaintenance(
-  eventId: string,
+  eventId: EventId,
   input: CompleteMaintenanceData,
   ports: MaintenancePorts
 ): Promise<DomainResult> {
@@ -232,7 +233,7 @@ export async function completeMaintenance(
 // ---------------------------------------------------------------------------
 
 export async function updateMaintenance(
-  eventId: string,
+  eventId: EventId,
   input: UpdateMaintenanceData,
   ports: MaintenancePorts
 ): Promise<DomainResult> {
@@ -264,8 +265,8 @@ export async function updateMaintenance(
 // ---------------------------------------------------------------------------
 
 export async function deleteMaintenance(
-  eventId: string,
-  requesterId: string,
+  eventId: EventId,
+  requesterId: UserId,
   isAdmin: boolean,
   ports: MaintenancePorts
 ): Promise<DomainResult> {

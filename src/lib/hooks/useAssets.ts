@@ -205,6 +205,7 @@ export type PaginatedAssets = {
   data: TypedAsset[]
   totalCount: number
   isLoading: boolean
+  isError: boolean
   refresh: () => void
 }
 
@@ -226,7 +227,7 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
     pageSize,
   ]
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey,
     enabled: !!orgId,
     queryFn: async () => {
@@ -276,6 +277,7 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
     data: (data?.rows ?? []).map(mapAssetRow),
     totalCount: data?.count ?? 0,
     isLoading,
+    isError,
     refresh,
   }
 }
@@ -287,12 +289,13 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
 export function useAsset(id: string): {
   data: TypedAsset | null
   isLoading: boolean
+  isError: boolean
   refresh: () => void
 } {
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['asset', id],
     enabled: !!user?.id && !!id,
     queryFn: async () => {
@@ -320,7 +323,7 @@ export function useAsset(id: string): {
     ])
   }, [queryClient, id])
 
-  return { data: data ?? null, isLoading, refresh }
+  return { data: data ?? null, isLoading, isError, refresh }
 }
 
 // ---------------------------------------------------------------------------

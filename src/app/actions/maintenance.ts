@@ -10,6 +10,7 @@ import {
   updateMaintenance,
 } from '@/lib/maintenance'
 import { createPolicy } from '@/lib/permissions'
+import type { AssetId, EventId, OrgId, UserId } from '@/lib/types'
 import {
   CompleteMaintenanceFormSchema,
   MaintenanceFormSchema,
@@ -55,8 +56,8 @@ export async function scheduleMaintenanceAction(
 
   if (parsed.data.isRetroactive) {
     return logRetroactiveMaintenance(
-      ctx.orgId,
-      assetId,
+      ctx.orgId as OrgId,
+      assetId as AssetId,
       {
         title: parsed.data.title,
         type: parsed.data.type,
@@ -67,14 +68,14 @@ export async function scheduleMaintenanceAction(
         technicianName: parsed.data.technicianName ?? null,
         notes: parsed.data.notes ?? null,
       },
-      ctx.userId,
+      ctx.userId as UserId,
       ports
     )
   }
 
   return scheduleMaintenance(
-    ctx.orgId,
-    assetId,
+    ctx.orgId as OrgId,
+    assetId as AssetId,
     {
       title: parsed.data.title,
       type: parsed.data.type,
@@ -82,7 +83,7 @@ export async function scheduleMaintenanceAction(
       technicianName: parsed.data.technicianName ?? null,
       notes: parsed.data.notes ?? null,
     },
-    ctx.userId,
+    ctx.userId as UserId,
     ports
   )
 }
@@ -100,7 +101,7 @@ export async function startMaintenanceAction(
   })
   if (denied) return denied
 
-  return startMaintenance(eventId, createSupabaseMaintenancePorts(ctx))
+  return startMaintenance(eventId as EventId, createSupabaseMaintenancePorts(ctx))
 }
 
 export async function completeMaintenanceAction(
@@ -120,7 +121,7 @@ export async function completeMaintenanceAction(
   })
   if (denied) return denied
 
-  return completeMaintenance(eventId, parsed.data, createSupabaseMaintenancePorts(ctx))
+  return completeMaintenance(eventId as EventId, parsed.data, createSupabaseMaintenancePorts(ctx))
 }
 
 export async function updateMaintenanceAction(
@@ -140,7 +141,7 @@ export async function updateMaintenanceAction(
   if (denied) return denied
 
   return updateMaintenance(
-    eventId,
+    eventId as EventId,
     {
       title: parsed.data.title,
       type: parsed.data.type,
@@ -167,5 +168,10 @@ export async function deleteMaintenanceAction(
 
   const isAdmin = policy.can('department:manage')
 
-  return deleteMaintenance(eventId, ctx.userId, isAdmin, createSupabaseMaintenancePorts(ctx))
+  return deleteMaintenance(
+    eventId as EventId,
+    ctx.userId as UserId,
+    isAdmin,
+    createSupabaseMaintenancePorts(ctx)
+  )
 }

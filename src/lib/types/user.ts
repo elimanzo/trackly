@@ -111,7 +111,7 @@ export type ProfileWithDepartments = Profile & {
 export type OrgMember = Profile & {
   orgId: string
   role: UserRole
-  inviteStatus: string
+  inviteStatus: InviteStatus
   departmentIds: string[]
   departmentNames: string[]
 }

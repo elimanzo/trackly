@@ -1,5 +1,5 @@
 import type { AssetStatus } from '@/lib/types'
-import type { MaintenanceStatus } from '@/lib/types/maintenance'
+import type { MaintenanceStatus, MaintenanceType } from '@/lib/types/maintenance'
 
 // ---------------------------------------------------------------------------
 // Shared record types — camelCase, no Supabase noise
@@ -23,7 +23,7 @@ export type InsertMaintenanceData = {
   orgId: string
   assetId: string
   title: string
-  type: string
+  type: MaintenanceType
   status: MaintenanceStatus
   scheduledDate: string
   startedAt: string | null
@@ -43,7 +43,7 @@ export type CompleteMaintenanceData = {
 
 export type UpdateMaintenanceData = {
   title: string
-  type: string
+  type: MaintenanceType
   scheduledDate: string
   cost: number | null
   technicianName: string | null

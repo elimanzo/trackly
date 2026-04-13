@@ -4,7 +4,11 @@ import { createClient } from '@/lib/supabase/client'
 import type { UpcomingMaintenanceAlert } from '@/lib/types'
 import { useOrg } from '@/providers/OrgProvider'
 
-type MaintenanceRow = Record<string, unknown> & {
+type MaintenanceRow = {
+  id: string
+  asset_id: string
+  title: string
+  scheduled_date: string
   assets: { asset_tag: string; name: string; departments: { name: string } | null }
 }
 
@@ -12,7 +16,11 @@ export function useUpcomingMaintenanceAlerts(limit = 8, enabled = true) {
   const { org } = useOrg()
   const orgId = org?.id
 
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['upcomingMaintenanceAlerts', orgId, limit],
     enabled: orgId != null && enabled,
     queryFn: async () => {
@@ -34,20 +42,20 @@ export function useUpcomingMaintenanceAlerts(limit = 8, enabled = true) {
 
       const now = new Date()
       return ((rows ?? []) as MaintenanceRow[]).map((r) => ({
-        eventId: r.id as string,
-        assetId: r.asset_id as string,
+        eventId: r.id,
+        assetId: r.asset_id,
         assetTag: r.assets.asset_tag,
         assetName: r.assets.name,
         departmentName: r.assets.departments?.name ?? null,
-        title: r.title as string,
-        scheduledDate: r.scheduled_date as string,
+        title: r.title,
+        scheduledDate: r.scheduled_date,
         daysUntil: Math.ceil(
-          (new Date(r.scheduled_date as string).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          (new Date(r.scheduled_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         ),
       })) satisfies UpcomingMaintenanceAlert[]
     },
     staleTime: 60_000,
   })
 
-  return { data, isLoading }
+  return { data, isLoading, isError }
 }

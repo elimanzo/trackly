@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { CheckoutFormInput } from '@/lib/types'
+import type { AssetId, AssignmentId, CheckoutFormInput, UserId } from '@/lib/types'
 
 import {
   checkoutAsset,
@@ -16,8 +16,8 @@ import { InMemoryCheckoutRepo, SpyAuditPort } from './fakes'
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ASSET_ID = 'asset-001'
-const ACTOR_ID = 'user-001'
+const ASSET_ID = 'asset-001' as AssetId
+const ACTOR_ID = 'user-001' as UserId
 
 function makePorts(repo: InMemoryCheckoutRepo, audit = new SpyAuditPort()): CheckoutPorts {
   return { repo, audit }
@@ -51,7 +51,13 @@ describe('checkoutAsset', () => {
 
   it('returns error when asset is not found', async () => {
     const ports = makePorts(repo, audit)
-    const result = await checkoutAsset('nonexistent', makeInput(), 'Admin', ACTOR_ID, ports)
+    const result = await checkoutAsset(
+      'nonexistent' as AssetId,
+      makeInput(),
+      'Admin',
+      ACTOR_ID,
+      ports
+    )
     expect(result).toEqual({ error: 'Asset not found.' })
   })
 
@@ -255,7 +261,7 @@ describe('returnSerializedAsset', () => {
 describe('returnBulkAssignment', () => {
   let repo: InMemoryCheckoutRepo
   let audit: SpyAuditPort
-  let assignmentId: string
+  let assignmentId: AssignmentId
 
   beforeEach(async () => {
     repo = new InMemoryCheckoutRepo()
@@ -279,11 +285,15 @@ describe('returnBulkAssignment', () => {
       expectedReturnAt: null,
       notes: null,
     })
-    assignmentId = id
+    assignmentId = id as AssignmentId
   })
 
   it('returns error when assignment not found', async () => {
-    const result = await returnBulkAssignment('nonexistent', 1, makePorts(repo, audit))
+    const result = await returnBulkAssignment(
+      'nonexistent' as AssignmentId,
+      1,
+      makePorts(repo, audit)
+    )
     expect(result).toEqual({ error: 'Assignment not found.' })
   })
 
@@ -322,7 +332,7 @@ describe('returnBulkAssignment', () => {
 describe('updateAssignment', () => {
   let repo: InMemoryCheckoutRepo
   let audit: SpyAuditPort
-  let assignmentId: string
+  let assignmentId: AssignmentId
 
   beforeEach(async () => {
     repo = new InMemoryCheckoutRepo()
@@ -359,7 +369,7 @@ describe('updateAssignment', () => {
       expectedReturnAt: null,
       notes: null,
     })
-    assignmentId = id
+    assignmentId = id as AssignmentId
   })
 
   it('updates the assignment name and logs audit', async () => {
@@ -448,7 +458,13 @@ describe('updateAssignment', () => {
       notes: null,
     })
     const ports = makePorts(repo, audit)
-    const result = await updateAssignment(id, 'serial-01', false, makeInput({ quantity: 1 }), ports)
+    const result = await updateAssignment(
+      id as AssignmentId,
+      'serial-01' as AssetId,
+      false,
+      makeInput({ quantity: 1 }),
+      ports
+    )
     expect(result).toBeNull()
   })
 })

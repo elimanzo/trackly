@@ -14,8 +14,11 @@ import {
   AssetFormSchema,
   CheckoutFormSchema,
   type AssetFormInput,
+  type AssetId,
+  type AssignmentId,
   type CheckoutFormInput,
   type TypedAsset,
+  type UserId,
 } from '@/lib/types'
 import { nextTagInSequence, sanitizePrefix } from '@/lib/utils/assetTag'
 
@@ -208,10 +211,10 @@ export async function checkoutAsset(
   if (denied) return denied
 
   return checkoutAssetDomain(
-    assetRef.id,
+    assetRef.id as AssetId,
     parsed.data,
     assignedByName,
-    ctx.userId,
+    ctx.userId as UserId,
     createSupabaseCheckoutPorts(ctx)
   )
 }
@@ -235,7 +238,7 @@ export async function returnAsset(
   })
   if (denied) return denied
 
-  return returnSerializedAsset(assetId, createSupabaseCheckoutPorts(ctx))
+  return returnSerializedAsset(assetId as AssetId, createSupabaseCheckoutPorts(ctx))
 }
 
 /** Partially or fully return a bulk assignment */
@@ -268,7 +271,7 @@ export async function returnBulkAssignment(
   if (denied) return denied
 
   return returnBulkAssignmentDomain(
-    assignmentId,
+    assignmentId as AssignmentId,
     quantityToReturn,
     createSupabaseCheckoutPorts(ctx)
   )
@@ -341,8 +344,8 @@ export async function updateAssignment(
   if (denied) return denied
 
   return updateAssignmentDomain(
-    assignmentId,
-    assetRef.id,
+    assignmentId as AssignmentId,
+    assetRef.id as AssetId,
     assetRef.isBulk,
     parsed.data,
     createSupabaseCheckoutPorts(ctx)
