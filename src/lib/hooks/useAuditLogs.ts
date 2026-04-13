@@ -19,13 +19,16 @@ function mapLog(r: Record<string, unknown>): AuditLog {
   }
 }
 
-export function useRecentActivity(limit = 10): { data: AuditLog[]; isLoading: boolean } {
+export function useRecentActivity(
+  limit = 10,
+  enabled = true
+): { data: AuditLog[]; isLoading: boolean } {
   const { org } = useOrg()
   const orgId = org?.id ?? ''
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['recentActivity', orgId, limit],
-    enabled: !!orgId,
+    enabled: !!orgId && enabled,
     queryFn: async () => {
       const { data: rows } = await createClient()
         .from('audit_logs')
