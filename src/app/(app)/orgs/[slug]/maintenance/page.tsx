@@ -35,6 +35,7 @@ import {
   MAINTENANCE_TYPES,
   MAINTENANCE_TYPE_LABELS,
 } from '@/lib/types/maintenance'
+import { cn } from '@/lib/utils'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -112,7 +113,7 @@ export default function MaintenancePage() {
           <CalendarClock className="text-muted-foreground h-4 w-4" />
           <Input
             type="date"
-            className="w-36"
+            className="w-36 cursor-pointer"
             value={filters.dateFrom ?? ''}
             onChange={(e) => setFilter('dateFrom', e.target.value)}
             placeholder="From"
@@ -120,7 +121,7 @@ export default function MaintenancePage() {
           <span className="text-muted-foreground text-sm">—</span>
           <Input
             type="date"
-            className="w-36"
+            className="w-36 cursor-pointer"
             value={filters.dateTo ?? ''}
             onChange={(e) => setFilter('dateTo', e.target.value)}
             placeholder="To"
@@ -136,28 +137,7 @@ export default function MaintenancePage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="rounded-md border">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
-              <Skeleton className="h-3.5 w-28" />
-              <Skeleton className="h-3.5 w-40" />
-              <Skeleton className="h-5 w-20 rounded-full" />
-              <Skeleton className="h-5 w-20 rounded-full" />
-              <Skeleton className="h-3.5 w-24" />
-              <Skeleton className="h-3.5 w-20" />
-            </div>
-          ))}
-        </div>
-      ) : events.length === 0 ? (
-        <EmptyState
-          icon={Wrench}
-          title="No maintenance events found"
-          description={
-            hasFilters ? 'Try adjusting your filters.' : 'No maintenance has been scheduled yet.'
-          }
-        />
-      ) : (
-        <div className="rounded-md border">
+        <div className="overflow-hidden rounded-md border shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
@@ -171,8 +151,74 @@ export default function MaintenancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {events.map((event) => (
-                <TableRow key={event.id}>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <div className="space-y-1.5">
+                      <Skeleton
+                        className={cn(
+                          'h-3.5',
+                          i % 3 === 0 ? 'w-32' : i % 3 === 1 ? 'w-24' : 'w-40'
+                        )}
+                      />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className={cn('h-3.5', i % 2 === 0 ? 'w-40' : 'w-32')} />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3.5 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className={cn('h-3.5', i % 2 === 0 ? 'w-24' : 'w-20')} />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-3.5 w-16" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : events.length === 0 ? (
+        <EmptyState
+          icon={Wrench}
+          title="No maintenance events found"
+          description={
+            hasFilters ? 'Try adjusting your filters.' : 'No maintenance has been scheduled yet.'
+          }
+        />
+      ) : (
+        <div className="overflow-hidden rounded-md border shadow-sm">
+          <Table>
+            <TableHeader className="bg-background sticky top-0 z-10">
+              <TableRow className="hover:bg-transparent [&>th]:shadow-[0_1px_0_0_hsl(var(--border))]">
+                <TableHead>Asset</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Scheduled</TableHead>
+                <TableHead>Technician</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {events.map((event, index) => (
+                <TableRow
+                  key={event.id}
+                  className="animate-in fade-in-0 duration-300"
+                  style={{
+                    animationDelay: `${Math.min(index * 20, 300)}ms`,
+                    animationFillMode: 'both',
+                  }}
+                >
                   <TableCell>
                     <Link
                       href={`/orgs/${orgSlug}/assets/${event.assetId}`}
@@ -203,7 +249,7 @@ export default function MaintenancePage() {
                   <TableCell className="text-muted-foreground text-sm">
                     {event.technicianName ?? '—'}
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right font-mono text-sm tabular-nums">
                     {event.cost != null ? formatCurrency(event.cost) : '—'}
                   </TableCell>
                 </TableRow>

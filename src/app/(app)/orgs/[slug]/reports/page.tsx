@@ -1,11 +1,13 @@
 'use client'
 
-import { Download, SlidersHorizontal } from 'lucide-react'
+import { Download, FileBarChart, SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { AssetStatusBadge } from '@/components/assets/AssetStatusBadge'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -38,6 +40,7 @@ import { type AssetFilters, useAssets } from '@/lib/hooks/useAssets'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { useDepartments } from '@/lib/hooks/useDepartments'
 import { ASSET_STATUSES } from '@/lib/types'
+import { cn } from '@/lib/utils'
 import { type ReportColumn, exportAssetsToCsv } from '@/lib/utils/csv-export'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { useOrg } from '@/providers/OrgProvider'
@@ -97,20 +100,41 @@ export default function ReportsPage() {
     return (
       <div className="space-y-6">
         <PageHeader title="Reports" description="Filter and export your asset data as CSV." />
-        <div className="rounded-md border">
-          <div className="flex items-center gap-2 border-b p-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-24 rounded-md" />
-            ))}
-          </div>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
-              <Skeleton className="h-3.5 w-24" />
-              <Skeleton className="h-3.5 w-40" />
-              <Skeleton className="h-3.5 w-20" />
-              <Skeleton className="h-3.5 w-16" />
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-md border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tag</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Assigned to</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <Skeleton className="h-3.5 w-20 font-mono" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton
+                      className={cn('h-3.5', i % 3 === 0 ? 'w-40' : i % 3 === 1 ? 'w-32' : 'w-48')}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className={cn('h-3.5', i % 2 === 0 ? 'w-24' : 'w-20')} />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className={cn('h-3.5', i % 2 === 0 ? 'w-28' : 'w-20')} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     )
@@ -135,6 +159,11 @@ export default function ReportsPage() {
                 <Button variant="outline" size="sm" className="gap-2">
                   <SlidersHorizontal className="h-3.5 w-3.5" />
                   Columns
+                  {allowedCols.filter((c) => !visibleKeys.has(c.key)).length > 0 && (
+                    <Badge variant="secondary" className="h-4 min-w-4 px-1 text-xs">
+                      {allowedCols.filter((c) => !visibleKeys.has(c.key)).length}
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
@@ -240,37 +269,52 @@ export default function ReportsPage() {
       </Card>
 
       {/* Preview table */}
-      <div className="rounded-md border shadow-sm">
+      <div className="overflow-hidden rounded-md border shadow-sm">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="bg-background sticky top-0 z-10">
+            <TableRow className="hover:bg-transparent [&>th]:shadow-[0_1px_0_0_hsl(var(--border))]">
               <TableHead>Tag</TableHead>
               <TableHead>Name</TableHead>
               {visibleCols.map((c) => (
-                <TableHead key={c.key}>{c.label}</TableHead>
+                <TableHead key={c.key} className={cn(c.key === 'purchaseCost' && 'text-right')}>
+                  {c.label}
+                </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {assets.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={colSpan}
-                  className="text-muted-foreground py-12 text-center text-sm"
-                >
-                  No assets match the selected filters.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={colSpan} className="p-0">
+                  <EmptyState
+                    icon={FileBarChart}
+                    title="No assets match the filters"
+                    description="Try adjusting the department, category, or status filters above."
+                  />
                 </TableCell>
               </TableRow>
             ) : (
-              assets.map((a) => (
-                <TableRow key={a.id}>
+              assets.map((a, index) => (
+                <TableRow
+                  key={a.id}
+                  className="animate-in fade-in-0 duration-300"
+                  style={{
+                    animationDelay: `${Math.min(index * 20, 300)}ms`,
+                    animationFillMode: 'both',
+                  }}
+                >
                   <TableCell>
                     <span className="font-mono text-xs">{a.assetTag}</span>
                   </TableCell>
                   <TableCell className="font-medium">{a.name}</TableCell>
                   {visibleCols.map((c) => (
-                    <TableCell key={c.key}>
-                      <span className="text-muted-foreground text-sm">
+                    <TableCell key={c.key} className={cn(c.key === 'purchaseCost' && 'text-right')}>
+                      <span
+                        className={cn(
+                          'text-muted-foreground text-sm',
+                          c.key === 'purchaseCost' && 'font-mono tabular-nums'
+                        )}
+                      >
                         {c.key === 'assignedTo' && (a.assigneeSummary ?? '—')}
                         {c.key === 'department' && (a.departmentName ?? '—')}
                         {c.key === 'category' && (a.categoryName ?? '—')}
