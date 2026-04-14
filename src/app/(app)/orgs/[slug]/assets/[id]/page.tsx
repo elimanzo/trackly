@@ -392,13 +392,13 @@ function AssignmentTabContent({
       <div className="space-y-3">
         {asset.activeAssignments.map((a) => (
           <Card key={a.id} className="shadow-sm">
-            <CardContent className="flex items-start justify-between gap-4 pt-4">
+            <CardContent className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="text-foreground font-medium">{a.assignedToName}</span>
                   <Badge variant="secondary">{a.quantity}×</Badge>
                 </div>
-                <div className="text-muted-foreground grid grid-cols-2 gap-x-6 gap-y-1">
+                <div className="text-muted-foreground grid grid-cols-1 gap-y-1 sm:grid-cols-2 sm:gap-x-6">
                   <span>Assigned by: {a.assignedByName}</span>
                   <span>Checked out: {formatDate(a.assignedAt)}</span>
                   {a.departmentName && (
@@ -410,11 +410,11 @@ function AssignmentTabContent({
                   {a.expectedReturnAt && (
                     <span>Expected return: {formatDate(a.expectedReturnAt)}</span>
                   )}
-                  {a.notes && <span className="col-span-2">Notes: {a.notes}</span>}
+                  {a.notes && <span className="sm:col-span-2">Notes: {a.notes}</span>}
                 </div>
               </div>
               {canEditAssets && (
-                <div className="flex gap-2">
+                <div className="flex shrink-0 gap-2">
                   <Button variant="outline" size="sm" onClick={() => onEditAssignment(a)}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" />
                     Edit
