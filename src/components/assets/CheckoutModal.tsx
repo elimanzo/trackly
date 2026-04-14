@@ -96,7 +96,10 @@ export function CheckoutModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+        <DialogContent
+          className="max-h-[90svh] overflow-y-auto sm:max-w-md"
+          aria-describedby={undefined}
+        >
           <DialogHeader>
             <DialogTitle>Check out {asset.ui.checkoutLabel}</DialogTitle>
           </DialogHeader>
@@ -155,7 +158,7 @@ export function CheckoutModal({
                 />
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="departmentId"
