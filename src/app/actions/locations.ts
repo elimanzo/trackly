@@ -5,6 +5,7 @@ import { LocationFormSchema, type LocationFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
 import { getAdminCtx } from './_context'
+import { mapDbError } from './_db'
 
 export async function createLocation(
   orgSlug: string,
@@ -32,7 +33,7 @@ export async function createLocation(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'location',
@@ -61,7 +62,7 @@ export async function updateLocation(
     .eq('id', id)
     .eq('org_id', ctx.orgId)
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'location',

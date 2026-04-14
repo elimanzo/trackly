@@ -8,6 +8,7 @@ import type { CreateOrganizationInput, UpdateOrganizationInput } from '@/lib/typ
 
 import { logAudit } from './_audit'
 import { getAdminCtx, getContext } from './_context'
+import { PG, mapDbError } from './_db'
 
 export async function checkOrgAvailability(
   name: string,
@@ -50,13 +51,13 @@ export async function completeOnboardingSetup(
     .single()
 
   if (orgError) {
-    if (orgError.code === '23505') {
+    if (orgError.code === PG.UNIQUE_VIOLATION) {
       return {
         error:
           'That organization name or URL slug is already taken. Please go back and choose a different one.',
       }
     }
-    return { error: orgError.message }
+    return { error: mapDbError(orgError) }
   }
 
   const [{ error: membershipError }, { error: deptError }, { error: catError }] = await Promise.all(
@@ -103,10 +104,10 @@ export async function createOrganization(
     .single()
 
   if (orgError) {
-    if (orgError.code === '23505') {
+    if (orgError.code === PG.UNIQUE_VIOLATION) {
       return { error: 'That URL slug is already taken. Try a different one.' }
     }
-    return { error: orgError.message }
+    return { error: mapDbError(orgError) }
   }
 
   await admin.from('user_org_memberships').insert({
@@ -142,8 +143,8 @@ export async function updateOrganization(
   ])
 
   if (error) {
-    if (error.code === '23505') return { error: 'That URL slug is already taken.' }
-    return { error: error.message }
+    if (error.code === PG.UNIQUE_VIOLATION) return { error: 'That URL slug is already taken.' }
+    return { error: mapDbError(error) }
   }
 
   await logAudit(ctx, {

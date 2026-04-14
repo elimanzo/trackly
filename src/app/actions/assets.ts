@@ -25,26 +25,7 @@ import { nextTagInSequence, sanitizePrefix } from '@/lib/utils/assetTag'
 import { logAudit } from './_audit'
 import type { ActionClients } from './_context'
 import { getContext } from './_context'
-
-// Postgres error codes
-const PG = {
-  UNIQUE_VIOLATION: '23505',
-  FOREIGN_KEY_VIOLATION: '23503',
-  NOT_NULL_VIOLATION: '23502',
-} as const
-
-function mapDbError(error: { code: string }): string {
-  switch (error.code) {
-    case PG.UNIQUE_VIOLATION:
-      return 'Asset tag already exists. Use a unique tag.'
-    case PG.FOREIGN_KEY_VIOLATION:
-      return 'Invalid reference — a selected value no longer exists.'
-    case PG.NOT_NULL_VIOLATION:
-      return 'A required field is missing.'
-    default:
-      return 'Unexpected database error'
-  }
-}
+import { mapDbError } from './_db'
 
 function normalizeAssetInput(input: AssetFormInput) {
   return {
@@ -94,7 +75,10 @@ export async function createAsset(
     .select('id')
     .single()
 
-  if (error) return { error: mapDbError(error) }
+  if (error)
+    return {
+      error: mapDbError(error, { UNIQUE_VIOLATION: 'Asset tag already exists. Use a unique tag.' }),
+    }
 
   await logAudit(ctx, {
     entityType: 'asset',
@@ -164,7 +148,10 @@ export async function updateAsset(
     .eq('id', id)
     .eq('org_id', ctx.orgId)
 
-  if (error) return { error: mapDbError(error) }
+  if (error)
+    return {
+      error: mapDbError(error, { UNIQUE_VIOLATION: 'Asset tag already exists. Use a unique tag.' }),
+    }
 
   const changes: Record<string, { old: unknown; new: unknown }> = {}
   if (old.name !== normalized.name) changes.name = { old: old.name, new: normalized.name }

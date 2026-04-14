@@ -5,6 +5,7 @@ import { VendorFormSchema, type VendorFormInput } from '@/lib/types'
 
 import { logAudit } from './_audit'
 import { getAdminCtx } from './_context'
+import { mapDbError } from './_db'
 
 export async function createVendor(
   orgSlug: string,
@@ -31,15 +32,15 @@ export async function createVendor(
     .insert({
       org_id: ctx.orgId,
       name: input.name,
-      contact_email: input.contactEmail || null,
-      contact_phone: input.contactPhone || null,
-      website: input.website || null,
-      notes: input.notes || null,
+      contact_email: input.contactEmail?.trim() || null,
+      contact_phone: input.contactPhone?.trim() || null,
+      website: input.website?.trim() || null,
+      notes: input.notes?.trim() || null,
     })
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'vendor',
@@ -66,15 +67,15 @@ export async function updateVendor(
     .from('vendors')
     .update({
       name: input.name,
-      contact_email: input.contactEmail || null,
-      contact_phone: input.contactPhone || null,
-      website: input.website || null,
-      notes: input.notes || null,
+      contact_email: input.contactEmail?.trim() || null,
+      contact_phone: input.contactPhone?.trim() || null,
+      website: input.website?.trim() || null,
+      notes: input.notes?.trim() || null,
     })
     .eq('id', id)
     .eq('org_id', ctx.orgId)
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'vendor',
