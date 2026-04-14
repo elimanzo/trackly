@@ -26,6 +26,35 @@ import { logAudit } from './_audit'
 import type { ActionClients } from './_context'
 import { getContext } from './_context'
 
+// Postgres error codes
+const PG = {
+  UNIQUE_VIOLATION: '23505',
+  FOREIGN_KEY_VIOLATION: '23503',
+  NOT_NULL_VIOLATION: '23502',
+} as const
+
+function mapDbError(error: { code: string }): string {
+  switch (error.code) {
+    case PG.UNIQUE_VIOLATION:
+      return 'Asset tag already exists. Use a unique tag.'
+    case PG.FOREIGN_KEY_VIOLATION:
+      return 'Invalid reference — a selected value no longer exists.'
+    case PG.NOT_NULL_VIOLATION:
+      return 'A required field is missing.'
+    default:
+      return 'Unexpected database error'
+  }
+}
+
+function normalizeAssetInput(input: AssetFormInput) {
+  return {
+    ...input,
+    status: input.isBulk ? ('active' as const) : input.status,
+    quantity: input.isBulk ? input.quantity : null,
+    notes: input.notes?.trim() || null,
+  }
+}
+
 export async function createAsset(
   orgSlug: string,
   input: AssetFormInput,
@@ -40,33 +69,32 @@ export async function createAsset(
   const denied = createPolicy(ctx).enforce('asset:create', { departmentId: input.departmentId })
   if (denied) return denied
 
+  const normalized = normalizeAssetInput(input)
+
   const { data, error } = await ctx.admin
     .from('assets')
     .insert({
       org_id: ctx.orgId,
-      asset_tag: input.assetTag,
-      name: input.name,
-      is_bulk: input.isBulk,
-      quantity: input.isBulk ? input.quantity : null,
-      category_id: input.categoryId,
-      department_id: input.departmentId,
-      location_id: input.locationId,
-      status: input.isBulk ? 'active' : input.status,
-      purchase_date: input.purchaseDate,
-      purchase_cost: input.purchaseCost,
-      warranty_expiry: input.warrantyExpiry,
-      vendor_id: input.vendorId,
-      notes: input.notes || null,
+      asset_tag: normalized.assetTag,
+      name: normalized.name,
+      is_bulk: normalized.isBulk,
+      quantity: normalized.quantity,
+      category_id: normalized.categoryId,
+      department_id: normalized.departmentId,
+      location_id: normalized.locationId,
+      status: normalized.status,
+      purchase_date: normalized.purchaseDate,
+      purchase_cost: normalized.purchaseCost,
+      warranty_expiry: normalized.warrantyExpiry,
+      vendor_id: normalized.vendorId,
+      notes: normalized.notes,
       created_by: ctx.userId,
       updated_by: ctx.userId,
     })
     .select('id')
     .single()
 
-  if (error) {
-    if (error.code === '23505') return { error: 'Asset tag already exists. Use a unique tag.' }
-    return { error: error.message }
-  }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'asset',
@@ -93,57 +121,73 @@ export async function updateAsset(
   // Fetch old values for change tracking and permission check
   const { data: old } = await ctx.admin
     .from('assets')
-    .select('name, status, category_id, department_id, location_id, quantity')
+    .select('name, status, category_id, department_id, location_id, vendor_id, quantity')
     .eq('id', id)
     .maybeSingle()
 
-  const denied = createPolicy(ctx).enforce('asset:update', {
-    departmentId: (old?.department_id as string | null) ?? null,
+  if (!old) return { error: 'Asset not found' }
+
+  // Enforce permission on the source department
+  const deniedSource = createPolicy(ctx).enforce('asset:update', {
+    departmentId: (old.department_id as string | null) ?? null,
   })
-  if (denied) return denied
+  if (deniedSource) return deniedSource
+
+  // If moving departments, also enforce permission on the destination
+  if (input.departmentId !== (old.department_id as string | null)) {
+    const deniedDest = createPolicy(ctx).enforce('asset:update', {
+      departmentId: input.departmentId,
+    })
+    if (deniedDest) return deniedDest
+  }
+
+  const normalized = normalizeAssetInput(input)
 
   const { error } = await ctx.admin
     .from('assets')
     .update({
-      asset_tag: input.assetTag,
-      name: input.name,
-      is_bulk: input.isBulk,
-      quantity: input.isBulk ? input.quantity : null,
-      category_id: input.categoryId,
-      department_id: input.departmentId,
-      location_id: input.locationId,
-      status: input.isBulk ? 'active' : input.status,
-      purchase_date: input.purchaseDate,
-      purchase_cost: input.purchaseCost,
-      warranty_expiry: input.warrantyExpiry,
-      vendor_id: input.vendorId,
-      notes: input.notes || null,
+      asset_tag: normalized.assetTag,
+      name: normalized.name,
+      is_bulk: normalized.isBulk,
+      quantity: normalized.quantity,
+      category_id: normalized.categoryId,
+      department_id: normalized.departmentId,
+      location_id: normalized.locationId,
+      status: normalized.status,
+      purchase_date: normalized.purchaseDate,
+      purchase_cost: normalized.purchaseCost,
+      warranty_expiry: normalized.warrantyExpiry,
+      vendor_id: normalized.vendorId,
+      notes: normalized.notes,
       updated_by: ctx.userId,
     })
     .eq('id', id)
     .eq('org_id', ctx.orgId)
 
-  if (error) {
-    if (error.code === '23505') return { error: 'Asset tag already exists. Use a unique tag.' }
-    return { error: error.message }
-  }
+  if (error) return { error: mapDbError(error) }
 
-  if (old) {
-    const changes: Record<string, { old: unknown; new: unknown }> = {}
-    if (old.name !== input.name) changes.name = { old: old.name, new: input.name }
-    if (!input.isBulk && old.status !== input.status)
-      changes.status = { old: old.status, new: input.status }
-    if (input.isBulk && old.quantity !== input.quantity)
-      changes.quantity = { old: old.quantity, new: input.quantity }
+  const changes: Record<string, { old: unknown; new: unknown }> = {}
+  if (old.name !== normalized.name) changes.name = { old: old.name, new: normalized.name }
+  if (!normalized.isBulk && old.status !== normalized.status)
+    changes.status = { old: old.status, new: normalized.status }
+  if (normalized.isBulk && old.quantity !== normalized.quantity)
+    changes.quantity = { old: old.quantity, new: normalized.quantity }
+  if (old.department_id !== normalized.departmentId)
+    changes.department_id = { old: old.department_id, new: normalized.departmentId }
+  if (old.location_id !== normalized.locationId)
+    changes.location_id = { old: old.location_id, new: normalized.locationId }
+  if (old.category_id !== normalized.categoryId)
+    changes.category_id = { old: old.category_id, new: normalized.categoryId }
+  if (old.vendor_id !== normalized.vendorId)
+    changes.vendor_id = { old: old.vendor_id, new: normalized.vendorId }
 
-    await logAudit(ctx, {
-      entityType: 'asset',
-      entityId: id,
-      entityName: input.name,
-      action: 'updated',
-      changes: Object.keys(changes).length > 0 ? changes : null,
-    })
-  }
+  await logAudit(ctx, {
+    entityType: 'asset',
+    entityId: id,
+    entityName: normalized.name,
+    action: 'updated',
+    changes: Object.keys(changes).length > 0 ? changes : null,
+  })
 
   return null
 }
