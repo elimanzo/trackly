@@ -58,6 +58,7 @@ import { useDepartments } from '@/lib/hooks/useDepartments'
 import { useOrgUserMutations, useOrgUsers } from '@/lib/hooks/useOrgUsers'
 import type { OrgMember } from '@/lib/types'
 import { UserRoleSchema } from '@/lib/types'
+import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/utils/formatters'
 import { getInitials } from '@/lib/utils/formatters'
 import { useAuth } from '@/providers/AuthProvider'
@@ -95,17 +96,50 @@ export default function UsersPage() {
     return (
       <div className="space-y-6">
         <PageHeader title="Users" />
-        <div className="rounded-md border">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 border-b px-4 py-3 last:border-0">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-3.5 w-32" />
-                <Skeleton className="h-3 w-44" />
-              </div>
-              <Skeleton className="h-5 w-16 rounded-full" />
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-md border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Departments</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                      <div className="space-y-1.5">
+                        <Skeleton
+                          className={cn(
+                            'h-3.5',
+                            i % 3 === 0 ? 'w-28' : i % 3 === 1 ? 'w-36' : 'w-24'
+                          )}
+                        />
+                        <Skeleton className={cn('h-3', i % 2 === 0 ? 'w-44' : 'w-36')} />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className={cn('h-3.5', i % 2 === 0 ? 'w-20' : 'w-28')} />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3.5 w-16" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-7 w-7 rounded-md" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     )
@@ -162,10 +196,10 @@ export default function UsersPage() {
             Active members{' '}
             <span className="text-muted-foreground font-normal">({users.length})</span>
           </h2>
-          <div className="rounded-md border shadow-sm">
+          <div className="overflow-hidden rounded-md border shadow-sm">
             <Table>
-              <TableHeader>
-                <TableRow>
+              <TableHeader className="bg-background sticky top-0 z-10">
+                <TableRow className="hover:bg-transparent [&>th]:shadow-[0_1px_0_0_hsl(var(--border))]">
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>{deptLabel}s</TableHead>
@@ -174,8 +208,15 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id}>
+                {users.map((u, index) => (
+                  <TableRow
+                    key={u.id}
+                    className="group animate-in fade-in-0 duration-300"
+                    style={{
+                      animationDelay: `${Math.min(index * 20, 300)}ms`,
+                      animationFillMode: 'both',
+                    }}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -206,32 +247,34 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       {u.id !== currentUser?.id && u.role !== 'owner' && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              aria-label={`Manage ${u.fullName}`}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(u)}>
-                              <Pencil className="mr-2 h-3.5 w-3.5" />
-                              Edit role & {deptLabel.toLowerCase()}s
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setRemoveId(u.id)}
-                            >
-                              <UserX className="mr-2 h-3.5 w-3.5" />
-                              Remove user
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex justify-end opacity-0 transition-opacity duration-150 will-change-[opacity] group-hover:opacity-100 focus-within:opacity-100">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label={`Manage ${u.fullName}`}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEdit(u)}>
+                                <Pencil className="mr-2 h-3.5 w-3.5" />
+                                Edit role & {deptLabel.toLowerCase()}s
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setRemoveId(u.id)}
+                              >
+                                <UserX className="mr-2 h-3.5 w-3.5" />
+                                Remove user
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -248,10 +291,10 @@ export default function UsersPage() {
               Pending invites{' '}
               <span className="text-muted-foreground font-normal">({pendingInvites.length})</span>
             </h2>
-            <div className="rounded-md border shadow-sm">
+            <div className="overflow-hidden rounded-md border shadow-sm">
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="bg-background sticky top-0 z-10">
+                  <TableRow className="hover:bg-transparent [&>th]:shadow-[0_1px_0_0_hsl(var(--border))]">
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Invited by</TableHead>
@@ -260,8 +303,15 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingInvites.map((invite) => (
-                    <TableRow key={invite.id}>
+                  {pendingInvites.map((invite, index) => (
+                    <TableRow
+                      key={invite.id}
+                      className="animate-in fade-in-0 duration-300"
+                      style={{
+                        animationDelay: `${Math.min(index * 20, 300)}ms`,
+                        animationFillMode: 'both',
+                      }}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Mail className="text-muted-foreground h-4 w-4" />
