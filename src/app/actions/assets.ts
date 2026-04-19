@@ -388,21 +388,8 @@ export async function getTagPrefixes(orgSlug: string): Promise<string[]> {
   const ctx = await getContext(orgSlug)
   if (!ctx) return []
 
-  const { data } = await ctx.admin
-    .from('assets')
-    .select('asset_tag')
-    .eq('org_id', ctx.orgId)
-    .is('deleted_at', null)
-
-  if (!data) return []
-
-  const prefixes = new Set<string>()
-  for (const { asset_tag } of data as { asset_tag: string }[]) {
-    const idx = asset_tag.lastIndexOf('-')
-    if (idx > 0) prefixes.add(asset_tag.slice(0, idx))
-  }
-
-  return Array.from(prefixes).sort()
+  const { data } = await ctx.admin.rpc('get_tag_prefixes', { p_org_id: ctx.orgId })
+  return (data as string[] | null) ?? []
 }
 
 /** Return the next tag for a given prefix (e.g. "LAPTOP" → "LAPTOP-0001") */

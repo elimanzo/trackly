@@ -188,7 +188,7 @@ const ASSET_SELECT = `
   categories(name),
   locations(name),
   vendors(name),
-  asset_assignments(
+  asset_assignments!left(
     id, assigned_to_user_id, assigned_to_name,
     assigned_by, assigned_by_name, assigned_at,
     expected_return_at, returned_at, notes,
@@ -238,6 +238,7 @@ export function useAssets(filters: AssetFilters = {}, page = 1, pageSize = 25): 
         .select(ASSET_SELECT, { count: 'exact' })
         .eq('org_id', orgId)
         .is('deleted_at', null)
+        .is('asset_assignments.returned_at', null)
         .order('created_at', { ascending: false })
 
       if (filters.search) {
@@ -305,6 +306,7 @@ export function useAsset(id: string): {
         .select(ASSET_SELECT)
         .eq('id', id)
         .is('deleted_at', null)
+        .is('asset_assignments.returned_at', null)
         .maybeSingle()
 
       if (error || !row) return null
