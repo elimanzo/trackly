@@ -29,7 +29,6 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const params = useParams<{ slug?: string }>()
   const slug = params.slug ?? ''
-
   const memberships = user?.memberships ?? []
   const multipleOrgs = memberships.length > 1
 

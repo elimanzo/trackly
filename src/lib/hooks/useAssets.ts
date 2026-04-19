@@ -11,6 +11,7 @@ import type {
   BulkAsset,
   SerializedAsset,
   TypedAsset,
+  UserRole,
 } from '@/lib/types'
 import { ASSET_STATUS_LABELS } from '@/lib/types/asset'
 import { computeAvailable } from '@/lib/utils/availability'
@@ -329,7 +330,50 @@ export function useAsset(id: string): {
 }
 
 // ---------------------------------------------------------------------------
-// useNextAssetTag — max-based suggestion for the default "AST" prefix
+// fetchAllAssetsForExport — unpaginated fetch for CSV export
+// ---------------------------------------------------------------------------
+
+export async function fetchAllAssetsForExport(
+  orgId: string,
+  role: UserRole | null,
+  departmentIds: string[],
+  filters: AssetFilters
+): Promise<TypedAsset[]> {
+  const supabase = createClient()
+
+  let query = supabase
+    .from('assets')
+    .select(ASSET_SELECT)
+    .eq('org_id', orgId)
+    .is('deleted_at', null)
+    .is('asset_assignments.returned_at', null)
+    .order('created_at', { ascending: false })
+
+  if (filters.search) {
+    const { data: ids } = await supabase.rpc('search_asset_ids', {
+      p_org_id: orgId,
+      p_search: filters.search,
+    })
+    if (!ids || ids.length === 0) return []
+    query = query.in('id', ids as string[])
+  }
+
+  if (filters.status) query = query.eq('status', filters.status)
+  if (filters.departmentId) query = query.eq('department_id', filters.departmentId)
+  if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
+
+  query = applyDepartmentConstraint(
+    query,
+    createPolicy({ role: role ?? 'viewer', departmentIds }).queryConstraint()
+  )
+
+  const { data: rows, error } = await query
+  if (error || !rows) return []
+  return (rows as unknown as AssetRow[]).map(mapAssetRow)
+}
+
+// ---------------------------------------------------------------------------
+// useNextAssetTag — max-based suggestion for the default "AT" prefix
 // ---------------------------------------------------------------------------
 
 export function useNextAssetTag(): string {

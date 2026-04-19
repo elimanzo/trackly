@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, FileBarChart, SlidersHorizontal } from 'lucide-react'
+import { Download, FileBarChart, Loader2, SlidersHorizontal, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -9,7 +9,6 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -18,7 +17,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -36,7 +34,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ASSET_STATUS_CONFIG } from '@/lib/constants'
-import { type AssetFilters, useAssets } from '@/lib/hooks/useAssets'
+import { type AssetFilters, fetchAllAssetsForExport, useAssets } from '@/lib/hooks/useAssets'
 import { useCategories } from '@/lib/hooks/useCategories'
 import { useDepartments } from '@/lib/hooks/useDepartments'
 import { ASSET_STATUSES } from '@/lib/types'
@@ -51,9 +49,10 @@ type ColDef = { key: ReportColumn; label: string; allowed: boolean }
 
 export default function ReportsPage() {
   const [filters, setFilters] = useState<AssetFilters>({})
+  const [exporting, setExporting] = useState(false)
   const { data: assets, isLoading } = useAssets(filters)
   const { data: departments } = useDepartments()
-  const { org } = useOrg()
+  const { org, role, departmentIds } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const { data: categories } = useCategories()
   const rc = org?.reportConfig ?? {}
@@ -139,10 +138,23 @@ export default function ReportsPage() {
       </div>
     )
 
-  function handleExport() {
-    exportAssetsToCsv(assets, 'asset-report.csv', visibleKeys)
-    toast.success(`Exported ${assets.length} asset${assets.length !== 1 ? 's' : ''}`)
+  async function handleExport() {
+    if (!org?.id) return
+    setExporting(true)
+    try {
+      const all = await fetchAllAssetsForExport(org.id, role ?? null, departmentIds, filters)
+      exportAssetsToCsv(all, 'asset-report.csv', visibleKeys)
+      toast.success(`Exported ${all.length} asset${all.length !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Export failed')
+    } finally {
+      setExporting(false)
+    }
   }
+
+  const activeFilterCount = [filters.departmentId, filters.categoryId, filters.status].filter(
+    Boolean
+  ).length
 
   const visibleCols = allowedCols.filter((c) => visibleKeys.has(c.key))
   const colSpan = 2 + visibleCols.length
@@ -181,92 +193,88 @@ export default function ReportsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={handleExport} disabled={assets.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV ({assets.length})
+            <Button onClick={handleExport} disabled={exporting}>
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {exporting ? 'Exporting…' : 'Export CSV'}
             </Button>
           </div>
         }
       />
 
       {/* Filter controls */}
-      <Card className="shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">{deptLabel}</Label>
-              <Select
-                value={filters.departmentId ?? 'all'}
-                onValueChange={(v) =>
-                  setFilters((f) => ({ ...f, departmentId: v === 'all' ? '' : v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={`All ${deptLabel.toLowerCase()}s`} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All {deptLabel.toLowerCase()}s</SelectItem>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={filters.departmentId ?? 'all'}
+          onValueChange={(v) => setFilters((f) => ({ ...f, departmentId: v === 'all' ? '' : v }))}
+        >
+          <SelectTrigger className="h-8 w-auto min-w-[140px] text-sm">
+            <SelectValue placeholder={`All ${deptLabel.toLowerCase()}s`} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All {deptLabel.toLowerCase()}s</SelectItem>
+            {departments.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {d.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Category</Label>
-              <Select
-                value={filters.categoryId ?? 'all'}
-                onValueChange={(v) =>
-                  setFilters((f) => ({ ...f, categoryId: v === 'all' ? '' : v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <Select
+          value={filters.categoryId ?? 'all'}
+          onValueChange={(v) => setFilters((f) => ({ ...f, categoryId: v === 'all' ? '' : v }))}
+        >
+          <SelectTrigger className="h-8 w-auto min-w-[140px] text-sm">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Status</Label>
-              <Select
-                value={filters.status ?? 'all'}
-                onValueChange={(v) =>
-                  setFilters((f) => ({
-                    ...f,
-                    status: v === 'all' ? '' : (v as AssetFilters['status']),
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {ASSET_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {ASSET_STATUS_CONFIG[s].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <Select
+          value={filters.status ?? 'all'}
+          onValueChange={(v) =>
+            setFilters((f) => ({
+              ...f,
+              status: v === 'all' ? '' : (v as AssetFilters['status']),
+            }))
+          }
+        >
+          <SelectTrigger className="h-8 w-auto min-w-[130px] text-sm">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {ASSET_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {ASSET_STATUS_CONFIG[s].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {activeFilterCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 px-2 text-sm"
+            onClick={() => setFilters({})}
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        )}
+      </div>
 
       {/* Preview table */}
       <div className="overflow-hidden rounded-md border shadow-sm">

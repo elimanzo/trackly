@@ -2,7 +2,7 @@
 
 import { ArrowLeft, LogIn, LogOut, Pencil, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { notFound, useParams, useRouter } from 'next/navigation'
+import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation'
 import { use, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -48,9 +48,30 @@ export default function AssetDetailPage({ params }: AssetDetailPageProps) {
   const { org, role, departmentIds } = useOrg()
   const deptLabel = org?.departmentLabel ?? 'Department'
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const VALID_TABS = ['details', 'assignment', 'maintenance', 'history'] as const
+  type Tab = (typeof VALID_TABS)[number]
+  const rawTab = searchParams.get('tab') ?? 'details'
+  const activeTab: Tab = (VALID_TABS as readonly string[]).includes(rawTab)
+    ? (rawTab as Tab)
+    : 'details'
+
+  function setActiveTab(tab: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }
+
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [activeTab, setActiveTab] = useState('details')
+
+  useEffect(() => {
+    if (!searchParams.get('tab')) {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('tab', 'details')
+      router.replace(`?${params.toString()}`, { scroll: false })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.querySelector<HTMLElement>('[data-main-scroll]')?.scrollTo({ top: 0 })
