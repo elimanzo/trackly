@@ -91,4 +91,4 @@ export const WARRANTY_ALERT_DAYS = 30
 // Asset tag prefix
 // ---------------------------------------------------------------------------
 
-export const ASSET_TAG_PREFIX = 'AST'
+export const ASSET_TAG_PREFIX = 'AT'
