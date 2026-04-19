@@ -83,6 +83,7 @@ export function useAssetHistory(assetId: string): {
         .eq('org_id', orgId)
         .eq('entity_id', assetId)
         .order('created_at', { ascending: false })
+        .limit(200)
       return ((rows ?? []) as AuditLogRow[]).map(mapLog)
     },
     staleTime: 30_000,

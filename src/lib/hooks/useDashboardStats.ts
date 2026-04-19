@@ -20,6 +20,18 @@ const EMPTY: DashboardStats = {
   recentActivityCount: 0,
 }
 
+type DashboardAggregatesRPC = {
+  total_assets: number
+  total_value: number
+  by_status: Array<{ status: string; count: number }>
+  by_department: Array<{
+    department_id: string
+    department_name: string
+    count: number
+    value: number
+  }>
+}
+
 export function useDashboardStats(): { data: DashboardStats; isLoading: boolean } {
   const { org } = useOrg()
   const orgId = org?.id ?? ''
@@ -33,12 +45,8 @@ export function useDashboardStats(): { data: DashboardStats; isLoading: boolean 
 
       const today = new Date().toISOString().split('T')[0]
 
-      const [aggregates, warrantyRows, upcomingMaintenanceRows, activityCount] = await Promise.all([
-        supabase
-          .from('assets')
-          .select('status, department_id, purchase_cost, departments(name)')
-          .eq('org_id', orgId)
-          .is('deleted_at', null),
+      const [aggResult, warrantyRows, upcomingMaintenanceRows, activityCount] = await Promise.all([
+        supabase.rpc('get_dashboard_aggregates', { p_org_id: orgId }),
 
         supabase
           .from('assets')
@@ -68,41 +76,23 @@ export function useDashboardStats(): { data: DashboardStats; isLoading: boolean 
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
       ])
 
-      const rows: Record<string, unknown>[] = (aggregates.data ?? []) as Record<string, unknown>[]
-      const totalAssets = rows.length
-      const totalValue = rows.reduce(
-        (sum: number, r) => sum + ((r.purchase_cost as number | null) ?? 0),
-        0
-      )
+      const agg = (aggResult.data ?? null) as DashboardAggregatesRPC | null
+      const totalAssets = agg?.total_assets ?? 0
+      const totalValue = Number(agg?.total_value ?? 0)
 
-      const statusMap = new Map<string, number>()
-      for (const r of rows) {
-        const s = r.status as string
-        statusMap.set(s, (statusMap.get(s) ?? 0) + 1)
-      }
-      const byStatus: StatusBreakdown[] = Array.from(statusMap.entries()).map(
-        ([status, count]) => ({ status: status as StatusBreakdown['status'], count })
-      )
+      const byStatus: StatusBreakdown[] = (agg?.by_status ?? []).map(({ status, count }) => ({
+        status: status as StatusBreakdown['status'],
+        count,
+      }))
 
-      const deptMap = new Map<string, { name: string; count: number; value: number }>()
-      for (const r of rows) {
-        const deptId = (r.department_id as string | null) ?? '__none__'
-        const deptName = (r.departments as { name: string } | null)?.name ?? 'Unassigned'
-        const existing = deptMap.get(deptId) ?? { name: deptName, count: 0, value: 0 }
-        deptMap.set(deptId, {
-          name: deptName,
-          count: existing.count + 1,
-          value: existing.value + ((r.purchase_cost as number | null) ?? 0),
-        })
-      }
-      const byDepartment: DepartmentBreakdown[] = Array.from(deptMap.entries())
-        .map(([departmentId, { name, count, value }]) => ({
-          departmentId,
-          departmentName: name,
+      const byDepartment: DepartmentBreakdown[] = (agg?.by_department ?? []).map(
+        ({ department_id, department_name, count, value }) => ({
+          departmentId: department_id,
+          departmentName: department_name,
           count,
-          value,
-        }))
-        .toSorted((a, b) => b.count - a.count)
+          value: Number(value),
+        })
+      )
 
       const now = new Date()
       const warrantyAlerts: WarrantyAlert[] = (
