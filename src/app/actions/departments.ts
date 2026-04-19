@@ -6,6 +6,7 @@ import { DepartmentFormSchema, type DepartmentFormInput } from '@/lib/types'
 import { logAudit } from './_audit'
 import type { ActionClients } from './_context'
 import { getAdminCtx, getContext } from './_context'
+import { mapDbError } from './_db'
 
 export async function createDepartment(
   orgSlug: string,
@@ -33,7 +34,7 @@ export async function createDepartment(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'department',
@@ -62,7 +63,7 @@ export async function updateDepartment(
     .eq('id', id)
     .eq('org_id', ctx.orgId)
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'department',

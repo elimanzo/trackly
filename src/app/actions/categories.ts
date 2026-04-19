@@ -6,6 +6,7 @@ import { CategoryFormSchema, type CategoryFormInput } from '@/lib/types'
 import { logAudit } from './_audit'
 import type { ActionClients } from './_context'
 import { getAdminCtx, getContext } from './_context'
+import { mapDbError } from './_db'
 
 export async function createCategory(
   orgSlug: string,
@@ -38,7 +39,7 @@ export async function createCategory(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'category',
@@ -67,7 +68,7 @@ export async function updateCategory(
     .eq('id', id)
     .eq('org_id', ctx.orgId)
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await logAudit(ctx, {
     entityType: 'category',

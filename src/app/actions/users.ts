@@ -9,6 +9,7 @@ import type { UserRole } from '@/lib/types'
 import { logAudit } from './_audit'
 import type { ActionClients } from './_context'
 import { getContext } from './_context'
+import { mapDbError } from './_db'
 
 export async function updateUserRoleAction(
   orgSlug: string,
@@ -105,7 +106,7 @@ export async function revokeInviteAction(
     .eq('id', inviteId)
     .eq('org_id', ctx.orgId)
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   // Remove the pending auth user so the same email can be re-invited.
   // A pending user has a profile row but no membership row yet.
@@ -161,7 +162,7 @@ export async function removeUserAction(
     .eq('user_id', userId)
     .eq('org_id', ctx.orgId)
 
-  if (error) return { error: error.message }
+  if (error) return { error: mapDbError(error) }
 
   await ctx.admin.auth.admin.deleteUser(userId)
 
