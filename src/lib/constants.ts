@@ -18,6 +18,7 @@ export const ASSET_STATUS_CONFIG: Record<
   lost: { label: 'Lost', color: '#ef4444', badgeVariant: 'destructive' },
   in_storage: { label: 'In Storage', color: '#8b5cf6', badgeVariant: 'secondary' },
   checked_out: { label: 'Checked Out', color: '#3b82f6', badgeVariant: 'default' },
+  reserved: { label: 'Reserved', color: '#f97316', badgeVariant: 'secondary' },
 }
 
 // ---------------------------------------------------------------------------

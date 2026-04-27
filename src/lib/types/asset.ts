@@ -11,6 +11,7 @@ export const AssetStatusSchema = z.enum([
   'lost',
   'in_storage',
   'checked_out',
+  'reserved',
 ])
 
 export type AssetStatus = z.infer<typeof AssetStatusSchema>
@@ -24,6 +25,7 @@ export const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
   lost: 'Lost',
   in_storage: 'In Storage',
   checked_out: 'Checked Out',
+  reserved: 'Reserved',
 }
 
 // ---------------------------------------------------------------------------

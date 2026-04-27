@@ -299,7 +299,40 @@ begin
       'Battery replacement in progress', u_owner),
     (v_org_id, 'AT-0050', 'MacBook Pro 13" (M2)',
       c_laptops, d_it, l_hq, v_apple, 'active', '2023-08-01', 1299.00, '2026-08-01',
-      null, u_owner);
+      null, u_owner),
+
+    -- Reserved assets — held for upcoming hires, cohorts, and events
+    (v_org_id, 'AT-0051', 'MacBook Pro 16" (M4 Pro)',
+      c_laptops, d_it, l_warehouse, v_apple, 'reserved', '2025-11-01', 2999.00, '2028-11-01',
+      'Reserved for new senior engineer hire starting May 2026', u_owner),
+    (v_org_id, 'AT-0052', 'Dell XPS 15 (2025)',
+      c_laptops, d_finance, l_warehouse, v_dell, 'reserved', '2025-10-15', 1899.00, '2028-10-15',
+      'Reserved for Q2 contractor — Finance Dept', u_owner),
+    (v_org_id, 'AT-0053', 'iPad Pro 13" (M4)',
+      c_phones, d_mktg, l_warehouse, v_apple, 'reserved', '2025-12-01', 1299.00, '2027-12-01',
+      'Reserved for product launch event — May 2026', u_owner),
+    (v_org_id, 'AT-0054', 'MacBook Air 13" (M3)',
+      c_laptops, d_hr, l_warehouse, v_apple, 'reserved', '2025-09-01', 1299.00, '2028-09-01',
+      'Reserved for June 2026 onboarding batch', u_owner),
+    (v_org_id, 'AT-0055', 'MacBook Pro 14" (M4)',
+      c_laptops, d_it, l_warehouse, v_apple, 'reserved', '2026-01-15', 2199.00, '2029-01-15',
+      'Reserved for Summer 2026 engineering intern cohort', u_owner),
+
+    -- Additional active assets
+    (v_org_id, 'AT-0056', 'Dell Latitude 5550',
+      c_laptops, d_ops, l_hq, v_dell, 'active', '2025-02-01', 1349.00, '2028-02-01',
+      null, u_owner),
+    (v_org_id, 'AT-0057', 'Dell U2722D 27" 4K',
+      c_monitors, d_it, l_hq, v_dell, 'active', '2024-11-01', 599.00, '2027-11-01',
+      null, u_owner),
+    (v_org_id, 'AT-0058', 'iPhone 15 Pro Max',
+      c_phones, d_it, l_hq, v_apple, 'active', '2025-01-10', 1199.00, '2027-01-10',
+      null, u_owner),
+    (v_org_id, 'AT-0059', 'Cisco IP Phone 9861',
+      c_phones, d_finance, l_hq, v_cisco, 'active', '2024-08-01', 319.00, '2027-08-01',
+      null, u_owner),
+    (v_org_id, 'AT-0060', 'Herman Miller Mirra 2 Chair',
+      c_desks, d_mktg, l_hq, v_herman, 'active', '2024-06-01', 1195.00, null, null, u_owner);
 
   -- ── ASSET ASSIGNMENTS ─────────────────────────────────────
   -- AT-0002 checked out to James (editor)
@@ -329,5 +362,5 @@ begin
     now() - interval '7 days'
   from public.assets where asset_tag = 'AT-0030' and org_id = v_org_id;
 
-  raise notice 'Seed 001 complete — 4 users, 1 org, 5 departments, 6 categories, 3 locations, 5 vendors, 50 assets, 3 assignments.';
+  raise notice 'Seed 001 complete — 4 users, 1 org, 5 departments, 6 categories, 3 locations, 5 vendors, 60 assets (5 reserved), 3 assignments.';
 end $$;
