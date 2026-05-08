@@ -54,7 +54,9 @@ export function formatCompactCurrency(value: number): string {
     currency: 'USD',
     notation: 'compact',
     maximumFractionDigits: 1,
-  }).format(value)
+  })
+    .format(value)
+    .replace(/.0/g, '')
 }
 
 /** Get user initials for avatar fallback */
