@@ -167,6 +167,10 @@ describe('formatCompactCurrency', () => {
   })
 
   it('formats millions as $M', () => {
+    expect(formatCompactCurrency(1700000)).toBe('$1.7M')
+  })
+
+  it('truncates trailing dot zero (.0)', () => {
     expect(formatCompactCurrency(1000000)).toBe('$1M')
   })
 })

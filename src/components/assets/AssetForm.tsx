@@ -34,7 +34,7 @@ import { useDepartmentMutations, useDepartments } from '@/lib/hooks/useDepartmen
 import { useLocationMutations, useLocations } from '@/lib/hooks/useLocations'
 import { useVendorMutations, useVendors } from '@/lib/hooks/useVendors'
 import { ASSET_STATUSES, AssetFormSchema, type AssetFormInput } from '@/lib/types'
-import type { AssetWithRelations } from '@/lib/types'
+import type { TypedAsset } from '@/lib/types'
 import { parseTagParts } from '@/lib/utils/assetTag'
 import { useOrg } from '@/providers/OrgProvider'
 
@@ -47,7 +47,7 @@ import { useOrg } from '@/providers/OrgProvider'
 // ---------------------------------------------------------------------------
 
 interface AssetFormProps {
-  asset?: AssetWithRelations
+  asset?: TypedAsset
   defaultAssetTag?: string
 }
 
