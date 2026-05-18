@@ -122,6 +122,7 @@ type AssetDisplay = {
   readonly ui: AssetUI
 }
 
+/** An asset with a quantity pool — checked out in units, not individually serialized. */
 export type BulkAsset = Asset &
   AssetRelations &
   AssetDisplay & {
@@ -132,6 +133,7 @@ export type BulkAsset = Asset &
     activeAssignments: AssetAssignment[]
   }
 
+/** A uniquely-tagged asset tracked as a single unit with its own status and assignment. */
 export type SerializedAsset = Asset &
   AssetRelations &
   AssetDisplay & {
@@ -140,6 +142,7 @@ export type SerializedAsset = Asset &
     currentAssignment: AssetAssignment | null
   }
 
+/** Discriminated union of all asset kinds — narrow on `isBulk` before accessing kind-specific fields. */
 export type TypedAsset = BulkAsset | SerializedAsset
 
 /** @deprecated Use TypedAsset */
@@ -149,6 +152,7 @@ export type AssetWithRelations = TypedAsset
 // Create / update forms
 // ---------------------------------------------------------------------------
 
+/** Zod schema for the asset create/edit form — use `AssetFormInput` for the inferred type. */
 export const AssetFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(200),
   assetTag: z.string().min(1, 'Asset tag is required').max(50),
@@ -171,6 +175,7 @@ export type AssetFormInput = z.infer<typeof AssetFormSchema>
 // Checkout form
 // ---------------------------------------------------------------------------
 
+/** Zod schema for the checkout form — use `CheckoutFormInput` for the inferred type. */
 export const CheckoutFormSchema = z.object({
   assignedToUserId: z.string().uuid().nullish(),
   assignedToName: z.string().min(1, 'Assignee name is required').max(200),

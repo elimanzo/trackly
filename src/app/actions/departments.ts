@@ -8,6 +8,7 @@ import type { ActionClients } from './_context'
 import { getAdminCtx, getContext } from './_context'
 import { mapDbError } from './_db'
 
+/** Create a new department scoped to the org. Rejects duplicate names (case-insensitive). */
 export async function createDepartment(
   orgSlug: string,
   input: DepartmentFormInput
@@ -46,6 +47,7 @@ export async function createDepartment(
   return { id: data.id as string }
 }
 
+/** Update a department's name and description. */
 export async function updateDepartment(
   orgSlug: string,
   id: string,
@@ -75,6 +77,7 @@ export async function updateDepartment(
   return null
 }
 
+/** Return the number of active (non-deleted) assets assigned to a department. */
 export async function countAssetsInDepartment(orgSlug: string, id: string): Promise<number> {
   const ctx = await getContext(orgSlug)
   if (!ctx) return 0
@@ -89,6 +92,7 @@ export async function countAssetsInDepartment(orgSlug: string, id: string): Prom
   return count ?? 0
 }
 
+/** Soft-delete a department and null out its foreign key on all assets. Requires admin role. */
 export async function deleteDepartment(
   orgSlug: string,
   id: string,

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 import type { ActionClients } from './_context'
 
+/** Check for a pending invite matching the given email and return its confirmation URL, or null if none found. */
 export async function completeInviteForGoogleUser(
   userId: string,
   email: string,
@@ -28,6 +29,7 @@ export async function completeInviteForGoogleUser(
 // Takes userId directly — called from the auth callback where the session is
 // already established client-side, so we avoid a server-side getUser() call
 // that may fail before the session cookie is written.
+/** Resolve the post-sign-in redirect destination for a Google-authenticated user. */
 export async function googleSignInDestination(
   userId: string,
   clients?: ActionClients

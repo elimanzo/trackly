@@ -7,6 +7,7 @@ import { logAudit } from './_audit'
 import { getAdminCtx } from './_context'
 import { mapDbError } from './_db'
 
+/** Create a new vendor scoped to the org. Rejects duplicate names (case-insensitive). */
 export async function createVendor(
   orgSlug: string,
   input: VendorFormInput
@@ -52,6 +53,7 @@ export async function createVendor(
   return { id: data.id as string }
 }
 
+/** Update a vendor's name and contact details. */
 export async function updateVendor(
   orgSlug: string,
   id: string,
@@ -87,6 +89,7 @@ export async function updateVendor(
   return null
 }
 
+/** Soft-delete a vendor and null out its foreign key on all assets. */
 export async function deleteVendor(orgSlug: string, id: string): Promise<{ error: string } | null> {
   const ctx = await getAdminCtx(orgSlug)
   if ('error' in ctx) return ctx

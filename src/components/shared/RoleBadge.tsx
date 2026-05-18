@@ -12,6 +12,7 @@ const roleColors: Record<UserRole, string> = {
   viewer: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
 }
 
+/** Colored badge displaying a user's role label. Color is determined by role. */
 interface RoleBadgeProps {
   role: UserRole
   className?: string

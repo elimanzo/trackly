@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 
 import { Button } from '@/components/ui/button'
 
+/** Page navigation controls with first/prev/next/last buttons. Renders nothing when `totalCount` is 0. */
 interface PaginationBarProps {
   page: number
   pageSize: number

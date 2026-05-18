@@ -10,6 +10,7 @@ import { logAudit } from './_audit'
 import { getAdminCtx, getContext } from './_context'
 import { PG, mapDbError } from './_db'
 
+/** Check whether an org name and slug are available before creation. */
 export async function checkOrgAvailability(
   name: string,
   slug: string
@@ -31,6 +32,7 @@ export async function checkOrgAvailability(
   }
 }
 
+/** Create the org, owner membership, and seed departments and categories in one transaction. */
 export async function completeOnboardingSetup(
   org: { name: string; slug: string },
   departments: string[],
@@ -86,6 +88,7 @@ export async function completeOnboardingSetup(
   return { error: null, slug: org.slug }
 }
 
+/** Create a new org and redirect to the setup flow. */
 export async function createOrganization(
   input: CreateOrganizationInput
 ): Promise<{ error: string } | never> {
@@ -120,6 +123,7 @@ export async function createOrganization(
   redirect('/setup/departments')
 }
 
+/** Update org settings. Name and slug changes are owner-only; config fields are admin-accessible. */
 export async function updateOrganization(
   orgSlug: string,
   input: UpdateOrganizationInput
@@ -161,6 +165,7 @@ export async function updateOrganization(
 // deleteOrgAction
 // ---------------------------------------------------------------------------
 
+/** Permanently delete the org and all its data. Owner-only. */
 export async function deleteOrgAction(
   orgSlug: string
 ): Promise<{ error: string } | { error: null }> {

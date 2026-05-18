@@ -13,6 +13,7 @@ import type { ActionClients } from './_context'
 // sendInviteAction
 // ---------------------------------------------------------------------------
 
+/** Send an email invite to a new member. Handles both new and existing auth users. */
 export async function sendInviteAction(
   orgSlug: string,
   email: string,
@@ -188,6 +189,7 @@ async function fulfillInvite(
 // acceptInviteViaGoogleAction
 // ---------------------------------------------------------------------------
 
+/** Accept a pending invite for a Google-authenticated user and provision their membership. */
 export async function acceptInviteViaGoogleAction(
   fullName: string,
   clients?: ActionClients
@@ -219,6 +221,7 @@ export async function acceptInviteViaGoogleAction(
 // acceptInviteAction
 // ---------------------------------------------------------------------------
 
+/** Accept a pending invite for a new user, setting their display name and password. */
 export async function acceptInviteAction(
   fullName: string,
   password: string,
@@ -255,6 +258,7 @@ export async function acceptInviteAction(
 // getInviteByTokenAction — fetch invite details for the confirmation page
 // ---------------------------------------------------------------------------
 
+/** Fetch invite details (org name, slug, role) for the confirmation page. */
 export async function getInviteByTokenAction(
   token: string,
   clients?: ActionClients
@@ -293,6 +297,7 @@ export async function getInviteByTokenAction(
 // acceptAuthenticatedInviteAction — accept invite for an already-signed-in user
 // ---------------------------------------------------------------------------
 
+/** Accept an invite for an already-signed-in user — provisions membership without re-auth. */
 export async function acceptAuthenticatedInviteAction(
   token: string,
   clients?: ActionClients

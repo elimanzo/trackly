@@ -11,6 +11,7 @@ import type { ActionClients } from './_context'
 import { getContext } from './_context'
 import { mapDbError } from './_db'
 
+/** Change a member's role within the org. Cannot be used to set or change the owner role. */
 export async function updateUserRoleAction(
   orgSlug: string,
   userId: string,
@@ -59,6 +60,7 @@ export async function updateUserRoleAction(
   return { error: error?.message ?? null }
 }
 
+/** Replace a user's department memberships atomically. Pass an empty array to remove all. */
 export async function updateUserDepartmentsAction(
   orgSlug: string,
   userId: string,
@@ -82,6 +84,7 @@ export async function updateUserDepartmentsAction(
   return { error: error?.message ?? null }
 }
 
+/** Delete a pending invite and remove the pending auth user if they haven't joined any org yet. */
 export async function revokeInviteAction(
   orgSlug: string,
   inviteId: string,
@@ -133,6 +136,7 @@ export async function revokeInviteAction(
   return { error: null }
 }
 
+/** Deactivate a member's org access and delete their auth account. */
 export async function removeUserAction(
   orgSlug: string,
   userId: string,
@@ -173,6 +177,7 @@ export async function removeUserAction(
 // leaveOrgAction
 // ---------------------------------------------------------------------------
 
+/** Remove the current user from the org. Blocked for owners — transfer or delete the org first. */
 export async function leaveOrgAction(
   orgSlug: string,
   clients?: ActionClients
@@ -204,6 +209,7 @@ export async function leaveOrgAction(
 // deleteAccountAction
 // ---------------------------------------------------------------------------
 
+/** Permanently delete the current user's account. Requires leaving all orgs first. */
 export async function deleteAccountAction(
   clients?: ActionClients
 ): Promise<{ error: string } | { error: null }> {
@@ -233,6 +239,7 @@ export async function deleteAccountAction(
 // transferOwnershipAction
 // ---------------------------------------------------------------------------
 
+/** Transfer org ownership to a target admin, demoting the current owner to admin. */
 export async function transferOwnershipAction(
   orgSlug: string,
   targetUserId: string,
@@ -308,6 +315,7 @@ export async function transferOwnershipAction(
 // requestPasswordResetAction
 // ---------------------------------------------------------------------------
 
+/** Send a password reset email. Silently no-ops for unknown emails to prevent user enumeration. */
 export async function requestPasswordResetAction(
   email: string,
   clients?: ActionClients

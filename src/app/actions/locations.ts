@@ -7,6 +7,7 @@ import { logAudit } from './_audit'
 import { getAdminCtx } from './_context'
 import { mapDbError } from './_db'
 
+/** Create a new location scoped to the org. Rejects duplicate names (case-insensitive). */
 export async function createLocation(
   orgSlug: string,
   input: LocationFormInput
@@ -45,6 +46,7 @@ export async function createLocation(
   return { id: data.id as string }
 }
 
+/** Update a location's name and description. */
 export async function updateLocation(
   orgSlug: string,
   id: string,
@@ -74,6 +76,7 @@ export async function updateLocation(
   return null
 }
 
+/** Soft-delete a location and null out its foreign key on all assets. */
 export async function deleteLocation(
   orgSlug: string,
   id: string

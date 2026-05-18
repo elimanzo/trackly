@@ -22,6 +22,7 @@ import {
 
 import { getContext } from './_context'
 
+/** Schedule (or retroactively log) a maintenance event for a serialized asset. */
 export async function scheduleMaintenanceAction(
   orgSlug: string,
   assetId: string,
@@ -88,6 +89,7 @@ export async function scheduleMaintenanceAction(
   )
 }
 
+/** Mark a scheduled maintenance event as in-progress. */
 export async function startMaintenanceAction(
   orgSlug: string,
   eventId: string,
@@ -104,6 +106,7 @@ export async function startMaintenanceAction(
   return startMaintenance(eventId as EventId, createSupabaseMaintenancePorts(ctx))
 }
 
+/** Mark a maintenance event as completed and record cost and notes. */
 export async function completeMaintenanceAction(
   orgSlug: string,
   eventId: string,
@@ -124,6 +127,7 @@ export async function completeMaintenanceAction(
   return completeMaintenance(eventId as EventId, parsed.data, createSupabaseMaintenancePorts(ctx))
 }
 
+/** Edit the details of an existing maintenance event. Admin/owner only. */
 export async function updateMaintenanceAction(
   orgSlug: string,
   eventId: string,
@@ -154,6 +158,7 @@ export async function updateMaintenanceAction(
   )
 }
 
+/** Delete a maintenance event. Admins can delete any event; others can only delete their own. */
 export async function deleteMaintenanceAction(
   orgSlug: string,
   eventId: string,

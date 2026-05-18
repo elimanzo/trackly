@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import type { UpdateProfileInput } from '@/lib/types'
 
+/** Update the current user's display name and optional avatar URL. */
 export async function updateProfileAction(
   input: UpdateProfileInput
 ): Promise<{ error: string } | { error: null }> {

@@ -1,3 +1,4 @@
+/** Standard page title block with optional subtitle and right-aligned action slot (e.g. a button). */
 interface PageHeaderProps {
   title: string
   description?: string

@@ -36,6 +36,7 @@ function normalizeAssetInput(input: AssetFormInput) {
   }
 }
 
+/** Create a new asset and log it to the audit trail. */
 export async function createAsset(
   orgSlug: string,
   input: AssetFormInput,
@@ -90,6 +91,7 @@ export async function createAsset(
   return { id: data.id as string }
 }
 
+/** Update an existing asset's fields and log the diff to the audit trail. */
 export async function updateAsset(
   orgSlug: string,
   id: string,
@@ -179,6 +181,7 @@ export async function updateAsset(
   return null
 }
 
+/** Soft-delete an asset and log the action to the audit trail. */
 export async function deleteAsset(
   orgSlug: string,
   id: string,
@@ -217,6 +220,7 @@ export async function deleteAsset(
   return null
 }
 
+/** Check out an asset to a user, enforcing department-scoped permissions. */
 export async function checkoutAsset(
   orgSlug: string,
   assetRef: Pick<TypedAsset, 'id' | 'isBulk'>,

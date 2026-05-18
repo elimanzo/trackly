@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+/** Use for destructive or irreversible actions that require explicit user confirmation. Pass `destructive` to style the confirm button red. */
 interface ConfirmDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void

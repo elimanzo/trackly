@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 
+/** Inline dialog for creating a named entity (category, location, etc.) without leaving the page. `onAdd` receives the trimmed name and should return the new entity's ID on success, or null on error. */
 interface QuickAddDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void

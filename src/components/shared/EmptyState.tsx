@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 
+/** Centered empty-state block with icon, title, optional description, and optional action. Use when a list or data set has no items. */
 interface EmptyStateProps {
   icon: LucideIcon
   title: string

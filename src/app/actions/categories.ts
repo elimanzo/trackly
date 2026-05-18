@@ -8,6 +8,7 @@ import type { ActionClients } from './_context'
 import { getAdminCtx, getContext } from './_context'
 import { mapDbError } from './_db'
 
+/** Create a new category scoped to the org. Rejects duplicate names (case-insensitive). */
 export async function createCategory(
   orgSlug: string,
   input: CategoryFormInput
@@ -51,6 +52,7 @@ export async function createCategory(
   return { id: data.id as string }
 }
 
+/** Update a category's name, description, and icon. */
 export async function updateCategory(
   orgSlug: string,
   id: string,
@@ -80,6 +82,7 @@ export async function updateCategory(
   return null
 }
 
+/** Return the number of active (non-deleted) assets assigned to a category. */
 export async function countAssetsInCategory(orgSlug: string, id: string): Promise<number> {
   const ctx = await getContext(orgSlug)
   if (!ctx) return 0
@@ -94,6 +97,7 @@ export async function countAssetsInCategory(orgSlug: string, id: string): Promis
   return count ?? 0
 }
 
+/** Soft-delete a category and null out its foreign key on all assets. Requires admin role. */
 export async function deleteCategory(
   orgSlug: string,
   id: string,
