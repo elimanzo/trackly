@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -24,7 +24,14 @@ export default function SetupCompletePage() {
     if (!name || !slug) router.replace('/org/new')
   }, [name, slug, router])
 
-  if (!name || !slug) return null
+  // Render a loader (not a blank frame) while the effect above redirects.
+  if (!name || !slug) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+      </div>
+    )
+  }
 
   async function handleComplete() {
     setSaving(true)
