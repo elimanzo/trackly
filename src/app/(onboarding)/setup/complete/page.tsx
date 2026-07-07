@@ -2,7 +2,7 @@
 
 import { CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { completeOnboardingSetup } from '@/app/actions/org'
@@ -16,11 +16,15 @@ export default function SetupCompletePage() {
   const [saving, setSaving] = useState(false)
 
   // Guard: if user lands here without going through the wizard (e.g. direct URL),
-  // send them back to start.
-  if (!name || !slug) {
-    router.replace('/org/new')
-    return null
-  }
+  // send them back to start. The navigation must run in an effect — calling
+  // router.replace() during render triggers a state update in the Router
+  // component mid-render, which React rejects ("Cannot update a component while
+  // rendering a different component").
+  useEffect(() => {
+    if (!name || !slug) router.replace('/org/new')
+  }, [name, slug, router])
+
+  if (!name || !slug) return null
 
   async function handleComplete() {
     setSaving(true)
