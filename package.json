@@ -16,6 +16,7 @@
     "db:stop": "supabase stop",
     "db:migrate": "supabase migration up",
     "db:reset": "supabase db reset",
+    "db:status": "supabase status",
     "db:studio": "open http://127.0.0.1:54323",
     "db:email": "open http://127.0.0.1:54324"
   },

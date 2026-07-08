@@ -43,7 +43,7 @@ pnpm install
 # 2. Start the local Supabase stack (requires Docker)
 pnpm db:start
 
-# 3. Copy the example env file and fill in values from `supabase status`
+# 3. Copy the example env file and fill in values from `pnpm db:status`
 cp .env.local.example .env.local
 
 # 4. Start the dev server
@@ -52,7 +52,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The anon key and service role key are printed by `supabase status` after the stack starts. The URL is always `http://127.0.0.1:54321`.
+The anon key and service role key are printed by `pnpm db:status` after the stack starts. The URL is always `http://127.0.0.1:54321`.
 
 ### Seeded accounts
 
@@ -81,6 +81,7 @@ All passwords: `Dev1234!`
 pnpm db:start    # Start the local Supabase stack
 pnpm db:stop     # Stop the local Supabase stack
 pnpm db:reset    # Wipe DB, re-apply all migrations, re-run seeds
+pnpm db:status   # Print local API URL + anon/service_role keys
 pnpm db:studio   # Open Supabase Studio in browser
 pnpm db:email    # Open Mailpit (local email inbox) in browser
 ```
@@ -191,4 +192,4 @@ Pre-commit hooks run lint, type-check, and the full test suite automatically.
 | `GOOGLE_CLIENT_ID`              | OAuth only | Google OAuth client ID                            |
 | `GOOGLE_CLIENT_SECRET`          | OAuth only | Google OAuth client secret                        |
 
-Local values are documented in `.env.local.example`. The Supabase keys for local dev are printed by `supabase status`.
+Local values are documented in `.env.local.example`. The Supabase keys for local dev are printed by `pnpm db:status`.
