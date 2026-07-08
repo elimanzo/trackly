@@ -85,7 +85,7 @@ pnpm db:studio   # Open Supabase Studio in browser
 pnpm db:email    # Open Mailpit (local email inbox) in browser
 ```
 
-The Supabase CLI is pinned (see [package.json](package.json)). To upgrade it deliberately: `pnpm up supabase` (or `pnpm add -D -E supabase@<version>`), then commit the lockfile so everyone gets the same version on their next `pnpm install`.
+The Supabase CLI is pinned in `package.json`. To upgrade: `pnpm up supabase` and commit the lockfile.
 
 `pnpm db:reset` is the main command for development — use it any time you want a clean slate with fresh seed data.
 
