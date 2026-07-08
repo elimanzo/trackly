@@ -28,9 +28,8 @@ A multi-tenant SaaS app for tracking physical assets across departments — buil
 - **Node.js 20+** — use [nvm](https://github.com/nvm-sh/nvm) (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows) (Windows): `nvm install 20 && nvm use 20`
 - **pnpm** — `npm install -g pnpm`
 - **Docker Desktop** — [download here](https://www.docker.com/products/docker-desktop/) — required for the local Supabase stack
-- **Supabase CLI:**
-  - macOS: `brew install supabase/tap/supabase`
-  - Windows/Linux: `npx supabase` (no install needed), or see [official install guide](https://supabase.com/docs/guides/local-development/cli/getting-started)
+
+> **Supabase CLI:** no global install needed. It's pinned as a devDependency, so `pnpm install` provides the correct version. Always run DB commands through the `pnpm db:*` scripts (below) so the pinned version is used — a bare `supabase ...` would fall back to whatever is installed globally and reintroduce version drift.
 
 ### Setup
 
@@ -43,7 +42,7 @@ pnpm install
 # 2. Start the local Supabase stack (requires Docker)
 pnpm db:start
 
-# 3. Copy the example env file and fill in values from `supabase status`
+# 3. Copy the example env file and fill in values from `pnpm exec supabase status`
 cp .env.local.example .env.local
 
 # 4. Start the dev server
@@ -52,7 +51,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The anon key and service role key are printed by `supabase status` after the stack starts. The URL is always `http://127.0.0.1:54321`.
+The anon key and service role key are printed by `pnpm exec supabase status` after the stack starts. The URL is always `http://127.0.0.1:54321`.
 
 ### Seeded accounts
 
@@ -84,6 +83,8 @@ pnpm db:reset    # Wipe DB, re-apply all migrations, re-run seeds
 pnpm db:studio   # Open Supabase Studio in browser
 pnpm db:email    # Open Mailpit (local email inbox) in browser
 ```
+
+The Supabase CLI is pinned (see [package.json](package.json)). To upgrade it deliberately: `pnpm up supabase` (or `pnpm add -D -E supabase@<version>`), then commit the lockfile so everyone gets the same version on their next `pnpm install`.
 
 `pnpm db:reset` is the main command for development — use it any time you want a clean slate with fresh seed data.
 
