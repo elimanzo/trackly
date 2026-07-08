@@ -34,7 +34,17 @@ async function fetchProfile(userId: string): Promise<ProfileWithDepartments | nu
     .eq('id', userId)
     .maybeSingle()
 
-  if (error || !data) return null
+  // A query error (403, broken RLS) is not an absent profile — log it so
+  // it's diagnosable instead of silently routing the user to the wizard.
+  if (error) {
+    console.error(`[auth] Failed to load profile for user ${userId}: ${error.message}`, {
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    })
+    return null
+  }
+  if (!data) return null
 
   type MembershipRow = {
     org_id: string
