@@ -8,61 +8,73 @@ import { createClient } from '@/lib/supabase/server'
 import type { Invite } from '@/lib/types'
 
 import type { ActionClients } from './_context'
+import { getContext } from './_context'
+
+type AdminClient = ReturnType<typeof createAdminClient>
 
 // ---------------------------------------------------------------------------
-// sendInviteAction
+// clearPendingInvite — shared stale-invite cleanup
 // ---------------------------------------------------------------------------
 
-/** Send an email invite to a new member. Handles both new and existing auth users. */
-export async function sendInviteAction(
-  orgSlug: string,
-  email: string,
-  role: Invite['role'],
-  departmentIds: string[] = [],
-  clients?: ActionClients
-): Promise<{ error: string } | { error: null }> {
-  email = email.toLowerCase().trim()
-  const supabase = clients?.supabase ?? (await createClient())
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const admin = clients?.admin ?? createAdminClient()
-
-  // Resolve org and actor display name in parallel
-  const [{ data: org }, { data: actorProfile }] = await Promise.all([
-    admin.from('organizations').select('id, name').eq('slug', orgSlug).maybeSingle(),
-    admin.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-  ])
-
-  if (!org?.id) return { error: 'No organisation found' }
-
-  // Verify the actor is a member of this specific org
-  const { data: membership } = await admin
-    .from('user_org_memberships')
-    .select('org_id')
-    .eq('user_id', user.id)
-    .eq('org_id', org.id)
-    .maybeSingle()
-
-  if (!membership) return { error: 'No organisation found' }
-
-  const orgId = org.id as string
-  const orgName = (org.name as string) ?? ''
-  const actorName = (actorProfile?.full_name as string) ?? 'Your team'
-
-  // Prevent duplicate pending invites
-  const { data: existing } = await admin
+/**
+ * Clear any stale, unaccepted invite for an email so it can be cleanly re-sent.
+ *
+ * Deletes the invite rows for this email+org and, if the invitee started but
+ * never joined any org (a profile with no membership anywhere), deletes their
+ * pending auth user. Without that, `inviteUserByEmail` would fail with "already
+ * registered" and silently send no email. A genuine member (profile *with* a
+ * membership) is left untouched — they take the magic-link path instead.
+ */
+async function clearPendingInvite(admin: AdminClient, email: string, orgId: string): Promise<void> {
+  await admin
     .from('invites')
-    .select('id')
+    .delete()
     .eq('email', email)
     .eq('org_id', orgId)
     .is('accepted_at', null)
+
+  const { data: pendingProfile } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
     .maybeSingle()
 
-  if (existing) return { error: 'A pending invite already exists for this email' }
+  if (!pendingProfile) return
 
+  const { data: membership } = await admin
+    .from('user_org_memberships')
+    .select('user_id')
+    .eq('user_id', pendingProfile.id as string)
+    .limit(1)
+    .maybeSingle()
+
+  if (!membership) {
+    await admin.auth.admin.deleteUser(pendingProfile.id as string)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// performInvite — insert the invite row and send the email (shared)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a fresh invite row and deliver its email. Existing auth users get a
+ * magic link to the in-app confirmation page; brand-new users go through the
+ * password-setup flow at /invite/accept. Rolls the row back on a send failure.
+ */
+async function performInvite(
+  admin: AdminClient,
+  params: {
+    orgId: string
+    orgName: string
+    email: string
+    role: Invite['role']
+    departmentIds: string[]
+    invitedBy: string
+    actorName: string
+  }
+): Promise<{ error: string } | { error: null }> {
+  const { orgId, orgName, email, role, departmentIds, invitedBy, actorName } = params
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
   const { data: newInvite, error: insertError } = await admin
@@ -72,7 +84,7 @@ export async function sendInviteAction(
       email,
       role,
       token: crypto.randomUUID(),
-      invited_by: user.id,
+      invited_by: invitedBy,
       invited_by_name: actorName,
       expires_at: expiresAt,
       department_ids: departmentIds,
@@ -85,10 +97,6 @@ export async function sendInviteAction(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const invite = newInvite as { id: string; token: string }
 
-  // Check whether an auth user already exists for this email. If so, send a
-  // magic link instead of inviteUserByEmail (which fails for existing users).
-  // Existing users land on the in-app confirmation page; new users go through
-  // the password-setup flow at /invite/accept.
   const { data: existingProfile } = await admin
     .from('profiles')
     .select('id')
@@ -134,6 +142,121 @@ export async function sendInviteAction(
   }
 
   return { error: null }
+}
+
+// ---------------------------------------------------------------------------
+// sendInviteAction
+// ---------------------------------------------------------------------------
+
+/** Send an email invite to a new member. Handles both new and existing auth users. */
+export async function sendInviteAction(
+  orgSlug: string,
+  email: string,
+  role: Invite['role'],
+  departmentIds: string[] = [],
+  clients?: ActionClients
+): Promise<{ error: string } | { error: null }> {
+  email = email.toLowerCase().trim()
+  const supabase = clients?.supabase ?? (await createClient())
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const admin = clients?.admin ?? createAdminClient()
+
+  // Resolve org and actor display name in parallel
+  const [{ data: org }, { data: actorProfile }] = await Promise.all([
+    admin.from('organizations').select('id, name').eq('slug', orgSlug).maybeSingle(),
+    admin.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+  ])
+
+  if (!org?.id) return { error: 'No organisation found' }
+
+  // Verify the actor is a member of this specific org
+  const { data: membership } = await admin
+    .from('user_org_memberships')
+    .select('org_id')
+    .eq('user_id', user.id)
+    .eq('org_id', org.id)
+    .maybeSingle()
+
+  if (!membership) return { error: 'No organisation found' }
+
+  const orgId = org.id as string
+  const orgName = (org.name as string) ?? ''
+  const actorName = (actorProfile?.full_name as string) ?? 'Your team'
+
+  // Block only a *live* pending invite — an expired one must not wedge re-invites.
+  const { data: existing } = await admin
+    .from('invites')
+    .select('id')
+    .eq('email', email)
+    .eq('org_id', orgId)
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+
+  if (existing) return { error: 'A pending invite already exists for this email' }
+
+  // Self-heal: drop any expired/stale invite (and its pending auth user) so the
+  // fresh send actually delivers instead of hitting "already registered".
+  await clearPendingInvite(admin, email, orgId)
+
+  return performInvite(admin, {
+    orgId,
+    orgName,
+    email,
+    role,
+    departmentIds,
+    invitedBy: user.id,
+    actorName,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// resendInviteAction
+// ---------------------------------------------------------------------------
+
+/** Re-send an existing (often expired) invite: clear stale state, issue a fresh token + email. */
+export async function resendInviteAction(
+  orgSlug: string,
+  inviteId: string,
+  clients?: ActionClients
+): Promise<{ error: string } | { error: null }> {
+  const ctx = await getContext(orgSlug, clients)
+  if (!ctx) return { error: 'No organisation found' }
+
+  const denied = ctx.requireRole('admin')
+  if (denied) return denied
+
+  const { data: invite } = await ctx.admin
+    .from('invites')
+    .select('email, role, department_ids')
+    .eq('id', inviteId)
+    .eq('org_id', ctx.orgId)
+    .maybeSingle()
+
+  if (!invite) return { error: 'Invite not found' }
+
+  const { data: org } = await ctx.admin
+    .from('organizations')
+    .select('name')
+    .eq('id', ctx.orgId)
+    .maybeSingle()
+
+  const email = (invite.email as string).toLowerCase()
+  await clearPendingInvite(ctx.admin, email, ctx.orgId)
+
+  return performInvite(ctx.admin, {
+    orgId: ctx.orgId,
+    orgName: (org?.name as string) ?? '',
+    email,
+    role: invite.role as Invite['role'],
+    departmentIds: (invite.department_ids as string[] | null) ?? [],
+    invitedBy: ctx.userId,
+    actorName: ctx.actorName,
+  })
 }
 
 // ---------------------------------------------------------------------------

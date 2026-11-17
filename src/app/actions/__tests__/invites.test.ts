@@ -4,6 +4,7 @@ import {
   acceptAuthenticatedInviteAction,
   acceptInviteAction,
   acceptInviteViaGoogleAction,
+  resendInviteAction,
   sendInviteAction,
 } from '../invites'
 
@@ -97,15 +98,38 @@ describe('sendInviteAction', () => {
       .mockResolvedValueOnce({ data: { id: 'org-0001', name: 'Acme' } }) // org found
       .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
       .mockResolvedValueOnce({ data: { org_id: 'org-0001' } }) // membership verified
-      .mockResolvedValueOnce({ data: null }) // no duplicate invite
-      .mockResolvedValueOnce({ data: { id: 'existing-user' } }) // profile exists → OTP
+      .mockResolvedValueOnce({ data: null }) // no live duplicate invite
+      .mockResolvedValueOnce({ data: { id: 'existing-user' } }) // clearPendingInvite: profile exists
+      .mockResolvedValueOnce({ data: { user_id: 'existing-user' } }) // clearPendingInvite: has membership → not deleted
+      .mockResolvedValueOnce({ data: { id: 'existing-user' } }) // performInvite: existing profile → OTP
     chain.single.mockResolvedValueOnce({ data: { id: 'new-invite-001' }, error: null })
 
     const result = await sendInviteAction('acme', 'existing@example.com', 'editor', [], clients)
 
     expect(result).toEqual({ error: null })
     expect(mockInviteUserByEmail).not.toHaveBeenCalled()
-    expect(chain.delete).not.toHaveBeenCalled()
+    expect(mockSignInWithOtp).toHaveBeenCalled()
+  })
+
+  it('clears an expired pending invite and re-sends instead of blocking', async () => {
+    const clients = makeClients(chain, { inviteUserByEmail: mockInviteUserByEmail })
+    chain.maybeSingle
+      .mockResolvedValueOnce({ data: { id: 'org-0001', name: 'Acme' } }) // org found
+      .mockResolvedValueOnce({ data: { full_name: 'Actor' } }) // actor profile (parallel)
+      .mockResolvedValueOnce({ data: { org_id: 'org-0001' } }) // membership verified
+      .mockResolvedValueOnce({ data: null }) // no LIVE duplicate (expired excluded by gt filter)
+      .mockResolvedValueOnce({ data: null }) // clearPendingInvite: no pending auth profile
+      .mockResolvedValueOnce({ data: null }) // performInvite: no existing profile
+    chain.single.mockResolvedValueOnce({ data: { id: 'fresh-invite-001' }, error: null })
+
+    const result = await sendInviteAction('acme', 'expired@example.com', 'editor', [], clients)
+
+    expect(result).toEqual({ error: null })
+    // stale cleanup deletes unaccepted invites scoped to this email before re-sending
+    expect(chain.delete).toHaveBeenCalled()
+    expect(chain.eq).toHaveBeenCalledWith('email', 'expired@example.com')
+    expect(chain.is).toHaveBeenCalledWith('accepted_at', null)
+    expect(mockInviteUserByEmail).toHaveBeenCalled()
   })
 
   it('returns null error on success', async () => {
@@ -121,6 +145,53 @@ describe('sendInviteAction', () => {
     const result = await sendInviteAction('acme', 'new@example.com', 'viewer', [], clients)
 
     expect(result).toEqual({ error: null })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resendInviteAction
+// ---------------------------------------------------------------------------
+
+describe('resendInviteAction', () => {
+  it('clears stale state and sends a fresh invite', async () => {
+    const clients = makeClients(chain, {
+      inviteUserByEmail: mockInviteUserByEmail,
+      seedContext: { role: 'admin' },
+    })
+    chain.maybeSingle
+      .mockResolvedValueOnce({
+        data: { email: 'new@example.com', role: 'editor', department_ids: [] },
+      }) // invite lookup
+      .mockResolvedValueOnce({ data: { name: 'Acme' } }) // org name
+      .mockResolvedValueOnce({ data: null }) // clearPendingInvite: no pending profile
+      .mockResolvedValueOnce({ data: null }) // performInvite: no existing profile
+    chain.single.mockResolvedValueOnce({
+      data: { id: 'fresh-invite-001', token: 'tok' },
+      error: null,
+    })
+
+    const result = await resendInviteAction('acme', 'invite-old-001', clients)
+
+    expect(result).toEqual({ error: null })
+    expect(mockInviteUserByEmail).toHaveBeenCalled()
+  })
+
+  it('returns error when the invite is not found', async () => {
+    const clients = makeClients(chain, { seedContext: { role: 'admin' } })
+    chain.maybeSingle.mockResolvedValueOnce({ data: null }) // invite lookup → not found
+
+    const result = await resendInviteAction('acme', 'missing', clients)
+
+    expect(result).toEqual({ error: 'Invite not found' })
+  })
+
+  it('denies a non-admin actor', async () => {
+    const clients = makeClients(chain, { seedContext: { role: 'viewer' } })
+
+    const result = await resendInviteAction('acme', 'invite-old-001', clients)
+
+    expect(result).not.toEqual({ error: null })
+    expect(mockInviteUserByEmail).not.toHaveBeenCalled()
   })
 })
 

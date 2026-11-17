@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { sendInviteAction } from '@/app/actions/invites'
+import { resendInviteAction, sendInviteAction } from '@/app/actions/invites'
 import {
   removeUserAction,
   revokeInviteAction,
@@ -49,9 +49,11 @@ type InvRow = {
   created_at: string
 }
 
+export type PendingInvite = Invite & { isExpired: boolean }
+
 async function fetchOrgUsers(
   orgId: string
-): Promise<{ users: OrgMember[]; pendingInvites: Invite[] }> {
+): Promise<{ users: OrgMember[]; pendingInvites: PendingInvite[] }> {
   const supabase = createClient()
   const [membershipsResult, deptsResult, invsResult] = await Promise.all([
     supabase
@@ -66,12 +68,7 @@ async function fetchOrgUsers(
       .from('user_departments')
       .select('user_id, department_id, departments(id, name)')
       .eq('org_id', orgId),
-    supabase
-      .from('invites')
-      .select('*')
-      .eq('org_id', orgId)
-      .is('accepted_at', null)
-      .gt('expires_at', new Date().toISOString()),
+    supabase.from('invites').select('*').eq('org_id', orgId).is('accepted_at', null),
   ])
   if (membershipsResult.error) throw new Error(membershipsResult.error.message)
   if (deptsResult.error) throw new Error(deptsResult.error.message)
@@ -102,6 +99,7 @@ async function fetchOrgUsers(
     }
   })
 
+  const now = Date.now()
   const pendingInvites = (invsResult.data as InvRow[]).map((r) => ({
     id: r.id,
     orgId: r.org_id,
@@ -113,6 +111,7 @@ async function fetchOrgUsers(
     acceptedAt: null,
     expiresAt: r.expires_at,
     createdAt: r.created_at,
+    isExpired: new Date(r.expires_at).getTime() < now,
   }))
 
   return { users, pendingInvites }
@@ -160,6 +159,18 @@ export function useOrgUserMutations() {
     },
     onSuccess: (email) => {
       toast.success(`Invite sent to ${email}`)
+      invalidate()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  const resendInviteMut = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await resendInviteAction(orgSlug, id)
+      if (result.error) throw new Error(result.error)
+    },
+    onSuccess: () => {
+      toast.success('Invite resent')
       invalidate()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -216,6 +227,7 @@ export function useOrgUserMutations() {
   return {
     sendInvite: (email: string, role: Invite['role'], departmentIds: string[] = []) =>
       sendInviteMut.mutate({ email, role, departmentIds }),
+    resendInvite: (id: string) => resendInviteMut.mutate(id),
     revokeInvite: (id: string) => revokeInviteMut.mutate(id),
     removeUser: (id: string) => removeUserMut.mutate(id),
     updateUserRole: async (id: string, role: Exclude<UserRole, 'owner'>) => {
