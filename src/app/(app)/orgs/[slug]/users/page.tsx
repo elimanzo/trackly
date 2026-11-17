@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Mail, MoreHorizontal, Pencil, Plus, Trash2, UserX } from 'lucide-react'
+import { Mail, MoreHorizontal, Pencil, Plus, Send, Trash2, UserX } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -73,8 +73,14 @@ type InviteFormInput = z.infer<typeof InviteFormSchema>
 export default function UsersPage() {
   const { users, pendingInvites, isLoading } = useOrgUsers()
   const { data: departments } = useDepartments()
-  const { sendInvite, revokeInvite, removeUser, updateUserRole, updateUserDepartments } =
-    useOrgUserMutations()
+  const {
+    sendInvite,
+    resendInvite,
+    revokeInvite,
+    removeUser,
+    updateUserRole,
+    updateUserDepartments,
+  } = useOrgUserMutations()
 
   const { user: currentUser } = useAuth()
   const { org } = useOrg()
@@ -303,48 +309,67 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingInvites.map((invite, index) => (
-                    <TableRow
-                      key={invite.id}
-                      className="animate-in fade-in-0 duration-300"
-                      style={{
-                        animationDelay: `${Math.min(index * 20, 300)}ms`,
-                        animationFillMode: 'both',
-                      }}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Mail className="text-muted-foreground h-4 w-4" />
-                          <span className="text-foreground text-sm">{invite.email}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {USER_ROLE_CONFIG[invite.role].label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-muted-foreground text-xs">
-                          {invite.invitedByName}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-muted-foreground text-xs">
-                          {formatRelativeTime(invite.createdAt)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive h-8 w-8"
-                          onClick={() => setRevokeId(invite.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {pendingInvites.map((invite, index) => {
+                    return (
+                      <TableRow
+                        key={invite.id}
+                        className="animate-in fade-in-0 duration-300"
+                        style={{
+                          animationDelay: `${Math.min(index * 20, 300)}ms`,
+                          animationFillMode: 'both',
+                        }}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Mail className="text-muted-foreground h-4 w-4" />
+                            <span className="text-foreground text-sm">{invite.email}</span>
+                            {invite.isExpired && (
+                              <Badge variant="secondary" className="text-xs">
+                                Expired
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {USER_ROLE_CONFIG[invite.role].label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-muted-foreground text-xs">
+                            {invite.invitedByName}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-muted-foreground text-xs">
+                            {formatRelativeTime(invite.createdAt)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-foreground h-8 w-8"
+                              title="Resend invite"
+                              onClick={() => resendInvite(invite.id)}
+                            >
+                              <Send className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive h-8 w-8"
+                              title="Revoke invite"
+                              onClick={() => setRevokeId(invite.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>

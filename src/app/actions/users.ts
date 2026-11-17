@@ -125,6 +125,7 @@ export async function revokeInviteAction(
         .from('user_org_memberships')
         .select('user_id')
         .eq('user_id', pendingProfile.id as string)
+        .limit(1)
         .maybeSingle()
 
       if (!membership) {
