@@ -15,8 +15,8 @@ jobs:
       - name: Ping database
         run: |
           set -euo pipefail
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/?select=1" \
+          HTTP_STATUS=$(curl -sSo /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/" \
             -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}")
           echo "HTTP status: $HTTP_STATUS"
