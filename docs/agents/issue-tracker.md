@@ -26,6 +26,19 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## Stacked diffs
+
+Large changes ship as a **stack**: a chain of dependent PRs that each build on the one below, so each stays small and reviewable. Use GitHub's native stacked PRs via the `gh stack` extension (`github/gh-stack`) — no third-party tooling, works with the same `gh` auth as everything above. Verified against `gh` 2.88+ and `gh-stack` v0.1.1.
+
+- **Install once**: `gh extension install github/gh-stack`.
+- **Create a stack from branches**: make one branch per layer (each committing on top of the previous), then `gh stack init <branch1> <branch2> ...`. This adopts them as `main ← branch1 ← branch2`.
+- **Add a layer**: commit the next change on a new branch, then `gh stack add <branch>`.
+- **Inspect**: `gh stack view` prints the stack as a tree (current layer marked); `gh stack switch` moves between layers.
+- **Publish**: `gh stack submit` pushes every branch and creates/updates one PR per layer. Each PR's base is set to the layer below it (not `main`), and GitHub renders a native stack map in the PR UI linking the chain.
+- **Merge order**: merge the top PR to land it plus every unmerged PR below, bottom-up; merge a lower PR to land only that layer, and the PRs above auto-rebase onto the new base. CI and branch protection are enforced against the final target (`main`), not the intermediate bases.
+
+Each layer still carries triage labels and sub-issue links like any other PR.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
