@@ -1,0 +1,27 @@
+name: Keep Supabase project warm
+
+# Runs every 3 days to prevent the free-tier 7-day idle pause.
+# See docs/keep-warm.md for context. Removing this workflow reintroduces cold starts.
+on:
+  schedule:
+    - cron: '0 6 */3 * *' # 6am UTC every 3 days
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping database
+        run: |
+          set -euo pipefail
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/?select=1" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}")
+          echo "HTTP status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "Ping failed with status $HTTP_STATUS" >&2
+            exit 1
+          fi
+          echo "Supabase project is active."
