@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { asOrgAccessClient, resolveOrgAccess } from '@/lib/org-access'
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -140,27 +142,13 @@ export async function proxy(request: NextRequest) {
 
   // For org-scoped routes, verify the user is a member of the specific org in the URL.
   if (isOrgScopedRoute) {
-    const slugMatch = pathname.match(/^\/orgs\/([^/]+)/)
-    const routeSlug = slugMatch?.[1]
+    const routeSlug = pathname.match(/^\/orgs\/([^/]+)/)?.[1]
 
     if (routeSlug) {
-      const { data: orgRow } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('slug', routeSlug)
-        .maybeSingle()
-
-      let isMember = false
-      if (orgRow?.id) {
-        const { data: orgMembership } = await supabase
-          .from('user_org_memberships')
-          .select('org_id')
-          .eq('user_id', user.id)
-          .eq('org_id', orgRow.id)
-          .neq('invite_status', 'deactivated')
-          .maybeSingle()
-        isMember = !!orgMembership
-      }
+      const { isMember } = await resolveOrgAccess(asOrgAccessClient(supabase), {
+        userId: user.id,
+        slug: routeSlug,
+      })
 
       if (!isMember) {
         const url = request.nextUrl.clone()
