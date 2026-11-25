@@ -33,7 +33,6 @@ describe('resolveOrgAccess', () => {
   })
 
   it('denies a non-member of an existing org', async () => {
-    // The org exists (another user is a member) but USER is not.
     const client = new SpyOrgAccessClient([
       { userId: 'someone-else', slug: SLUG, orgId: ORG_ID, inviteStatus: 'active' },
     ])

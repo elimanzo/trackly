@@ -12,12 +12,6 @@ export type SeededMembership = {
   inviteStatus: string
 }
 
-/**
- * Call-counting spy that models the single-query slug -> org -> membership
- * resolution. `fromCalls` is the round-trip count: resolution must issue
- * exactly one. The filter semantics mirror a PostgREST `!inner` join on
- * `organizations.slug` plus `neq('invite_status', ...)`.
- */
 export class SpyOrgAccessClient implements OrgAccessClient {
   fromCalls = 0
 
