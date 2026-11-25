@@ -15,6 +15,7 @@ export type AppTable =
   | 'profiles'
   | 'invites'
   | 'user_departments'
+  | 'user_org_memberships'
 
 // ---------------------------------------------------------------------------
 // Dependency graph
@@ -55,10 +56,16 @@ const TABLE_DEPS: Record<AppTable, Keys> = {
   // so we can't narrow to a specific history query.
   audit_logs: (orgId) => [['recentActivity', orgId], ['assetHistory'], ['dashboardStats', orgId]],
 
-  // User / invite tables — only affect the org users list
-  profiles: (orgId) => [['orgUsers', orgId]],
+  // User / invite tables — affect the org users list. The three that feed the
+  // cached shell context (profile, memberships, departments) also bust it, so a
+  // membership/role/department change is reflected without a full reload.
+  // ['startupContext'] is a bare prefix: the shell key carries userId, which
+  // these org-scoped realtime events don't, and only one user's shell is ever
+  // cached per browser session.
+  profiles: (orgId) => [['orgUsers', orgId], ['startupContext']],
   invites: (orgId) => [['orgUsers', orgId]],
-  user_departments: (orgId) => [['orgUsers', orgId]],
+  user_departments: (orgId) => [['orgUsers', orgId], ['startupContext']],
+  user_org_memberships: (orgId) => [['orgUsers', orgId], ['startupContext']],
 }
 
 // ---------------------------------------------------------------------------

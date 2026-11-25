@@ -1,9 +1,11 @@
 'use client'
 
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
+import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useContext, useEffect, useState } from 'react'
 
-import { asStartupClient, loadStartupContext, type StartupContext } from '@/lib/startup'
+import { useStartupContext } from '@/lib/hooks/useStartupContext'
+import { startupKeys, type StartupContext } from '@/lib/startup'
 import type { StartupDepartment } from '@/lib/startup'
 import { createClient } from '@/lib/supabase/client'
 import type { ProfileWithDepartments } from '@/lib/types'
@@ -30,9 +32,9 @@ function toUser(ctx: StartupContext): ProfileWithDepartments | null {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<ProfileWithDepartments | null>(null)
-  const [departments, setDepartments] = useState<StartupDepartment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const [userId, setUserId] = useState<string | null>(null)
+  const [authResolved, setAuthResolved] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -50,26 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.location.replace('/reset-password?recovery=1')
         return
       }
-      if (!session?.user) {
-        setUser(null)
-        setDepartments([])
-        setIsLoading(false)
-        return
-      }
-      loadStartupContext(asStartupClient(supabase), session.user.id)
-        .then((ctx) => {
-          if (!mounted) return
-          setUser(toUser(ctx))
-          setDepartments(ctx.departments)
-        })
-        .catch(() => {
-          if (!mounted) return
-          setUser(null)
-          setDepartments([])
-        })
-        .finally(() => {
-          if (mounted) setIsLoading(false)
-        })
+      setUserId(session?.user?.id ?? null)
+      setAuthResolved(true)
     })
 
     return () => {
@@ -77,6 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  // Shell context is cached by React Query (keyed by userId, with a stale
+  // window), so navigations within that window reuse it instead of refetching.
+  const { data: ctx, isLoading: ctxLoading } = useStartupContext(userId)
+  const user = ctx ? toUser(ctx) : null
+  const departments: StartupDepartment[] = ctx?.departments ?? []
+  // Loading until auth resolves; thereafter only while a signed-in user's shell
+  // is still fetching. A signed-out session settles immediately.
+  const isLoading = !authResolved || (userId != null && ctxLoading)
 
   async function signIn(email: string, password: string) {
     const supabase = createClient()
@@ -113,14 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function refreshUser() {
-    const supabase = createClient()
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser()
-    if (!authUser) return
-    const ctx = await loadStartupContext(asStartupClient(supabase), authUser.id)
-    setUser(toUser(ctx))
-    setDepartments(ctx.departments)
+    if (!userId) return
+    await queryClient.invalidateQueries({ queryKey: startupKeys.context(userId) })
   }
 
   return (

@@ -96,17 +96,41 @@ describe('audit_logs table', () => {
 // User/invite tables
 // ---------------------------------------------------------------------------
 
-describe.each(['profiles', 'invites', 'user_departments'] as const)('%s table', (table) => {
-  it('invalidates orgUsers scoped to orgId', () => {
-    const qc = makeClient()
-    invalidateForTable(qc as never, ORG, table)
-    expect(qc._calls).toContainEqual(['orgUsers', ORG])
-  })
+describe.each(['profiles', 'invites', 'user_departments', 'user_org_memberships'] as const)(
+  '%s table',
+  (table) => {
+    it('invalidates orgUsers scoped to orgId', () => {
+      const qc = makeClient()
+      invalidateForTable(qc as never, ORG, table)
+      expect(qc._calls).toContainEqual(['orgUsers', ORG])
+    })
 
-  it('does not invalidate assets', () => {
+    it('does not invalidate assets', () => {
+      const qc = makeClient()
+      invalidateForTable(qc as never, ORG, table)
+      expect(qc._calls).not.toContainEqual(['assets'])
+    })
+  }
+)
+
+// Tables feeding the cached shell context bust it; `invites` does not, since it
+// changes only the org-users list, not the signed-in user's own shell.
+describe.each(['profiles', 'user_departments', 'user_org_memberships'] as const)(
+  '%s table (shell context)',
+  (table) => {
+    it('invalidates the cached startup context (bare prefix — key carries userId)', () => {
+      const qc = makeClient()
+      invalidateForTable(qc as never, ORG, table)
+      expect(qc._calls).toContainEqual(['startupContext'])
+    })
+  }
+)
+
+describe('invites table', () => {
+  it('does not bust the shell context (not a shell source)', () => {
     const qc = makeClient()
-    invalidateForTable(qc as never, ORG, table)
-    expect(qc._calls).not.toContainEqual(['assets'])
+    invalidateForTable(qc as never, ORG, 'invites')
+    expect(qc._calls).not.toContainEqual(['startupContext'])
   })
 })
 

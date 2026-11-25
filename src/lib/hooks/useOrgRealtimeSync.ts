@@ -37,6 +37,7 @@ const ORG_SCOPED_TABLES = [
 const UNSCOPED_TABLES = [
   'profiles',
   'user_departments',
+  'user_org_memberships',
   'asset_assignments',
 ] as const satisfies readonly AppTable[]
 
