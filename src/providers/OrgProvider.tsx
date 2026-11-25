@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import type { OrgMembership, Organization, UserRole } from '@/lib/types'
@@ -21,7 +21,7 @@ type OrgContextValue = {
 const OrgContext = createContext<OrgContextValue | null>(null)
 
 export function OrgProvider({ slug, children }: { slug: string; children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, departments } = useAuth()
   const [org, setOrg] = useState<Organization | null>(null)
 
   // Derive the active membership from the user's memberships list
@@ -59,30 +59,15 @@ export function OrgProvider({ slug, children }: { slug: string; children: React.
     refetchOrg()
   }, [refetchOrg])
 
-  // Fetch department names for the active membership (ids come from user_departments)
-  const [departmentIds, setDepartmentIds] = useState<string[]>([])
-  const [departmentNames, setDepartmentNames] = useState<string[]>([])
-
-  useEffect(() => {
-    if (!user?.id || !org?.id) return
-    const supabase = createClient()
-    supabase
-      .from('user_departments')
-      .select('department_id, departments(name)')
-      .eq('user_id', user.id)
-      .eq('org_id', org.id)
-      .then(
-        ({
-          data,
-        }: {
-          data: { department_id: string; departments: { name: string } | null }[] | null
-        }) => {
-          if (!data) return
-          setDepartmentIds(data.map((d) => d.department_id))
-          setDepartmentNames(data.map((d) => d.departments?.name ?? ''))
-        }
-      )
-  }, [user?.id, org?.id])
+  const activeDepartments = useMemo(
+    () => (org ? departments.filter((d) => d.orgId === org.id) : []),
+    [departments, org]
+  )
+  const departmentIds = useMemo(
+    () => activeDepartments.map((d) => d.departmentId),
+    [activeDepartments]
+  )
+  const departmentNames = useMemo(() => activeDepartments.map((d) => d.name), [activeDepartments])
 
   // Remember last active org in localStorage
   useEffect(() => {

@@ -3,11 +3,14 @@
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { createContext, useContext, useEffect, useState } from 'react'
 
+import { asStartupClient, loadStartupContext, type StartupContext } from '@/lib/startup'
+import type { StartupDepartment } from '@/lib/startup'
 import { createClient } from '@/lib/supabase/client'
 import type { ProfileWithDepartments } from '@/lib/types'
 
 type AuthContextValue = {
   user: ProfileWithDepartments | null
+  departments: StartupDepartment[]
   isLoading: boolean
   signIn: (
     email: string,
@@ -21,53 +24,14 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-async function fetchProfile(userId: string): Promise<ProfileWithDepartments | null> {
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(
-      `
-      *,
-      user_org_memberships ( org_id, role, invite_status, created_at, organizations ( slug, name ) )
-    `
-    )
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (error || !data) return null
-
-  type MembershipRow = {
-    org_id: string
-    role: string
-    invite_status: string
-    created_at: string
-    organizations: { slug: string; name: string } | null
-  }
-
-  const rawMemberships = (data.user_org_memberships as MembershipRow[]) ?? []
-
-  return {
-    id: data.id as string,
-    fullName: data.full_name as string,
-    email: data.email as string,
-    avatarUrl: (data.avatar_url as string | null) ?? null,
-    createdAt: data.created_at as string,
-    updatedAt: data.updated_at as string,
-    memberships: rawMemberships.map((m) => ({
-      userId,
-      orgId: m.org_id,
-      orgSlug: m.organizations?.slug ?? '',
-      orgName: m.organizations?.name ?? '',
-      role: m.role as ProfileWithDepartments['memberships'][number]['role'],
-      inviteStatus:
-        m.invite_status as ProfileWithDepartments['memberships'][number]['inviteStatus'],
-      createdAt: m.created_at,
-    })),
-  }
+function toUser(ctx: StartupContext): ProfileWithDepartments | null {
+  if (!ctx.profile) return null
+  return { ...ctx.profile, memberships: ctx.memberships }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<ProfileWithDepartments | null>(null)
+  const [departments, setDepartments] = useState<StartupDepartment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -76,38 +40,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (!mounted) return
-      if (_event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT') {
         window.location.replace('/login')
         return
       }
-      if (_event === 'PASSWORD_RECOVERY') {
+      if (event === 'PASSWORD_RECOVERY') {
         window.location.replace('/reset-password?recovery=1')
         return
       }
       if (!session?.user) {
         setUser(null)
+        setDepartments([])
         setIsLoading(false)
         return
       }
-      // Defer fetchProfile outside the onAuthStateChange callback to avoid a
-      // Web Locks deadlock: the auth library holds a lock during this callback,
-      // and fetchProfile internally acquires the same lock to read the session.
-      const userId = session.user.id
-      setTimeout(() => {
-        if (!mounted) return
-        fetchProfile(userId)
-          .then((profile) => {
-            if (mounted) setUser(profile)
-          })
-          .catch(() => {
-            if (mounted) setUser(null)
-          })
-          .finally(() => {
-            if (mounted) setIsLoading(false)
-          })
-      }, 0)
+      loadStartupContext(asStartupClient(supabase), session.user.id)
+        .then((ctx) => {
+          if (!mounted) return
+          setUser(toUser(ctx))
+          setDepartments(ctx.departments)
+        })
+        .catch(() => {
+          if (!mounted) return
+          setUser(null)
+          setDepartments([])
+        })
+        .finally(() => {
+          if (mounted) setIsLoading(false)
+        })
     })
 
     return () => {
@@ -156,13 +118,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { user: authUser },
     } = await supabase.auth.getUser()
     if (!authUser) return
-    const profile = await fetchProfile(authUser.id)
-    setUser(profile)
+    const ctx = await loadStartupContext(asStartupClient(supabase), authUser.id)
+    setUser(toUser(ctx))
+    setDepartments(ctx.departments)
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, signIn, signUp, signOut, signInWithGoogle, refreshUser }}
+      value={{
+        user,
+        departments,
+        isLoading,
+        signIn,
+        signUp,
+        signOut,
+        signInWithGoogle,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
